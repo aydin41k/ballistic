@@ -8,17 +8,16 @@ import { StatusCircle } from "./StatusCircle";
 
 type Props = {
   item: Item;
-  onChange: (next: Item) => void;
-  onReorder: (nextList: Item[]) => void;
+  onChange: (item: Item) => void;
+  onReorder: (items: Item[]) => void;
   onOptimisticReorder: (itemId: string, direction: "up" | "down") => void;
   index: number;
   onEdit: () => void;
-  onDelete: () => Promise<void>;
   isFirst: boolean;
   isLast: boolean;
 };
 
-export function ItemRow({ item, onChange, onReorder, onOptimisticReorder, index, onEdit, onDelete, isFirst, isLast }: Props) {
+export function ItemRow({ item, onChange, onReorder, onOptimisticReorder, index, onEdit, isFirst, isLast }: Props) {
   const [optimisticItem, addOptimistic] = useOptimistic(
     item,
     (currentItem: Item, newStatus: Item["status"]) => ({

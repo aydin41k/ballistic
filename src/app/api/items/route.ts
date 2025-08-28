@@ -4,7 +4,7 @@ import { store } from "../_store";
 const GAS_BASE = process.env.NEXT_PUBLIC_GAS_BASE_URL;
 
 // Helper function to proxy requests to Google Apps Script
-async function proxyToGAS(action: string, method: string, body?: any, searchParams?: URLSearchParams) {
+async function proxyToGAS(action: string, method: string, body?: Record<string, unknown>, searchParams?: URLSearchParams) {
   if (!GAS_BASE) {
     throw new Error("Google Apps Script base URL not configured");
   }

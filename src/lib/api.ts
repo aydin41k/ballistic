@@ -97,7 +97,7 @@ export async function moveItem(id: string, direction: "up" | "down"): Promise<It
   const data = await res.json();
   
   // Handle both GAS format ({ rows: [...] }) and direct Item[] format
-  let rows = data.rows || data;
+  const rows = data.rows || data;
   
   // Ensure rows is an array
   if (!Array.isArray(rows)) {

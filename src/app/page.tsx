@@ -1,33 +1,26 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import type { Item, Status } from "@/types";
+import type { Item } from "@/types";
 import { fetchItems } from "@/lib/api";
 import { ItemRow } from "@/components/ItemRow";
-import { createItem, updateItem, deleteItem } from "@/lib/api";
+import { createItem, updateItem } from "@/lib/api";
 import { EmptyState } from "@/components/EmptyState";
 import { ItemForm } from "@/components/ItemForm";
 
-type Filter = { query: string; project: string; status: "all" | Status; startDate: string };
-
 export default function Home() {
   const [items, setItems] = useState<Item[]>([]);
-  const [filters, setFilters] = useState<Filter>({ query: "", project: "", status: "all", startDate: "" });
   const [editing, setEditing] = useState<Item | null>(null);
   const [showAdd, setShowAdd] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     setLoading(true);
-    fetchItems({
-      q: filters.query || undefined,
-      status: filters.status,
-      created_from: filters.startDate || undefined,
-    })
+    fetchItems()
       .then(setItems)
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, [filters.query, filters.status, filters.startDate]);
+  }, []);
 
   const projects = useMemo(() => {
     if (!Array.isArray(items)) return [];
@@ -36,17 +29,8 @@ export default function Home() {
 
   const filtered = useMemo(() => {
     if (!Array.isArray(items)) return [];
-    return items.filter((i) => {
-      if (filters.project && i.project !== filters.project) return false;
-      if (filters.status !== "all" && i.status !== filters.status) return false;
-      if (filters.startDate && i.startDate !== filters.startDate) return false;
-      if (filters.query) {
-        const q = filters.query.toLowerCase();
-        if (!i.title.toLowerCase().includes(q) && !i.project.toLowerCase().includes(q)) return false;
-      }
-      return true;
-    });
-  }, [items, filters]);
+    return items;
+  }, [items]);
 
   function onRowChange(updated: Item) {
     setItems((prev) => {
@@ -269,20 +253,6 @@ export default function Home() {
                 onOptimisticReorder={onOptimisticReorder}
                 index={index}
                 onEdit={() => setEditing(item)}
-                onDelete={async () => {
-                  // Remove item from UI immediately for optimistic feedback
-                  setItems((prev) => prev.filter((i) => i.id !== item.id));
-                  
-                  // Send API request in background
-                  deleteItem(item.id).then(() => {
-                    // Item already removed from UI, no further action needed
-                  }).catch((error) => {
-                    console.error('Failed to delete item:', error);
-                    // Restore item to UI on failure
-                    setItems((prev) => [...prev, item]);
-                    // Optionally show error message to user
-                  });
-                }}
                 isFirst={index === 0}
                 isLast={index === filtered.length - 1}
               />

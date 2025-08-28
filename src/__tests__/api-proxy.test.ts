@@ -1,4 +1,4 @@
-import { fetchItems, updateStatus, createItem, updateItem } from '../lib/api';
+import { fetchItems, createItem } from '../lib/api';
 
 // Mock fetch globally
 global.fetch = jest.fn();
