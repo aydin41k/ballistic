@@ -1,36 +1,63 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Ballistic - Bullet Journal App
 
-## Getting Started
+A modern bullet journaling application built with Next.js and Tailwind CSS.
 
-First, run the development server:
+## Features
 
+- Task management with status tracking
+- Project organization
+- Due date management
+- Notes and descriptions
+- Drag and drop reordering
+- Filtering and search
+- Responsive design
+
+## Google Apps Script Integration
+
+This app can integrate with Google Apps Script for persistent storage. The integration uses a proxy approach to avoid CORS issues:
+
+### How It Works
+
+1. **Frontend calls local API**: All requests go to `/api/items` endpoints
+2. **API proxies to Google Apps Script**: When `NEXT_PUBLIC_GAS_BASE_URL` is configured, the API forwards requests to Google Apps Script
+3. **No CORS issues**: Since the frontend only talks to your local API, there are no cross-origin restrictions
+
+### Configuration
+
+Set the environment variable:
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+NEXT_PUBLIC_GAS_BASE_URL=https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### API Actions
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+The following actions are supported:
+- `?action=list` - Retrieve all tasks
+- `?action=add` - Create a new task
+- `?action=update` - Update an existing task
+- `?action=move` - Reorder tasks
+- `?action=delete` - Delete a task (via update with deleted flag)
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### Fallback
 
-## Learn More
+When Google Apps Script is not configured or unavailable, the app falls back to local storage for development and testing.
 
-To learn more about Next.js, take a look at the following resources:
+## Development
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+npm install
+npm run dev
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Testing
 
-## Deploy on Vercel
+```bash
+./runtests.sh
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Building
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+npm run build
+npm start
+```

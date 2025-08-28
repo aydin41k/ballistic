@@ -1,0 +1,5 @@
+---
+description: always run the tests as ./runtests.sh . don't cd or anything, it is all taken care of, just run that command.
+globs:
+alwaysApply: false
+---
