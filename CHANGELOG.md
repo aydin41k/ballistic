@@ -1,3 +1,12 @@
+## 0.3.4 - 2025-08-28
+
+- **Deployment Reliability**: Updated production build and start configuration for hosting
+  - Switched production build to `next build` (removed Turbopack in CI/hosting)
+  - Start script now binds to platform port: `next start -p $PORT`
+  - Added `engines` field to pin Node.js `20.x` for runtime compatibility
+- **Documentation**: Added Azure App Service deployment notes to `README.md`
+- **Tests**: Added Jest test to verify scripts and engines in `package.json`
+
 ## 0.3.3 - 2025-08-28
 
 - **Task Filtering**: Automatically filter out completed and cancelled tasks when fetching the task list

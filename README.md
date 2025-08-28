@@ -61,3 +61,17 @@ npm run dev
 npm run build
 npm start
 ```
+
+## Deploying to Azure App Service
+
+- Ensure the Web App is configured to use **Node 20** (or newer that is supported).
+- The app must listen on the platform port. The start script is configured as `next start -p $PORT`.
+- Build using the standard Next.js build: `npm run build` (no Turbopack in production).
+- Optionally configure a health check path (e.g. `/`) to speed up warm‑up diagnostics.
+
+Environment variables commonly used:
+
+```bash
+PORT=8080
+NEXT_PUBLIC_GAS_BASE_URL="https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec"
+```
