@@ -2,6 +2,8 @@
 
 A modern bullet journaling application built with Next.js and Tailwind CSS.
 
+This initial version uses Google Sheets as the backend, making it incredibly easy and free to deploy. No database setup, no server costs—just a Google Sheet and a simple Apps Script deployment.
+
 ## Features
 
 - Task management with status tracking
@@ -82,11 +84,13 @@ To use Google Sheets as your persistent storage backend:
 
 ### 4. Configure the Frontend
 
-Create a `.env.local` file in the project root and add:
+Create a `.env` file in the project root and add:
 
 ```bash
 NEXT_PUBLIC_GAS_BASE_URL=https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec
 ```
+
+Alternatively, add this environment variable to the project as prescribed by the platform that you are deploying to.
 
 Replace `YOUR_SCRIPT_ID` with the actual script ID from your deployment URL.
 
@@ -127,3 +131,25 @@ npm run dev
 npm run build
 npm start
 ```
+
+## Contributing
+
+Contributions are welcome! Whether you're fixing bugs, adding features, or improving documentation, your help is appreciated.
+
+### How to Contribute
+
+1. **Check existing issues** or create a new one to discuss your idea
+2. **Fork the repository** and create a new branch for your work
+3. **Make your changes** and add tests if applicable
+4. **Run the tests** with `./runtests.sh` to ensure everything works
+5. **Submit a pull request** with a clear description of your changes
+
+For detailed instructions, please see [CONTRIBUTING.md](CONTRIBUTING.md).
+
+### Good First Issues
+
+New to the project? Look for issues labelled "good first issue" to get started.
+
+### Questions or Ideas?
+
+Feel free to open an issue to discuss new features, report bugs, or ask questions. We're here to help!
