@@ -53,7 +53,7 @@ export default function Home() {
   }
 
   // Optimistic reordering function that updates UI immediately
-  function onOptimisticReorder(itemId: string, direction: "up" | "down") {
+  function onOptimisticReorder(itemId: string, direction: "up" | "down" | "top") {
     setItems((prev) => {
       try {
         // Ensure prev is always an array
@@ -75,6 +75,10 @@ export default function Home() {
         } else if (direction === "down" && currentIndex < newList.length - 1) {
           // Swap with next item
           [newList[currentIndex], newList[currentIndex + 1]] = [newList[currentIndex + 1], newList[currentIndex]];
+        } else if (direction === "top" && currentIndex > 0) {
+          // Move to top - remove from current position and insert at the beginning
+          const [item] = newList.splice(currentIndex, 1);
+          newList.unshift(item);
         } else {
           // Invalid move direction for this item
           console.warn(`Invalid move direction ${direction} for item at index ${currentIndex}`);

@@ -146,6 +146,10 @@ export async function POST(request: Request) {
       [store.items[itemIndex], store.items[itemIndex - 1]] = [store.items[itemIndex - 1], store.items[itemIndex]];
     } else if (body.direction === "down" && itemIndex < store.items.length - 1) {
       [store.items[itemIndex], store.items[itemIndex + 1]] = [store.items[itemIndex + 1], store.items[itemIndex]];
+    } else if (body.direction === "top" && itemIndex > 0) {
+      // Remove the item from its current position and insert it at the top
+      const [item] = store.items.splice(itemIndex, 1);
+      store.items.unshift(item);
     }
 
     // Return the updated list in GAS format
@@ -172,6 +176,6 @@ export async function PUT(_request: Request) {
   return NextResponse.json({ message: "Not implemented" }, { status: 405 });
 }
 
-export type ReorderBody = { id: string; direction: "up" | "down" };
+export type ReorderBody = { id: string; direction: "up" | "down" | "top" };
 
 

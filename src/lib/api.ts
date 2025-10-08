@@ -87,7 +87,7 @@ export async function createItem(payload: Omit<Item, "id">): Promise<Item> {
   return res.json();
 }
 
-export async function moveItem(id: string, direction: "up" | "down"): Promise<Item[]> {
+export async function moveItem(id: string, direction: "up" | "down" | "top"): Promise<Item[]> {
   const res = await fetch(buildUrl("move"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },

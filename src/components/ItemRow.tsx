@@ -10,7 +10,7 @@ type Props = {
   item: Item;
   onChange: (item: Item) => void;
   onReorder: (items: Item[]) => void;
-  onOptimisticReorder: (itemId: string, direction: "up" | "down") => void;
+  onOptimisticReorder: (itemId: string, direction: "up" | "down" | "top") => void;
   index: number;
   onEdit: () => void;
   isFirst: boolean;
@@ -48,7 +48,7 @@ export function ItemRow({ item, onChange, onReorder, onOptimisticReorder, index,
     });
   }
 
-  async function onMove(direction: "up" | "down") {
+  async function onMove(direction: "up" | "down" | "top") {
     try {
       // Update UI immediately for optimistic reordering
       onOptimisticReorder(item.id, direction);
@@ -99,13 +99,24 @@ export function ItemRow({ item, onChange, onReorder, onOptimisticReorder, index,
         </div>
         {optimisticItem.notes && (
           <div className={`text-sm mt-1 transition-colors duration-200 ${isCompleted || isCancelled ? "text-slate-300" : "text-slate-500"}`}>
-            {optimisticItem.notes}
+            {optimisticItem.notes.length > 50 
+              ? `${optimisticItem.notes.slice(0, 50)}...` 
+              : optimisticItem.notes}
           </div>
         )}
       </div>
 
       {/* Move controls - always visible */}
       <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+        {!isFirst && (
+          <button
+            className="tap-target rounded-md bg-slate-100 px-2 py-1 text-slate-700 transition-all duration-200 hover:bg-slate-200 active:scale-95"
+            onClick={() => onMove("top")}
+            aria-label="Move to top"
+          >
+            ⇈
+          </button>
+        )}
         {!isFirst && (
           <button
             className="tap-target rounded-md bg-slate-100 px-2 py-1 text-slate-700 transition-all duration-200 hover:bg-slate-200 active:scale-95"

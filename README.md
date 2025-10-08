@@ -42,6 +42,72 @@ The following actions are supported:
 
 When Google Apps Script is not configured or unavailable, the app falls back to local storage for development and testing.
 
+## Setting Up Google Sheets Backend
+
+To use Google Sheets as your persistent storage backend:
+
+### 1. Create a Google Sheet
+
+1. Go to [Google Sheets](https://sheets.google.com) and create a new spreadsheet
+2. Name the sheet (e.g., "Ballistic Tasks")
+3. Create a sheet tab called "Main" (or rename the default sheet)
+4. Add a header row with the following columns:
+   - Column A: `id`
+   - Column B: `created_at`
+   - Column C: `updated_at`
+   - Column D: `task`
+   - Column E: `project`
+   - Column F: `status`
+   - Column G: `notes`
+
+### 2. Add Apps Script
+
+1. In your Google Sheet, click **Extensions** > **Apps Script**
+2. Delete any default code in the editor
+3. Copy the entire contents of `google-sheet-script.js` from this repository
+4. Paste it into the Apps Script editor
+5. Click the save icon (💾) and name your project (e.g., "Ballistic API")
+
+### 3. Deploy the Script
+
+1. Click **Deploy** > **New deployment**
+2. Click the gear icon (⚙️) next to "Select type" and choose **Web app**
+3. Configure the deployment:
+   - **Description**: "Ballistic API v1" (or any description)
+   - **Execute as**: Me
+   - **Who has access**: **Anyone**
+4. Click **Deploy**
+5. Review and authorise the permissions when prompted
+6. Copy the **Web app URL** (it will look like `https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec`)
+
+### 4. Configure the Frontend
+
+Create a `.env.local` file in the project root and add:
+
+```bash
+NEXT_PUBLIC_GAS_BASE_URL=https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec
+```
+
+Replace `YOUR_SCRIPT_ID` with the actual script ID from your deployment URL.
+
+### 5. Test the Integration
+
+1. Start the development server: `npm run dev`
+2. Add a task in the app
+3. Check your Google Sheet - the task should appear in the "Main" sheet
+
+### Updating the Script
+
+When you need to update the Apps Script:
+
+1. Make changes in the Apps Script editor
+2. Click **Deploy** > **Manage deployments**
+3. Click the edit icon (✏️) next to your deployment
+4. Under "Version", select **New version**
+5. Click **Deploy**
+
+The deployment URL remains the same, so you don't need to update your environment variables.
+
 ## Development
 
 ```bash

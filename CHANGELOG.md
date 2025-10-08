@@ -1,3 +1,11 @@
+## 0.3.4 - 2025-10-08
+
+- **Move to Top Feature**: Added double up arrow button (⇈) to quickly move items to the top of the list
+- **Enhanced Reordering**: New "Move to Top" button appears to the left of up/down arrows for all non-first items
+- **Optimistic Updates**: Move to top operation updates UI immediately with background API synchronization
+- **API Enhancement**: Extended move API to support "top" direction in addition to "up" and "down"
+- **Test Coverage**: Added comprehensive tests for move to top functionality
+
 ## 0.3.3 - 2025-08-28
 
 - **Task Filtering**: Automatically filter out completed and cancelled tasks when fetching the task list
