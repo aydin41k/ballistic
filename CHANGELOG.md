@@ -1,3 +1,8 @@
+## 0.3.5 - 2025-10-08
+
+- **Build Fix**: Fixed GitHub Actions build failure caused by ESLint error in move-to-top test file
+- **Code Quality**: Replaced forbidden `require()` statement with ES6 import in test file to comply with TypeScript ESLint rules
+
 ## 0.3.4 - 2025-10-08
 
 - **Move to Top Feature**: Added double up arrow button (⇈) to quickly move items to the top of the list

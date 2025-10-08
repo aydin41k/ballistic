@@ -1,6 +1,7 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { ItemRow } from '@/components/ItemRow';
 import type { Item } from '@/types';
+import { moveItem } from '@/lib/api';
 
 // Mock the API functions
 jest.mock('@/lib/api', () => ({
@@ -66,8 +67,7 @@ describe('Move to Top functionality', () => {
   });
 
   it('should call onOptimisticReorder with "top" direction when clicked', async () => {
-    const { moveItem } = require('@/lib/api');
-    moveItem.mockResolvedValue([]);
+    (moveItem as jest.Mock).mockResolvedValue([]);
 
     render(
       <ItemRow
