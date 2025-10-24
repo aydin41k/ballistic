@@ -1,6 +1,7 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import Home from '../app/page';
+import * as api from '../lib/api';
 
 // Mock the API
 jest.mock('../lib/api', () => ({
@@ -14,7 +15,7 @@ describe('Item Creation Response Handling', () => {
   });
 
   test('newly created item text should persist after server response', async () => {
-    const { createItem } = require('../lib/api');
+    const { createItem } = api;
     
     // Mock createItem to return a properly formatted item after a delay
     createItem.mockImplementation(() => 
@@ -86,7 +87,7 @@ describe('Item Creation Response Handling', () => {
   });
 
   test('item creation handles GAS format response correctly', async () => {
-    const { createItem } = require('../lib/api');
+    const { createItem } = api;
     
     // Mock createItem to return GAS format (with task instead of title)
     createItem.mockImplementation(() => 
