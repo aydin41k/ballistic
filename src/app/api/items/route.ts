@@ -111,7 +111,7 @@ export async function POST(request: Request) {
       notes: body.notes || "",
     };
 
-    store.items.unshift(newItem);
+    store.items.push(newItem);
     return NextResponse.json(newItem);
   }
 

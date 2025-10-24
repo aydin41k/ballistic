@@ -1,3 +1,11 @@
+## 0.3.7 - 2025-10-25
+
+- **Item Addition Behaviour**: New items are now added to the bottom of the list instead of the top
+- **Auto-scroll Feature**: The screen automatically scrolls to newly added items to ensure they're visible
+- **Improved UX**: Better user experience when adding tasks - users can immediately see their new tasks at the bottom
+- **Backend Enhancement**: Updated both frontend and backend to consistently add items to the end of the list
+- **Test Coverage**: Added comprehensive tests to verify new item addition order and scroll behaviour
+
 ## 0.3.6 - 2025-10-24
 
 - **Critical Bug Fix**: Fixed disappearing text issue when adding new items
