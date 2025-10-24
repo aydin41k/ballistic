@@ -77,6 +77,21 @@ export async function POST(request: Request) {
   if (GAS_BASE) {
     try {
       const data = await proxyToGAS(action!, "POST", body, searchParams);
+      
+      // For add action, GAS might return incomplete data, so we need to reconstruct the full item
+      if (action === "add" && data.id) {
+        const fullItem = {
+          id: data.id,
+          title: body.task,
+          project: body.project,
+          status: body.status,
+          startDate: data.created_at ? data.created_at.slice(0, 10) : new Date().toISOString().slice(0, 10),
+          dueDate: body.due_date || new Date().toISOString().slice(0, 10),
+          notes: body.notes || "",
+        };
+        return NextResponse.json(fullItem);
+      }
+      
       return NextResponse.json(data);
     } catch (error) {
       console.error("GAS proxy failed, falling back to local store:", error);
