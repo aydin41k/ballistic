@@ -13,6 +13,7 @@ export default function Home() {
   const [editing, setEditing] = useState<Item | null>(null);
   const [showAdd, setShowAdd] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [scrollToItemId, setScrollToItemId] = useState<string | null>(null);
 
   useEffect(() => {
     setLoading(true);
@@ -21,6 +22,21 @@ export default function Home() {
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
+
+  // Handle scrolling to newly added items
+  useEffect(() => {
+    if (scrollToItemId) {
+      const timer = setTimeout(() => {
+        const element = document.querySelector(`[data-item-id="${scrollToItemId}"]`);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+        setScrollToItemId(null);
+      }, 100);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [scrollToItemId]);
 
   const projects = useMemo(() => {
     if (!Array.isArray(items)) return [];
@@ -185,8 +201,11 @@ export default function Home() {
                 };
                 
                 // Update UI immediately and close form
-                setItems((prev) => [optimisticItem, ...prev]);
+                setItems((prev) => [...prev, optimisticItem]);
                 setShowAdd(false);
+                
+                // Set the item to scroll to
+                setScrollToItemId(optimisticItem.id);
                 
                 // Send API request in background (fire and forget)
                 createItem({
