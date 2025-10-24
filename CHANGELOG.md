@@ -1,3 +1,11 @@
+## 0.3.6 - 2025-10-24
+
+- **Critical Bug Fix**: Fixed disappearing text issue when adding new items
+- **Response Handling**: Fixed server response handling for Google Apps Script integration where GAS returns incomplete item data
+- **API Enhancement**: Modified API route to reconstruct full item data from GAS metadata responses
+- **Optimistic Updates**: Improved optimistic update handling to properly replace temporary items with server responses
+- **Test Coverage**: Added comprehensive tests to verify item creation response handling for both local and GAS formats
+
 ## 0.3.5 - 2025-10-08
 
 - **Build Fix**: Fixed GitHub Actions build failure caused by ESLint error in move-to-top test file

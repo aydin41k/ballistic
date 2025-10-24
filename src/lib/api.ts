@@ -84,6 +84,8 @@ export async function createItem(payload: Omit<Item, "id">): Promise<Item> {
     }),
   });
   if (!res.ok) throw new Error("Failed to create item");
+  
+  // The server now always returns the full Item format
   return res.json();
 }
 

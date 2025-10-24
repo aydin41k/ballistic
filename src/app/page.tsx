@@ -197,9 +197,9 @@ export default function Home() {
                   status: "pending",
                   notes: v.notes,
                 } as unknown as Omit<Item, "id">).then((created) => {
-                  // Update the optimistic item with the real ID from server
+                  // Update the optimistic item with the real item from server
                   setItems((prev) => prev.map((item) => 
-                    item.id === optimisticItem.id ? { ...created, id: created.id } : item
+                    item.id === optimisticItem.id ? created : item
                   ));
                 }).catch((error) => {
                   console.error('Failed to create item:', error);
