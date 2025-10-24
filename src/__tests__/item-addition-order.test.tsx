@@ -1,6 +1,7 @@
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import Home from '../app/page';
+import * as api from '../lib/api';
 
 // Mock the API
 jest.mock('../lib/api', () => ({
@@ -25,7 +26,8 @@ describe('Item Addition Order and Scrolling', () => {
   });
 
   test('new items should be added to the bottom of the list', async () => {
-    const { createItem } = require('../lib/api');
+
+  const { createItem } = api;
     
     // Mock createItem to return a properly formatted item
     createItem.mockImplementation(() => 
@@ -94,7 +96,7 @@ describe('Item Addition Order and Scrolling', () => {
   });
 
   test('should attempt to scroll to newly added item', async () => {
-    const { createItem } = require('../lib/api');
+  const { createItem } = api;
     
     // Mock createItem to return a properly formatted item
     createItem.mockImplementation(() => 
@@ -160,7 +162,7 @@ describe('Item Addition Order and Scrolling', () => {
   });
 
   test('should handle scroll when element is not found gracefully', async () => {
-    const { createItem } = require('../lib/api');
+    const { createItem } = api;
     
     // Mock querySelector to return null (element not found)
     const originalQuerySelector = document.querySelector;
