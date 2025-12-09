@@ -1,87 +1,81 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers;
 
+use App\Http\Requests\StoreProjectRequest;
+use App\Http\Requests\UpdateProjectRequest;
+use App\Http\Resources\ProjectResource;
 use App\Models\Project;
-use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
-use Illuminate\View\View;
+use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Auth;
 
-class ProjectController extends Controller
+final class ProjectController extends Controller
 {
     /**
      * Display a listing of the resource.
      */
-    public function index(): View|JsonResponse
+    public function index(Request $request): AnonymousResourceCollection
     {
-        $projects = Project::with('user')->get();
-        
-        if (request()->expectsJson()) {
-            return response()->json($projects);
-        }
-        
-        return view('projects.index', compact('projects'));
-    }
+        $query = Project::where('user_id', Auth::id())
+            ->orderBy('name');
 
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create(): View
-    {
-        return view('projects.create');
+        if ($request->boolean('include_archived')) {
+            // Include archived projects
+        } else {
+            $query->whereNull('archived_at');
+        }
+
+        $projects = $query->get();
+
+        return ProjectResource::collection($projects);
     }
 
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request): JsonResponse
+    public function store(StoreProjectRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'user_id' => 'required|exists:users,id',
-            'name' => 'required|string|max:255',
-            'color' => 'nullable|string|max:7',
+        $validated = $request->validated();
+
+        $project = Project::create([
+            ...$validated,
+            'user_id' => Auth::id(),
         ]);
 
-        $project = Project::create($validated);
-
-        return response()->json($project, 201);
+        return (new ProjectResource($project))
+            ->response()
+            ->setStatusCode(Response::HTTP_CREATED);
     }
 
     /**
      * Display the specified resource.
      */
-    public function show(Project $project): View|JsonResponse
+    public function show(Project $project): ProjectResource
     {
-        $project->load('user');
-        
-        if (request()->expectsJson()) {
-            return response()->json($project);
-        }
-        
-        return view('projects.show', compact('project'));
-    }
+        $this->authorize('view', $project);
 
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(Project $project): View
-    {
-        return view('projects.edit', compact('project'));
+        $project->load('items');
+
+        return new ProjectResource($project);
     }
 
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, Project $project): JsonResponse
+    public function update(UpdateProjectRequest $request, Project $project): ProjectResource
     {
-        $validated = $request->validate([
-            'name' => 'sometimes|required|string|max:255',
-            'color' => 'nullable|string|max:7',
-        ]);
+        $this->authorize('update', $project);
+
+        $validated = $request->validated();
 
         $project->update($validated);
 
-        return response()->json($project);
+        return new ProjectResource($project);
     }
 
     /**
@@ -89,28 +83,34 @@ class ProjectController extends Controller
      */
     public function destroy(Project $project): JsonResponse
     {
+        $this->authorize('delete', $project);
+
         $project->delete();
 
-        return response()->json(['message' => 'Project deleted successfully']);
+        return response()->json(null, Response::HTTP_NO_CONTENT);
     }
 
     /**
      * Archive the specified project.
      */
-    public function archive(Project $project): JsonResponse
+    public function archive(Project $project): ProjectResource
     {
+        $this->authorize('update', $project);
+
         $project->update(['archived_at' => now()]);
 
-        return response()->json($project);
+        return new ProjectResource($project);
     }
 
     /**
      * Restore the specified project from archive.
      */
-    public function restore(Project $project): JsonResponse
+    public function restore(Project $project): ProjectResource
     {
+        $this->authorize('update', $project);
+
         $project->update(['archived_at' => null]);
 
-        return response()->json($project);
+        return new ProjectResource($project);
     }
 }

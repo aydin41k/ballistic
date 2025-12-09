@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -9,16 +11,16 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
 
-class Project extends Model
+final class Project extends Model
 {
     /** @use HasFactory<\Database\Factories\ProjectFactory> */
     use HasFactory, SoftDeletes;
 
     protected $keyType = 'string';
+
     public $incrementing = false;
 
     protected $fillable = [
-        'id',
         'user_id',
         'name',
         'color',
@@ -34,11 +36,11 @@ class Project extends Model
         return 'id';
     }
 
-    protected static function boot()
+    protected static function boot(): void
     {
         parent::boot();
-        
-        static::creating(function ($model) {
+
+        static::creating(function ($model): void {
             if (empty($model->id)) {
                 $model->id = Str::uuid();
             }

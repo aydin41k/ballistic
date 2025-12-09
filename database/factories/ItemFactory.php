@@ -1,13 +1,17 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Database\Factories;
 
+use App\Models\Project;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
  * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\Item>
  */
-class ItemFactory extends Factory
+final class ItemFactory extends Factory
 {
     /**
      * Define the model's default state.
@@ -17,12 +21,17 @@ class ItemFactory extends Factory
     public function definition(): array
     {
         return [
-            'user_id' => \App\Models\User::factory(),
-            'project_id' => \App\Models\Project::factory(),
-            'title' => $this->faker->sentence(3),
-            'description' => $this->faker->optional(0.7)->paragraph(),
-            'status' => $this->faker->randomElement(['todo', 'doing', 'done', 'wontdo']),
-            'position' => $this->faker->numberBetween(0, 100),
+            'user_id' => User::factory(),
+            'project_id' => Project::factory(),
+            'title' => fake()->sentence(3),
+            'description' => fake()->optional(0.7)->paragraph(),
+            'status' => fake()->randomElement(['todo', 'doing', 'done', 'wontdo']),
+            'position' => fake()->numberBetween(0, 100),
+            'scheduled_date' => null,
+            'due_date' => null,
+            'completed_at' => null,
+            'recurrence_rule' => null,
+            'recurrence_parent_id' => null,
         ];
     }
 
@@ -51,6 +60,7 @@ class ItemFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'status' => 'done',
+            'completed_at' => now(),
         ]);
     }
 
@@ -58,6 +68,27 @@ class ItemFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'status' => 'wontdo',
+        ]);
+    }
+
+    public function scheduled(?string $date = null): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'scheduled_date' => $date ?? fake()->dateTimeBetween('now', '+1 month')->format('Y-m-d'),
+        ]);
+    }
+
+    public function withDueDate(?string $date = null): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'due_date' => $date ?? fake()->dateTimeBetween('now', '+1 month')->format('Y-m-d'),
+        ]);
+    }
+
+    public function recurring(string $rule = 'FREQ=DAILY'): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'recurrence_rule' => $rule,
         ]);
     }
 }

@@ -1,13 +1,16 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Database\Factories;
 
+use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
  * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\Project>
  */
-class ProjectFactory extends Factory
+final class ProjectFactory extends Factory
 {
     /**
      * Define the model's default state.
@@ -17,9 +20,10 @@ class ProjectFactory extends Factory
     public function definition(): array
     {
         return [
-            'user_id' => \App\Models\User::factory(),
+            'user_id' => User::factory(),
             'name' => fake()->words(3, true),
             'color' => fake()->optional(0.7)->hexColor(),
+            'archived_at' => null,
         ];
     }
 

@@ -7,6 +7,8 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
 
@@ -25,10 +27,18 @@ final class Item extends Model
         'description',
         'status',
         'position',
+        'scheduled_date',
+        'due_date',
+        'completed_at',
+        'recurrence_rule',
+        'recurrence_parent_id',
     ];
 
     protected $casts = [
         'position' => 'integer',
+        'scheduled_date' => 'date',
+        'due_date' => 'date',
+        'completed_at' => 'datetime',
     ];
 
     public function getRouteKeyName(): string
@@ -60,5 +70,42 @@ final class Item extends Model
     public function project(): BelongsTo
     {
         return $this->belongsTo(Project::class);
+    }
+
+    public function tags(): BelongsToMany
+    {
+        return $this->belongsToMany(Tag::class)->withTimestamps();
+    }
+
+    /**
+     * Get the parent recurring item (template).
+     */
+    public function recurrenceParent(): BelongsTo
+    {
+        return $this->belongsTo(Item::class, 'recurrence_parent_id');
+    }
+
+    /**
+     * Get the recurring instances generated from this template.
+     */
+    public function recurrenceInstances(): HasMany
+    {
+        return $this->hasMany(Item::class, 'recurrence_parent_id');
+    }
+
+    /**
+     * Check if this item is a recurring template.
+     */
+    public function isRecurringTemplate(): bool
+    {
+        return $this->recurrence_rule !== null && $this->recurrence_parent_id === null;
+    }
+
+    /**
+     * Check if this item is an instance of a recurring item.
+     */
+    public function isRecurringInstance(): bool
+    {
+        return $this->recurrence_parent_id !== null;
     }
 }
