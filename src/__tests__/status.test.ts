@@ -2,19 +2,18 @@ import { cycleStatus, STATUS_CYCLE } from "@/lib/status";
 import type { Status } from "@/types";
 
 describe("status cycle", () => {
-  test("cycles through pending -> done -> cancelled -> in_progress -> pending", () => {
+  test("cycles through todo -> done -> wontdo -> doing -> todo", () => {
     const order = STATUS_CYCLE;
     expect(order.length).toBe(4);
     let s: Status = order[0];
+    expect(s).toBe("todo");
     s = cycleStatus(s);
-    expect(s).toBe(order[1]);
+    expect(s).toBe("done");
     s = cycleStatus(s);
-    expect(s).toBe(order[2]);
+    expect(s).toBe("wontdo");
     s = cycleStatus(s);
-    expect(s).toBe(order[3]);
+    expect(s).toBe("doing");
     s = cycleStatus(s);
-    expect(s).toBe(order[0]);
+    expect(s).toBe("todo");
   });
 });
-
-

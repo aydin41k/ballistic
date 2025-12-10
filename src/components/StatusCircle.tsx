@@ -13,7 +13,7 @@ export function StatusCircle({ status, onClick, size = "md" }: Props) {
   
   const getStatusIcon = (status: Status) => {
     switch (status) {
-      case "pending":
+      case "todo":
         return (
           <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor">
             <circle cx="12" cy="12" r="3"/>
@@ -25,13 +25,13 @@ export function StatusCircle({ status, onClick, size = "md" }: Props) {
             <path d="M20 6L9 17l-5-5"/>
           </svg>
         );
-      case "cancelled":
+      case "wontdo":
         return (
           <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M18 6L6 18M6 6l12 12"/>
           </svg>
         );
-      case "in_progress":
+      case "doing":
         return (
           <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
             <circle cx="12" cy="12" r="10"/>
@@ -43,13 +43,13 @@ export function StatusCircle({ status, onClick, size = "md" }: Props) {
 
   const getStatusClasses = (status: Status) => {
     switch (status) {
-      case "pending":
+      case "todo":
         return "bg-white border border-slate-300 text-slate-600";
       case "done":
         return "bg-green-500 text-white";
-      case "cancelled":
+      case "wontdo":
         return "bg-red-500 text-white";
-      case "in_progress":
+      case "doing":
         return "bg-yellow-400 text-white";
       default:
         return "bg-white border border-slate-300 text-slate-600";
@@ -67,5 +67,3 @@ export function StatusCircle({ status, onClick, size = "md" }: Props) {
     </button>
   );
 }
-
-

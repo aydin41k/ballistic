@@ -2,12 +2,57 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import Home from '../app/page';
 import * as api from '../lib/api';
+import { AuthProvider } from '@/contexts/AuthContext';
+
+// Mock auth
+jest.mock('@/lib/auth', () => ({
+  getToken: jest.fn(() => 'test-token'),
+  getStoredUser: jest.fn(() => ({
+    id: 'user-1',
+    name: 'Test User',
+    email: 'test@example.com',
+    email_verified_at: '2025-01-01T00:00:00Z',
+    created_at: '2025-01-01T00:00:00Z',
+    updated_at: '2025-01-01T00:00:00Z',
+  })),
+  setToken: jest.fn(),
+  clearToken: jest.fn(),
+  setStoredUser: jest.fn(),
+  isAuthenticated: jest.fn(() => true),
+  login: jest.fn(),
+  register: jest.fn(),
+  logout: jest.fn(),
+  getAuthHeaders: jest.fn(() => ({
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+    'Authorization': 'Bearer test-token',
+  })),
+  AuthError: class AuthError extends Error {
+    errors: Record<string, string[]>;
+    constructor(message: string, errors: Record<string, string[]> = {}) {
+      super(message);
+      this.name = 'AuthError';
+      this.errors = errors;
+    }
+  },
+}));
 
 // Mock the API
 jest.mock('../lib/api', () => ({
   fetchItems: jest.fn(() => Promise.resolve([])),
   createItem: jest.fn(),
 }));
+
+// Mock next/navigation
+jest.mock('next/navigation', () => ({
+  useRouter: () => ({
+    push: jest.fn(),
+  }),
+}));
+
+const renderWithAuth = (component: React.ReactElement) => {
+  return render(<AuthProvider>{component}</AuthProvider>);
+};
 
 describe('Item Creation Response Handling', () => {
   beforeEach(() => {
@@ -18,21 +63,24 @@ describe('Item Creation Response Handling', () => {
     const { createItem } = api;
     
     // Mock createItem to return a properly formatted item after a delay
-    createItem.mockImplementation(() => 
+    (createItem as jest.Mock).mockImplementation(() => 
       new Promise(resolve => 
         setTimeout(() => resolve({
           id: 'server-123',
+          user_id: 'user-1',
+          project_id: null,
           title: 'Test Task',
-          project: 'Test Project',
-          status: 'pending',
-          startDate: '2025-10-24',
-          dueDate: '2025-10-24',
-          notes: 'Test notes'
+          description: 'Test description',
+          status: 'todo',
+          position: 0,
+          created_at: '2025-10-24T00:00:00Z',
+          updated_at: '2025-10-24T00:00:00Z',
+          deleted_at: null,
         }), 100)
       )
     );
 
-    render(<Home />);
+    renderWithAuth(<Home />);
 
     // Wait for initial load and ensure the add button is visible
     await waitFor(() => {
@@ -47,15 +95,12 @@ describe('Item Creation Response Handling', () => {
     const titleInput = screen.getByPlaceholderText('Task');
     fireEvent.change(titleInput, { target: { value: 'Test Task' } });
 
-    // Expand more settings to access project and notes fields
+    // Expand more settings to access description field
     const moreSettingsButton = screen.getByText('More settings');
     fireEvent.click(moreSettingsButton);
 
-    const projectInput = screen.getByPlaceholderText('Project');
-    const notesInput = screen.getByPlaceholderText('Notes');
-
-    fireEvent.change(projectInput, { target: { value: 'Test Project' } });
-    fireEvent.change(notesInput, { target: { value: 'Test notes' } });
+    const descriptionInput = screen.getByPlaceholderText('Description');
+    fireEvent.change(descriptionInput, { target: { value: 'Test description' } });
 
     // Submit the form
     const saveButton = screen.getByText('Add');
@@ -63,79 +108,64 @@ describe('Item Creation Response Handling', () => {
 
     // Verify the item appears immediately (optimistic update)
     expect(screen.getByText('Test Task')).toBeInTheDocument();
-    expect(screen.getByText('Test Project')).toBeInTheDocument();
-    expect(screen.getByText('Test notes')).toBeInTheDocument();
 
     // Wait for the server response to come back
     await waitFor(() => {
       expect(createItem).toHaveBeenCalledWith({
         title: 'Test Task',
-        project: 'Test Project',
-        status: 'pending',
-        startDate: expect.any(String),
-        dueDate: expect.any(String),
-        notes: 'Test notes'
+        description: 'Test description',
+        status: 'todo',
+        position: 0,
       });
     }, { timeout: 200 });
 
     // Verify the text is still visible after server response
     await waitFor(() => {
       expect(screen.getByText('Test Task')).toBeInTheDocument();
-      expect(screen.getByText('Test Project')).toBeInTheDocument();
-      expect(screen.getByText('Test notes')).toBeInTheDocument();
     });
   });
 
-  test('item creation handles GAS format response correctly', async () => {
+  test('optimistic item stays visible when API wraps response in data', async () => {
     const { createItem } = api;
-    
-    // Mock createItem to return GAS format (with task instead of title)
-    createItem.mockImplementation(() => 
+
+    (createItem as jest.Mock).mockImplementation(() =>
       Promise.resolve({
-        id: 'gas-123',
-        task: 'GAS Task',  // Note: 'task' instead of 'title'
-        project: 'GAS Project',
-        status: 'pending',
-        created_at: '2025-10-24T12:00:00Z',
-        due_date: '2025-10-24',
-        notes: 'GAS notes'
+        data: {
+          id: 'server-456',
+          user_id: 'user-1',
+          project_id: null,
+          title: 'Wrapped Task',
+          description: 'Wrapped description',
+          status: 'todo',
+          position: 0,
+          created_at: '2025-10-24T00:00:00Z',
+          updated_at: '2025-10-24T00:00:00Z',
+          deleted_at: null,
+        },
       })
     );
 
-    render(<Home />);
+    renderWithAuth(<Home />);
 
-    // Wait for initial load and ensure the add button is visible
     await waitFor(() => {
       expect(screen.queryByText('Loading')).not.toBeInTheDocument();
     });
 
-    // Click the add button
-    const addButton = await screen.findByText('Add new task...');
-    fireEvent.click(addButton);
+    fireEvent.click(await screen.findByText('Add new task...'));
 
-    // Fill out the form
-    const titleInput = screen.getByPlaceholderText('Task');
-    fireEvent.change(titleInput, { target: { value: 'GAS Task' } });
+    fireEvent.change(screen.getByPlaceholderText('Task'), { target: { value: 'Wrapped Task' } });
+    fireEvent.click(screen.getByText('More settings'));
+    fireEvent.change(screen.getByPlaceholderText('Description'), { target: { value: 'Wrapped description' } });
+    fireEvent.click(screen.getByText('Add'));
 
-    // Expand more settings to access project and notes fields
-    const moreSettingsButton = screen.getByText('More settings');
-    fireEvent.click(moreSettingsButton);
+    expect(screen.getByText('Wrapped Task')).toBeInTheDocument();
 
-    const projectInput = screen.getByPlaceholderText('Project');
-    const notesInput = screen.getByPlaceholderText('Notes');
-
-    fireEvent.change(projectInput, { target: { value: 'GAS Project' } });
-    fireEvent.change(notesInput, { target: { value: 'GAS notes' } });
-
-    // Submit the form
-    const saveButton = screen.getByText('Add');
-    fireEvent.click(saveButton);
-
-    // Wait for the server response and verify text persists
     await waitFor(() => {
-      expect(screen.getByText('GAS Task')).toBeInTheDocument();
-      expect(screen.getByText('GAS Project')).toBeInTheDocument();
-      expect(screen.getByText('GAS notes')).toBeInTheDocument();
+      expect(createItem).toHaveBeenCalled();
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('Wrapped Task')).toBeInTheDocument();
     });
   });
 });

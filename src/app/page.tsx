@@ -1,27 +1,49 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import type { Item } from "@/types";
-import { fetchItems } from "@/lib/api";
+import { fetchItems, createItem, updateItem, deleteItem } from "@/lib/api";
 import { ItemRow } from "@/components/ItemRow";
-import { createItem, updateItem } from "@/lib/api";
 import { EmptyState } from "@/components/EmptyState";
 import { ItemForm } from "@/components/ItemForm";
+import { useAuth } from "@/contexts/AuthContext";
+
+function normaliseItemResponse(payload: Item | { data?: Item }): Item {
+  if (payload && typeof payload === "object" && "data" in payload && (payload as { data?: Item }).data) {
+    return (payload as { data: Item }).data;
+  }
+  return payload as Item;
+}
 
 export default function Home() {
+  const router = useRouter();
+  const { isAuthenticated, isLoading: authLoading, logout, user } = useAuth();
   const [items, setItems] = useState<Item[]>([]);
   const [editing, setEditing] = useState<Item | null>(null);
   const [showAdd, setShowAdd] = useState(false);
   const [loading, setLoading] = useState(true);
   const [scrollToItemId, setScrollToItemId] = useState<string | null>(null);
 
+  // Redirect to login if not authenticated
   useEffect(() => {
-    setLoading(true);
-    fetchItems()
-      .then(setItems)
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, []);
+    if (!authLoading && !isAuthenticated) {
+      router.push("/login");
+    }
+  }, [authLoading, isAuthenticated, router]);
+
+  // Fetch items when authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      setLoading(true);
+      fetchItems()
+        .then(setItems)
+        .catch((error) => {
+          console.error('Failed to fetch items:', error);
+        })
+        .finally(() => setLoading(false));
+    }
+  }, [isAuthenticated]);
 
   // Handle scrolling to newly added items
   useEffect(() => {
@@ -38,15 +60,7 @@ export default function Home() {
     }
   }, [scrollToItemId]);
 
-  const projects = useMemo(() => {
-    if (!Array.isArray(items)) return [];
-    return Array.from(new Set(items.map((i) => i.project))).sort();
-  }, [items]);
-
-  const filtered = useMemo(() => {
-    if (!Array.isArray(items)) return [];
-    return items;
-  }, [items]);
+  const filtered = items;
 
   function onRowChange(updated: Item) {
     setItems((prev) => {
@@ -116,6 +130,42 @@ export default function Home() {
     });
   }
 
+  async function handleLogout() {
+    await logout();
+    router.push("/login");
+  }
+
+  async function handleDelete(id: string) {
+    // Optimistic delete
+    setItems((prev) => prev.filter((item) => item.id !== id));
+    setEditing(null);
+    
+    try {
+      await deleteItem(id);
+    } catch (error) {
+      console.error('Failed to delete item:', error);
+      // Optionally refetch items to restore state
+    }
+  }
+
+  // Show loading while checking auth
+  if (authLoading || (!isAuthenticated && !authLoading)) {
+    return (
+      <div className="flex flex-col gap-3">
+        <header className="sticky top-0 z-10 -mx-4 bg-[var(--page-bg)]/95 px-4 pb-2 pt-3 backdrop-blur">
+          <div className="flex items-center justify-between">
+            <h1 className="text-lg font-semibold text-[var(--navy)]">
+              Ballistic<br/>
+              <small>The Simplest Bullet Journal</small>
+            </h1>
+            <div className="w-16 h-9 bg-slate-200 rounded-md animate-pulse"></div>
+          </div>
+        </header>
+        <EmptyState type="loading" />
+      </div>
+    );
+  }
+
   if (loading) {
     return (
       <div className="flex flex-col gap-3">
@@ -157,13 +207,14 @@ export default function Home() {
             </button>
             <button
               type="button"
-              aria-label="Settings"
-              onClick={() => alert('Feature coming soon')}
+              aria-label="Logout"
+              onClick={handleLogout}
               className="tap-target grid h-9 w-9 place-items-center rounded-md bg-white shadow-sm hover:shadow-md active:scale-95"
+              title={`Logout ${user?.name || ''}`}
             >
-              {/* gear icon */}
+              {/* logout icon */}
               <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" className="text-[var(--navy)]">
-                <path d="M12 8a4 4 0 100 8 4 4 0 000-8zm8.94 4a6.94 6.94 0 01-.14 1.4l2.06 1.6-2 3.46-2.46-1a7.03 7.03 0 01-2.02 1.17l-.37 2.62H9.99l-.37-2.62a7.03 7.03 0 01-2.02-1.17l-2.46 1-2-3.46 2.06-1.6A6.94 6.94 0 013.06 12c0-.47.05-.94.14-1.4L1.14 9l2-3.46 2.46 1A7.03 7.03 0 017.62 5.4L7.99 2.78h4.02l.37 2.62c.71.25 1.38.63 2.02 1.17l2.46-1 2 3.46-2.06 1.6c.09.46.14.93.14 1.37z" strokeWidth="1"/>
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
             </button>
           </div>
@@ -190,36 +241,57 @@ export default function Home() {
               onCancel={() => setShowAdd(false)}
               onSubmit={async (v) => {
                 // Create optimistic item for immediate UI feedback
+                // Use a more unique temporary ID to avoid conflicts
+                const tempId = `temp-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
                 const optimisticItem: Item = {
-                  id: `temp-${Date.now()}`, // Temporary ID
+                  id: tempId, // Temporary ID
+                  user_id: user?.id || "",
+                  project_id: null,
                   title: v.title,
-                  project: v.project || projects[0] || "General",
-                  startDate: v.startDate,
-                  dueDate: v.dueDate,
-                  status: "pending",
-                  notes: v.notes,
+                  description: v.description || null,
+                  status: "todo",
+                  position: items.length,
+                  created_at: new Date().toISOString(),
+                  updated_at: new Date().toISOString(),
+                  deleted_at: null,
                 };
                 
                 // Update UI immediately and close form
-                setItems((prev) => [...prev, optimisticItem]);
+                setItems((prev) => {
+                  // Ensure we're working with an array and no duplicate IDs
+                  if (!Array.isArray(prev)) {
+                    return [optimisticItem];
+                  }
+                  // Check for duplicate IDs before adding
+                  const hasDuplicate = prev.some(item => item.id === tempId);
+                  if (hasDuplicate) {
+                    console.warn('Duplicate ID detected, skipping optimistic item');
+                    return prev;
+                  }
+                  return [...prev, optimisticItem];
+                });
                 setShowAdd(false);
                 
                 // Set the item to scroll to
-                setScrollToItemId(optimisticItem.id);
+                setScrollToItemId(tempId);
                 
                 // Send API request in background (fire and forget)
                 createItem({
                   title: v.title,
-                  project: v.project || projects[0] || "General",
-                  startDate: v.startDate,
-                  dueDate: v.dueDate,
-                  status: "pending",
-                  notes: v.notes,
-                } as unknown as Omit<Item, "id">).then((created) => {
+                  description: v.description,
+                  status: "todo",
+                  position: items.length,
+                }).then((created) => {
+                  const resolvedItem = normaliseItemResponse(created);
                   // Update the optimistic item with the real item from server
-                  setItems((prev) => prev.map((item) => 
-                    item.id === optimisticItem.id ? created : item
-                  ));
+                  setItems((prev) => {
+                    if (!Array.isArray(prev)) {
+                      return [resolvedItem];
+                    }
+                    return prev.map((item) => 
+                      item.id === tempId ? resolvedItem : item
+                    );
+                  });
                 }).catch((error) => {
                   console.error('Failed to create item:', error);
                   // Keep the optimistic item - user already sees their new task
@@ -232,7 +304,7 @@ export default function Home() {
 
         {/* Task Items */}
         {filtered.map((item, index) => (
-          <div key={item.id} className="flex flex-col gap-2">
+          <div key={item.id || `item-${index}`} className="flex flex-col gap-2">
             {editing?.id === item.id ? (
               <div className="rounded-md bg-white p-3 shadow-sm animate-scale-in">
                 <ItemForm
@@ -243,10 +315,7 @@ export default function Home() {
                     const optimisticUpdate: Item = {
                       ...item,
                       title: v.title,
-                      project: v.project,
-                      startDate: v.startDate,
-                      dueDate: v.dueDate,
-                      notes: v.notes,
+                      description: v.description || null,
                     };
                     
                     // Update UI immediately and close edit form
@@ -256,10 +325,7 @@ export default function Home() {
                     // Send API request in background (fire and forget)
                     updateItem(item.id, {
                       title: v.title,
-                      project: v.project,
-                      startDate: v.startDate,
-                      dueDate: v.dueDate,
-                      notes: v.notes,
+                      description: v.description || null,
                     }).catch((error) => {
                       console.error('Failed to update item:', error);
                       // Keep the optimistic update - user already sees their changes
@@ -267,6 +333,13 @@ export default function Home() {
                     });
                   }}
                 />
+                <button
+                  type="button"
+                  onClick={() => handleDelete(item.id)}
+                  className="mt-2 w-full rounded-md bg-red-50 px-3 py-2 text-sm text-red-600 hover:bg-red-100 transition-colors"
+                >
+                  Delete task
+                </button>
               </div>
             ) : (
               <ItemRow

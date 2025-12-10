@@ -3,17 +3,29 @@ import { fetchItems, createItem } from '../lib/api';
 // Mock fetch globally
 global.fetch = jest.fn();
 
-describe('API Proxy Functionality', () => {
+// Mock auth
+jest.mock('../lib/auth', () => ({
+  getToken: jest.fn(() => 'test-token'),
+  clearToken: jest.fn(),
+  getAuthHeaders: jest.fn(() => ({
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+    'Authorization': 'Bearer test-token',
+  })),
+}));
+
+describe('API Functionality', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     (global.fetch as jest.Mock).mockClear();
   });
 
-  test('should call local API endpoints', async () => {
+  test('should call API endpoint for fetching items', async () => {
     // Mock successful response
     (global.fetch as jest.Mock).mockResolvedValueOnce({
       ok: true,
-      json: async () => ({ rows: [] }),
+      status: 200,
+      json: async () => [],
     });
 
     await fetchItems();
@@ -21,37 +33,51 @@ describe('API Proxy Functionality', () => {
     expect(global.fetch).toHaveBeenCalledWith(
       expect.stringContaining('/api/items'),
       expect.objectContaining({
+        method: 'GET',
         cache: 'no-store',
       })
     );
   });
 
-  test('should include action parameter in URL', async () => {
+  test('should include auth headers in requests', async () => {
     (global.fetch as jest.Mock).mockResolvedValueOnce({
       ok: true,
-      json: async () => ({ rows: [] }),
+      status: 200,
+      json: async () => [],
     });
 
     await fetchItems();
 
     const callArgs = (global.fetch as jest.Mock).mock.calls[0];
-    const url = callArgs[0];
-    expect(url).toContain('action=list');
+    expect(callArgs[1].headers).toEqual(
+      expect.objectContaining({
+        'Authorization': 'Bearer test-token',
+      })
+    );
   });
 
   test('should handle POST requests correctly', async () => {
     (global.fetch as jest.Mock).mockResolvedValueOnce({
       ok: true,
-      json: async () => ({ id: '1', title: 'Test' }),
+      status: 201,
+      json: async () => ({
+        id: '1',
+        user_id: 'user-1',
+        project_id: null,
+        title: 'Test Task',
+        description: null,
+        status: 'todo',
+        position: 0,
+        created_at: '2025-01-01T00:00:00Z',
+        updated_at: '2025-01-01T00:00:00Z',
+        deleted_at: null,
+      }),
     });
 
     await createItem({
       title: 'Test Task',
-      project: 'Test Project',
-      status: 'pending',
-      startDate: '2025-01-01',
-      dueDate: '2025-01-01',
-      notes: '',
+      status: 'todo',
+      description: 'Test description',
     });
 
     const callArgs = (global.fetch as jest.Mock).mock.calls[0];
@@ -59,60 +85,105 @@ describe('API Proxy Functionality', () => {
     expect(callArgs[1].headers['Content-Type']).toBe('application/json');
   });
 
-  test('should filter out done and cancelled tasks when fetching items', async () => {
-    const mockResponse = {
-      rows: [
-        {
-          id: '1',
-          task: 'Active Task 1',
-          project: 'Project A',
-          status: 'pending',
-          created_at: '2025-01-01T10:00:00Z',
-          notes: 'Active task notes',
-        },
-        {
-          id: '2',
-          task: 'Completed Task',
-          project: 'Project B',
-          status: 'done',
-          created_at: '2025-01-01T11:00:00Z',
-          notes: 'Completed task notes',
-        },
-        {
-          id: '3',
-          task: 'Cancelled Task',
-          project: 'Project C',
-          status: 'cancelled',
-          created_at: '2025-01-01T12:00:00Z',
-          notes: 'Cancelled task notes',
-        },
-        {
-          id: '4',
-          task: 'Active Task 2',
-          project: 'Project A',
-          status: 'in_progress',
-          created_at: '2025-01-01T13:00:00Z',
-          notes: 'Another active task',
-        },
-      ],
-    };
+  test('should filter out done and wontdo tasks when fetching items', async () => {
+    const mockResponse = [
+      {
+        id: '1',
+        user_id: 'user-1',
+        project_id: null,
+        title: 'Active Task 1',
+        description: null,
+        status: 'todo',
+        position: 0,
+        created_at: '2025-01-01T00:00:00Z',
+        updated_at: '2025-01-01T00:00:00Z',
+        deleted_at: null,
+      },
+      {
+        id: '2',
+        user_id: 'user-1',
+        project_id: null,
+        title: 'Completed Task',
+        description: null,
+        status: 'done',
+        position: 1,
+        created_at: '2025-01-01T00:00:00Z',
+        updated_at: '2025-01-01T00:00:00Z',
+        deleted_at: null,
+      },
+      {
+        id: '3',
+        user_id: 'user-1',
+        project_id: null,
+        title: 'Cancelled Task',
+        description: null,
+        status: 'wontdo',
+        position: 2,
+        created_at: '2025-01-01T00:00:00Z',
+        updated_at: '2025-01-01T00:00:00Z',
+        deleted_at: null,
+      },
+      {
+        id: '4',
+        user_id: 'user-1',
+        project_id: null,
+        title: 'Active Task 2',
+        description: null,
+        status: 'doing',
+        position: 3,
+        created_at: '2025-01-01T00:00:00Z',
+        updated_at: '2025-01-01T00:00:00Z',
+        deleted_at: null,
+      },
+    ];
 
     (global.fetch as jest.Mock).mockResolvedValueOnce({
       ok: true,
+      status: 200,
       json: async () => mockResponse,
     });
 
     const result = await fetchItems();
 
-    // Should only return active tasks (pending and in_progress)
+    // Should only return active tasks (todo and doing)
     expect(result).toHaveLength(2);
     expect(result[0].title).toBe('Active Task 1');
-    expect(result[0].status).toBe('pending');
+    expect(result[0].status).toBe('todo');
     expect(result[1].title).toBe('Active Task 2');
-    expect(result[1].status).toBe('in_progress');
+    expect(result[1].status).toBe('doing');
 
-    // Should not include done or cancelled tasks
+    // Should not include done or wontdo tasks
     expect(result.find(item => item.status === 'done')).toBeUndefined();
-    expect(result.find(item => item.status === 'cancelled')).toBeUndefined();
+    expect(result.find(item => item.status === 'wontdo')).toBeUndefined();
+  });
+
+  test('should handle paginated API shape with data property', async () => {
+    const mockResponse = {
+      data: [
+        {
+          id: '1',
+          user_id: 'user-1',
+          project_id: null,
+          title: 'Active Task 1',
+          description: null,
+          status: 'todo',
+          position: 0,
+          created_at: '2025-01-01T00:00:00Z',
+          updated_at: '2025-01-01T00:00:00Z',
+          deleted_at: null,
+        },
+      ],
+      meta: { current_page: 1, per_page: 15, total: 1 },
+    };
+
+    (global.fetch as jest.Mock).mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => mockResponse,
+    });
+
+    const result = await fetchItems();
+    expect(result).toHaveLength(1);
+    expect(result[0].title).toBe('Active Task 1');
   });
 });

@@ -1,3 +1,40 @@
+## 0.4.3 - 2025-12-10
+
+- **Create Response Normalisation**: API client now unwraps `{ data: item }` envelopes so optimistic tasks stay intact once the server replies.
+- **UI Resilience**: Home page normalises create responses before replacing optimistic entries, preventing blank rows when responses are wrapped.
+- **Test Coverage**: Added regression test to ensure wrapped create responses no longer wipe item details after submission.
+
+## 0.4.2 - 2025-12-10
+
+- **React Key Prop Fix**: Fixed "Each child in a list should have a unique key prop" error when submitting items
+- **Unique Temporary IDs**: Improved temporary ID generation for optimistic items using timestamp + random string to prevent conflicts
+- **Key Prop Safety**: Added fallback key prop using index when item.id is missing to prevent React warnings
+- **Duplicate Prevention**: Added checks to prevent duplicate IDs when adding optimistic items to the list
+- **Test Updates**: Updated test regex pattern to match new temporary ID format
+
+## 0.4.1 - 2025-12-10
+
+- **Login Redirect Fix**: Moved authenticated redirect into a layout effect-friendly hook to avoid Router updates during render
+- **API Resilience**: fetchItems now tolerates paginated `{ data: [] }` responses before filtering statuses, preventing runtime crashes
+- **Test Coverage**: Added regression tests for login redirect behaviour and paginated fetchItems responses
+
+## 0.4.0 - 2025-12-10
+
+- **Backend Migration**: Migrated from Google Sheets to RESTful Laravel API backend
+- **Full Authentication**: Implemented complete authentication flow with login, registration, and logout
+- **Token-Based Auth**: Uses localStorage for persistent token storage with Bearer token authentication
+- **New Status Values**: Updated status values to match backend (`todo`, `doing`, `done`, `wontdo`)
+- **Updated Item Schema**: Item model now includes `user_id`, `project_id`, `description`, `position`, `created_at`, `updated_at`, `deleted_at`
+- **Auth Context**: Added React context for app-wide authentication state management
+- **Protected Routes**: Home page now requires authentication, redirects to login if not authenticated
+- **Login Page**: New login page with form validation and error handling
+- **Registration Page**: New registration page with password confirmation and validation
+- **Logout Button**: Settings icon replaced with logout button in header
+- **API Client Rewrite**: Completely rewrote API client to use RESTful endpoints with auth headers
+- **Removed Google Sheets**: Removed all Google Apps Script proxy routes and local store fallback
+- **Test Updates**: Updated all tests for new status values, Item interface, and auth mocking
+- **Environment Config**: Now uses `NEXT_PUBLIC_API_BASE_URL` for backend API URL
+
 ## 0.3.7 - 2025-10-25
 
 - **Item Addition Behaviour**: New items are now added to the bottom of the list instead of the top

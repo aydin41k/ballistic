@@ -12,12 +12,15 @@ jest.mock('@/lib/api', () => ({
 describe('Move to Top functionality', () => {
   const mockItem: Item = {
     id: '2',
+    user_id: 'user-1',
+    project_id: null,
     title: 'Second Task',
-    project: 'Test Project',
-    status: 'pending',
-    startDate: '2025-01-01',
-    dueDate: '2025-01-10',
-    notes: '',
+    description: null,
+    status: 'todo',
+    position: 1,
+    created_at: '2025-01-01T00:00:00Z',
+    updated_at: '2025-01-01T00:00:00Z',
+    deleted_at: null,
   };
 
   const mockOnChange = jest.fn();
@@ -122,30 +125,39 @@ describe('Move to Top optimistic update', () => {
     const items: Item[] = [
       {
         id: '1',
+        user_id: 'user-1',
+        project_id: null,
         title: 'First Task',
-        project: 'Project A',
-        status: 'pending',
-        startDate: '2025-01-01',
-        dueDate: '2025-01-10',
-        notes: '',
+        description: null,
+        status: 'todo',
+        position: 0,
+        created_at: '2025-01-01T00:00:00Z',
+        updated_at: '2025-01-01T00:00:00Z',
+        deleted_at: null,
       },
       {
         id: '2',
+        user_id: 'user-1',
+        project_id: null,
         title: 'Second Task',
-        project: 'Project B',
-        status: 'pending',
-        startDate: '2025-01-02',
-        dueDate: '2025-01-11',
-        notes: '',
+        description: null,
+        status: 'todo',
+        position: 1,
+        created_at: '2025-01-02T00:00:00Z',
+        updated_at: '2025-01-02T00:00:00Z',
+        deleted_at: null,
       },
       {
         id: '3',
+        user_id: 'user-1',
+        project_id: null,
         title: 'Third Task',
-        project: 'Project C',
-        status: 'pending',
-        startDate: '2025-01-03',
-        dueDate: '2025-01-12',
-        notes: '',
+        description: null,
+        status: 'todo',
+        position: 2,
+        created_at: '2025-01-03T00:00:00Z',
+        updated_at: '2025-01-03T00:00:00Z',
+        deleted_at: null,
       },
     ];
 
@@ -170,21 +182,27 @@ describe('Move to Top optimistic update', () => {
     const items: Item[] = [
       {
         id: '1',
+        user_id: 'user-1',
+        project_id: null,
         title: 'First Task',
-        project: 'Project A',
-        status: 'pending',
-        startDate: '2025-01-01',
-        dueDate: '2025-01-10',
-        notes: '',
+        description: null,
+        status: 'todo',
+        position: 0,
+        created_at: '2025-01-01T00:00:00Z',
+        updated_at: '2025-01-01T00:00:00Z',
+        deleted_at: null,
       },
       {
         id: '2',
+        user_id: 'user-1',
+        project_id: null,
         title: 'Second Task',
-        project: 'Project B',
-        status: 'pending',
-        startDate: '2025-01-02',
-        dueDate: '2025-01-11',
-        notes: '',
+        description: null,
+        status: 'todo',
+        position: 1,
+        created_at: '2025-01-02T00:00:00Z',
+        updated_at: '2025-01-02T00:00:00Z',
+        deleted_at: null,
       },
     ];
 
@@ -205,4 +223,3 @@ describe('Move to Top optimistic update', () => {
     expect(newList).toHaveLength(2);
   });
 });
-

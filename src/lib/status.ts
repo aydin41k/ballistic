@@ -1,10 +1,10 @@
 import type { Status } from "@/types";
 
 export const STATUS_CYCLE: Status[] = [
-  "pending",
+  "todo",
   "done",
-  "cancelled",
-  "in_progress",
+  "wontdo",
+  "doing",
 ];
 
 export function cycleStatus(current: Status): Status {
@@ -15,13 +15,13 @@ export function cycleStatus(current: Status): Status {
 
 export function statusToCircleClasses(status: Status): string {
   switch (status) {
-    case "pending":
+    case "todo":
       return "bg-white border border-slate-300 text-slate-300";
     case "done":
       return "bg-green-500 text-white";
-    case "cancelled":
+    case "wontdo":
       return "bg-red-500 text-white";
-    case "in_progress":
+    case "doing":
       return "bg-yellow-400 text-white";
     default:
       return "bg-white border border-slate-300";
@@ -30,15 +30,26 @@ export function statusToCircleClasses(status: Status): string {
 
 export function statusToEmoji(status: Status): string {
   switch (status) {
-    case "pending":
+    case "todo":
       return "";
     case "done":
       return "✅";
-    case "cancelled":
+    case "wontdo":
       return "—"; // dash
-    case "in_progress":
+    case "doing":
       return "⏳";
   }
 }
 
-
+export function statusToLabel(status: Status): string {
+  switch (status) {
+    case "todo":
+      return "To Do";
+    case "doing":
+      return "In Progress";
+    case "done":
+      return "Done";
+    case "wontdo":
+      return "Won't Do";
+  }
+}

@@ -1,157 +1,197 @@
 import type { Item, Status } from "@/types";
+import { getAuthHeaders, clearToken } from "./auth";
 
-const API_BASE = "/api/items";
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "";
 
 type ListParams = {
-  q?: string;
+  project_id?: string;
   status?: Status | "all";
-  created_from?: string;
 };
 
-function buildUrl(action: string, params?: Record<string, string | undefined>) {
-  // Always use local API - the proxy will handle Google Apps Script calls
-  const url = new URL(API_BASE, window.location.origin);
-  url.searchParams.set("action", action);
+/**
+ * Handle API response and check for auth errors
+ */
+async function handleResponse<T>(response: Response): Promise<T> {
+  if (response.status === 401) {
+    // Token expired or invalid - clear it and redirect to login
+    clearToken();
+    if (typeof window !== "undefined") {
+      window.location.href = "/login";
+    }
+    throw new Error("Unauthorised");
+  }
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ message: "Request failed" }));
+    throw new Error(error.message || "Request failed");
+  }
+
+  // Handle 204 No Content
+  if (response.status === 204) {
+    return {} as T;
+  }
+
+  return response.json();
+}
+
+/**
+ * Some endpoints wrap the payload in a { data } envelope.
+ * Normalise responses so callers always receive the entity directly.
+ */
+function extractData<T>(payload: T | { data?: T }): T {
+  if (payload && typeof payload === "object" && "data" in payload) {
+    const unwrapped = (payload as { data?: T }).data;
+    if (unwrapped !== undefined && unwrapped !== null) {
+      return unwrapped;
+    }
+  }
+  return payload as T;
+}
+
+/**
+ * Build a URL for API requests
+ */
+function buildUrl(path: string, params?: Record<string, string>): string {
+  const baseUrl = API_BASE || (typeof window !== "undefined" ? window.location.origin : "http://localhost:3000");
+  const url = new URL(path, baseUrl);
+  
   if (params) {
-    Object.entries(params).forEach(([k, v]) => {
-      if (v !== undefined && v !== "") url.searchParams.set(k, v);
+    Object.entries(params).forEach(([key, value]) => {
+      if (value) url.searchParams.set(key, value);
     });
   }
+  
   return url.toString();
 }
 
-type GasRow = {
-  id?: string;
-  task?: string;
-  project?: string;
-  status?: Status;
-  notes?: string;
-  created_at?: string;
-  updated_at?: string;
-  due_date?: string;
-  rowNumber?: number;
-  [key: string]: string | Status | number | undefined; // Allow additional dynamic columns
-};
-
-type GasListResponse = { rows?: GasRow[] };
-
+/**
+ * Fetch all items for the authenticated user
+ */
 export async function fetchItems(params?: ListParams): Promise<Item[]> {
-  const res = await fetch(
-    buildUrl("list", {
-      q: params?.q,
-      status: params?.status && params.status !== "all" ? params.status : undefined,
-      created_from: params?.created_from,
-    }),
-    { cache: "no-store" }
-  );
-  if (!res.ok) throw new Error("Failed to fetch items");
-  const data = (await res.json()) as GasListResponse;
+  const url = buildUrl("/api/items", {
+    project_id: params?.project_id,
+    status: params?.status !== "all" ? params?.status : undefined,
+  });
+
+  const response = await fetch(url, {
+    method: "GET",
+    headers: getAuthHeaders(),
+    cache: "no-store",
+  });
+
+  const payload = await handleResponse<Item[] | { data?: Item[] }>(response);
+  const items = extractData(payload);
+  const list = Array.isArray(items) ? items : [];
   
-  // Map GAS response rows to Item with dynamic column mapping and filter out completed/cancelled tasks
-  return (data.rows || [])
-    .map((r, idx) => ({
-      id: r.id || String(r.rowNumber ?? idx + 1),
-      title: r.task || "",
-      project: r.project || "",
-      startDate: r.created_at ? r.created_at.slice(0, 10) : new Date().toISOString().slice(0, 10),
-      dueDate: r.due_date ? r.due_date.slice(0, 10) : r.created_at ? r.created_at.slice(0, 10) : new Date().toISOString().slice(0, 10),
-      status: r.status || "pending",
-      notes: r.notes || "",
-    }))
-    .filter((item) => item.status !== "done" && item.status !== "cancelled") as Item[];
+  // Filter out completed/cancelled tasks for the main view
+  return list.filter((item) => item.status !== "done" && item.status !== "wontdo");
 }
 
+/**
+ * Update an item's status
+ */
 export async function updateStatus(id: string, status: Status): Promise<Item> {
-  const res = await fetch(buildUrl("update"), {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ id, status }),
+  const response = await fetch(buildUrl(`/api/items/${id}`), {
+    method: "PATCH",
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ status }),
   });
-  if (!res.ok) throw new Error("Failed to update status");
-  return res.json();
+
+  const payload = await handleResponse<Item | { data?: Item }>(response);
+  return extractData(payload);
 }
 
-export async function createItem(payload: Omit<Item, "id">): Promise<Item> {
-  const res = await fetch(buildUrl("add"), {
+/**
+ * Create a new item
+ */
+export async function createItem(payload: {
+  title: string;
+  description?: string;
+  status: Status;
+  project_id?: string | null;
+  position?: number;
+}): Promise<Item> {
+  const response = await fetch(buildUrl("/api/items"), {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: getAuthHeaders(),
     body: JSON.stringify({
-      task: payload.title,
-      project: payload.project,
+      title: payload.title,
+      description: payload.description || null,
       status: payload.status,
-      due_date: payload.dueDate,
-      notes: payload.notes,
+      project_id: payload.project_id || null,
+      position: payload.position ?? 0,
     }),
   });
-  if (!res.ok) throw new Error("Failed to create item");
-  
-  // The server now always returns the full Item format
-  return res.json();
+
+  const data = await handleResponse<Item | { data?: Item }>(response);
+  return extractData(data);
 }
 
+/**
+ * Move an item (reorder)
+ * Note: The backend uses position field, so we need to calculate new positions
+ */
 export async function moveItem(id: string, direction: "up" | "down" | "top"): Promise<Item[]> {
-  const res = await fetch(buildUrl("move"), {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ id, direction }),
-  });
-  if (!res.ok) throw new Error("Failed to reorder");
-  const data = await res.json();
+  // For now, we'll fetch the current list and recalculate positions client-side
+  // In a more robust implementation, the backend would handle this
+  const items = await fetchItems();
+  const currentIndex = items.findIndex((item) => item.id === id);
   
-  // Handle both GAS format ({ rows: [...] }) and direct Item[] format
-  const rows = data.rows || data;
-  
-  // Ensure rows is an array
-  if (!Array.isArray(rows)) {
-    console.warn('moveItem received non-array response:', data);
-    return [];
+  if (currentIndex === -1) {
+    return items;
   }
+
+  const newItems = [...items];
   
-  // Convert GAS rows back to Item format if needed
-  if (rows.length > 0 && rows[0].task !== undefined) {
-    // This is GAS format, convert to Item format
-    return rows.map((r: GasRow) => ({
-      id: r.id || String(Date.now()),
-      title: r.task || "",
-      project: r.project || "",
-      startDate: r.created_at ? r.created_at.slice(0, 10) : new Date().toISOString().slice(0, 10),
-      dueDate: r.due_date ? r.due_date.slice(0, 10) : r.created_at ? r.created_at.slice(0, 10) : new Date().toISOString().slice(0, 10),
-      status: r.status || "pending",
-      notes: r.notes || "",
-    })) as Item[];
+  if (direction === "up" && currentIndex > 0) {
+    [newItems[currentIndex], newItems[currentIndex - 1]] = [newItems[currentIndex - 1], newItems[currentIndex]];
+  } else if (direction === "down" && currentIndex < newItems.length - 1) {
+    [newItems[currentIndex], newItems[currentIndex + 1]] = [newItems[currentIndex + 1], newItems[currentIndex]];
+  } else if (direction === "top" && currentIndex > 0) {
+    const [item] = newItems.splice(currentIndex, 1);
+    newItems.unshift(item);
   }
-  
-  // Assume it's already in Item format
-  return rows as Item[];
+
+  // Update positions on the backend
+  await Promise.all(
+    newItems.map((item, index) => 
+      fetch(buildUrl(`/api/items/${item.id}`), {
+        method: "PATCH",
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ position: index }),
+      })
+    )
+  );
+
+  return newItems;
 }
 
+/**
+ * Update an item's fields
+ */
 export async function updateItem(
   id: string,
-  fields: Partial<Pick<Item, "title" | "project" | "startDate" | "dueDate">> & { notes?: string }
+  fields: Partial<Pick<Item, "title" | "description" | "project_id" | "position">>
 ): Promise<Item> {
-  const res = await fetch(buildUrl("update"), {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      id,
-      task: fields.title,
-      project: fields.project,
-      due_date: fields.dueDate,
-      notes: (fields as { notes?: string }).notes,
-    }),
+  const response = await fetch(buildUrl(`/api/items/${id}`), {
+    method: "PATCH",
+    headers: getAuthHeaders(),
+    body: JSON.stringify(fields),
   });
-  if (!res.ok) throw new Error("Failed to update item");
-  return res.json();
+
+  const payload = await handleResponse<Item | { data?: Item }>(response);
+  return extractData(payload);
 }
 
+/**
+ * Delete an item
+ */
 export async function deleteItem(id: string): Promise<{ ok: true }> {
-  const res = await fetch(buildUrl("update"), {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ id, deleted: true }),
+  const response = await fetch(buildUrl(`/api/items/${id}`), {
+    method: "DELETE",
+    headers: getAuthHeaders(),
   });
-  if (!res.ok) throw new Error("Failed to delete item");
+
+  await handleResponse<void>(response);
   return { ok: true };
 }
-
-

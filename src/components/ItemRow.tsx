@@ -74,7 +74,10 @@ export function ItemRow({ item, onChange, onReorder, onOptimisticReorder, index,
   }
 
   const isCompleted = optimisticItem.status === "done";
-  const isCancelled = optimisticItem.status === "cancelled";
+  const isCancelled = optimisticItem.status === "wontdo";
+
+  // Get project name from nested project object if available
+  const projectName = optimisticItem.project?.name || null;
 
   return (
     <div 
@@ -95,14 +98,16 @@ export function ItemRow({ item, onChange, onReorder, onOptimisticReorder, index,
         <div className={`font-medium transition-colors duration-200 ${isCompleted || isCancelled ? "text-slate-400 line-through" : "text-[var(--navy)]"}`}>
           {optimisticItem.title}
         </div>
-        <div className={`text-sm transition-colors duration-200 ${isCompleted || isCancelled ? "text-slate-300" : "text-[var(--blue-600)]"}`}>
-          {optimisticItem.project}
-        </div>
-        {optimisticItem.notes && (
+        {projectName && (
+          <div className={`text-sm transition-colors duration-200 ${isCompleted || isCancelled ? "text-slate-300" : "text-[var(--blue-600)]"}`}>
+            {projectName}
+          </div>
+        )}
+        {optimisticItem.description && (
           <div className={`text-sm mt-1 transition-colors duration-200 ${isCompleted || isCancelled ? "text-slate-300" : "text-slate-500"}`}>
-            {optimisticItem.notes.length > 50 
-              ? `${optimisticItem.notes.slice(0, 50)}...` 
-              : optimisticItem.notes}
+            {optimisticItem.description.length > 50 
+              ? `${optimisticItem.description.slice(0, 50)}...` 
+              : optimisticItem.description}
           </div>
         )}
       </div>
@@ -140,5 +145,3 @@ export function ItemRow({ item, onChange, onReorder, onOptimisticReorder, index,
     </div>
   );
 }
-
-

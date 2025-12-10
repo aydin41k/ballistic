@@ -1,34 +1,45 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-export function middleware(request: NextRequest) {
-  // Handle CORS for API routes
-  if (request.nextUrl.pathname.startsWith('/api/')) {
-    // Handle preflight OPTIONS request
-    if (request.method === 'OPTIONS') {
-      return new NextResponse(null, {
-        status: 200,
-        headers: {
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-          'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-          'Access-Control-Max-Age': '86400',
-        },
-      });
-    }
+// Routes that don't require authentication
+const publicRoutes = ['/login', '/register'];
 
-    // Add CORS headers to all API responses
-    const response = NextResponse.next();
-    response.headers.set('Access-Control-Allow-Origin', '*');
-    response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-    response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-    
-    return response;
+export function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+
+  // Check if this is a public route
+  const isPublicRoute = publicRoutes.some(route => pathname.startsWith(route));
+  
+  // Check if this is a static asset or API route
+  const isStaticOrApi = pathname.startsWith('/_next') || 
+                        pathname.startsWith('/api') ||
+                        pathname.includes('.');
+
+  // Skip middleware for static assets and API routes
+  if (isStaticOrApi) {
+    return NextResponse.next();
   }
 
+  // For public routes, just continue
+  if (isPublicRoute) {
+    return NextResponse.next();
+  }
+
+  // For protected routes, we'll let the client-side handle auth
+  // since the token is stored in localStorage (not accessible in middleware)
+  // The page components will redirect to /login if not authenticated
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: '/api/:path*',
+  matcher: [
+    /*
+     * Match all request paths except:
+     * - _next/static (static files)
+     * - _next/image (image optimisation files)
+     * - favicon.ico (favicon file)
+     * - public files (e.g. images)
+     */
+    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+  ],
 };
