@@ -5,6 +5,50 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.3] - 2025-12-10
+
+### Fixed
+
+#### Database
+- Fixed `personal_access_tokens` table to support UUID primary keys on User model
+- Changed `tokenable_id` column from `bigint` to `uuid` type for PostgreSQL
+- Updated migration to use `uuidMorphs()` for SQLite compatibility (testing)
+- This resolves the "invalid input syntax for type bigint" error when using API login
+
+### Removed
+
+#### Frontend
+- Removed orphaned `register.tsx` page (web registration was disabled in v0.5.2)
+
+## [0.5.2] - 2025-12-10
+
+### Changed
+
+#### Authentication & Authorisation
+- Disabled web registration routes - user registration now only available via API (`POST /api/register`)
+- Web dashboard and settings are now restricted to admin users only
+- Non-admin users attempting to access web dashboard or settings receive 403 Forbidden
+- Regular users should use the API and mobile/desktop apps
+
+#### Frontend
+- Updated login page to remove "Sign up" link since registration is disabled
+- Regenerated wayfinder routes after removing registration routes
+- Updated all auth pages (login, forgot-password, reset-password, confirm-password, verify-email) to use new action URL patterns
+- Updated settings pages (profile, password) to use new action URL patterns
+- Updated delete-user component to use new action URL patterns
+
+### Security
+- Added `admin` middleware to web dashboard routes
+- Added `admin` middleware to web settings routes (profile, password, appearance)
+- Removed web registration routes entirely (GET and POST `/register`)
+
+### Tests
+- Updated RegistrationTest to verify web registration is disabled (404) and API registration works
+- Updated DashboardTest to verify admin-only access
+- Updated ProfileUpdateTest to verify admin-only access to settings
+- Updated PasswordUpdateTest to verify admin-only access to password page
+- Total: 89 tests passing (285 assertions)
+
 ## [0.5.1] - 2025-12-10
 
 ### Changed

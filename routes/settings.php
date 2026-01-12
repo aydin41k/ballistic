@@ -5,7 +5,8 @@ use App\Http\Controllers\Settings\ProfileController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
-Route::middleware('auth')->group(function () {
+// Web settings are restricted to admin users only
+Route::middleware(['auth', 'admin'])->group(function () {
     Route::redirect('settings', '/settings/profile');
 
     Route::get('settings/profile', [ProfileController::class, 'edit'])->name('profile.edit');

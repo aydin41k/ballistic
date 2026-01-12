@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Tests\Feature\Auth;
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -9,23 +11,41 @@ class RegistrationTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_registration_screen_can_be_rendered()
+    public function test_web_registration_is_disabled(): void
     {
-        $response = $this->get(route('register'));
+        // Web registration routes should return 404 as they are removed
+        $response = $this->get('/register');
 
-        $response->assertStatus(200);
+        $response->assertStatus(404);
     }
 
-    public function test_new_users_can_register()
+    public function test_web_registration_post_is_disabled(): void
     {
-        $response = $this->post(route('register.store'), [
+        // Attempting to POST to register should also return 404
+        $response = $this->post('/register', [
             'name' => 'Test User',
             'email' => 'test@example.com',
             'password' => 'password',
             'password_confirmation' => 'password',
         ]);
 
-        $this->assertAuthenticated();
-        $response->assertRedirect(route('dashboard', absolute: false));
+        $response->assertStatus(404);
+    }
+
+    public function test_api_registration_is_available(): void
+    {
+        // API registration should still work
+        $response = $this->postJson('/api/register', [
+            'name' => 'Test User',
+            'email' => 'test@example.com',
+            'password' => 'password',
+            'password_confirmation' => 'password',
+        ]);
+
+        $response->assertStatus(201);
+        $response->assertJsonStructure([
+            'user' => ['id', 'name', 'email'],
+            'token',
+        ]);
     }
 }

@@ -1,5 +1,5 @@
 import AppLogoIcon from '@/components/app-logo-icon';
-import { dashboard, login, register } from '@/routes';
+import { dashboard, login } from '@/routes';
 import { type SharedData } from '@/types';
 import { Head, Link, usePage } from '@inertiajs/react';
 
@@ -79,12 +79,6 @@ export default function Welcome() {
                                         >
                                             Sign in
                                         </Link>
-                                        <Link
-                                            href={register()}
-                                            className="rounded-lg bg-white px-5 py-2.5 text-sm font-semibold text-indigo-600 shadow-lg transition-all hover:bg-white/90 hover:shadow-xl"
-                                        >
-                                            Get Started
-                                        </Link>
                                     </>
                                 )}
                             </div>
@@ -111,39 +105,6 @@ export default function Welcome() {
                                 Track your tasks with ease and precision.<br/>
                                 Ballistic helps you organise your projects, schedule your items, and track your progress with a clean, focused interface.
                             </p>
-                            
-                            {/* CTA Buttons */}
-                            <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
-                                {auth.user ? (
-                                    <Link
-                                        href={dashboard()}
-                                        className="group flex items-center gap-2 rounded-xl bg-white px-8 py-4 text-lg font-semibold text-indigo-600 shadow-xl transition-all hover:bg-white/90 hover:shadow-2xl hover:scale-105"
-                                    >
-                                        Go to Dashboard
-                                        <svg className="h-5 w-5 transition-transform group-hover:translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                                        </svg>
-                                    </Link>
-                                ) : (
-                                    <>
-                                        <Link
-                                            href={register()}
-                                            className="group flex items-center gap-2 rounded-xl bg-white px-8 py-4 text-lg font-semibold text-indigo-600 shadow-xl transition-all hover:bg-white/90 hover:shadow-2xl hover:scale-105"
-                                        >
-                                            Start Free
-                                            <svg className="h-5 w-5 transition-transform group-hover:translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                                            </svg>
-                                        </Link>
-                                        <Link
-                                            href={login()}
-                                            className="flex items-center gap-2 rounded-xl bg-white/10 px-8 py-4 text-lg font-semibold text-white backdrop-blur-sm ring-1 ring-white/20 transition-all hover:bg-white/20 hover:ring-white/30"
-                                        >
-                                            Sign in
-                                        </Link>
-                                    </>
-                                )}
-                            </div>
                         </div>
                         
                         {/* Features Grid */}
@@ -190,7 +151,7 @@ export default function Welcome() {
                     <footer className="w-full px-6 py-8">
                         <div className="mx-auto max-w-7xl text-center">
                             <p className="text-sm text-white/50">
-                                © {new Date().getFullYear()} Ballistic. Built with Laravel & React.
+                                © {new Date().getFullYear()} Ballistic by <a href="https://psycode.com.au" target='_blank'>Psycode Pty. Ltd.</a>
                             </p>
                         </div>
                     </footer>

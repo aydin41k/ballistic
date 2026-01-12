@@ -1,0 +1,5 @@
+---
+alwaysApply: true
+---
+There is no jest, don't unit test the frontent
+Frontend tests: Lint, build, etc
