@@ -33,6 +33,12 @@ jobs:
         if: steps.check_files.outputs.files_exists == 'true'
         run: composer validate --no-check-publish && composer install --prefer-dist --no-progress
 
+      - name: Create SQLite database file
+        run: touch database/database.sqlite
+        
+      - name: Publish Wayfinder
+        run: php artisan wayfinder:generate
+        
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
