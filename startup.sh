@@ -8,6 +8,6 @@ php /home/site/wwwroot/artisan migrate --force
 echo "Migrated database"
 
 # Create cache folders
-cd storage/
+cd /home/site/wwwroot/storage/
 mkdir -p framework/{sessions,views,cache}
 chmod -R 775 framework
