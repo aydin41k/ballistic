@@ -33,6 +33,24 @@ jobs:
         if: steps.check_files.outputs.files_exists == 'true'
         run: composer validate --no-check-publish && composer install --prefer-dist --no-progress
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Check if package.json exists
+        id: check_package_json
+        uses: andstor/file-existence-action@v1
+        with:
+          files: 'package.json'
+
+      - name: Run npm install if package.json exists
+        if: steps.check_package_json.outputs.files_exists == 'true'
+        run: npm ci
+
+      - name: Run npm build if package.json exists
+        if: steps.check_package_json.outputs.files_exists == 'true'
+        run: npm run build
 
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
