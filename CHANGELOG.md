@@ -1,3 +1,22 @@
+## 0.5.0 - 2026-01-15
+
+- **Project Selection**: Tasks can now be assigned to projects when adding or editing. Select from existing projects or create new ones inline with a searchable combobox.
+- **ProjectCombobox Component**: New reusable combobox with search filtering, keyboard navigation, and instant inline project creation.
+- **API Integration**: Added `fetchProjects` and `createProject` functions to fetch and create projects via the backend API.
+- **ItemForm Enhancement**: "More settings" now includes a project selector with labels for clearer UI.
+- **Test Coverage**: Added comprehensive tests for project selection and inline creation flow.
+
+## 0.4.5 - 2025-12-10
+
+- **Drag-and-Drop Reordering**: Replaced up/down arrows with drag handles so tasks can be reordered directly, while keeping the move-to-top shortcut.
+- **Backend Persistence**: Item order now saves to the backend after a drop to keep lists consistent across devices.
+- **Test Coverage**: Added drag-and-drop regression tests and updated ItemRow specs for the new controls.
+
+## 0.4.4 - 2025-12-10
+
+- **README Glow-Up**: Rebuilt the README with a colourful, infographic-style quickstart that reflects the current REST API backend, auth flow, and testing commands.
+- **Getting Started Accuracy**: Removed outdated Google Sheets guidance in favour of the `NEXT_PUBLIC_API_BASE_URL` Laravel-style API setup and refreshed deploy notes.
+
 ## 0.4.3 - 2025-12-10
 
 - **Create Response Normalisation**: API client now unwraps `{ data: item }` envelopes so optimistic tasks stay intact once the server replies.

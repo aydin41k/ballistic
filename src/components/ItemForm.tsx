@@ -1,18 +1,29 @@
 "use client";
 
-import type { Item } from "@/types";
+import type { Item, Project } from "@/types";
 import { useState } from "react";
+import { ProjectCombobox } from "./ProjectCombobox";
 
 type Props = {
   initial?: Partial<Item>;
-  onSubmit: (values: { title: string; description?: string }) => void;
+  onSubmit: (values: { title: string; description?: string; project_id?: string | null }) => void;
   onCancel: () => void;
   submitLabel?: string;
+  projects?: Project[];
+  onCreateProject?: (name: string) => Promise<Project>;
 };
 
-export function ItemForm({ initial, onSubmit, onCancel, submitLabel = "Save" }: Props) {
+export function ItemForm({ 
+  initial, 
+  onSubmit, 
+  onCancel, 
+  submitLabel = "Save",
+  projects = [],
+  onCreateProject,
+}: Props) {
   const [title, setTitle] = useState(initial?.title ?? "");
   const [description, setDescription] = useState(initial?.description ?? "");
+  const [projectId, setProjectId] = useState<string | null>(initial?.project_id ?? null);
   const [showMoreSettings, setShowMoreSettings] = useState(!!initial); // Open by default for edit mode
 
   return (
@@ -20,7 +31,7 @@ export function ItemForm({ initial, onSubmit, onCancel, submitLabel = "Save" }: 
       className="grid gap-3 animate-fade-in"
       onSubmit={(e) => {
         e.preventDefault();
-        onSubmit({ title, description: description || undefined });
+        onSubmit({ title, description: description || undefined, project_id: projectId });
       }}
     >
       {/* Title field - always visible */}
@@ -55,13 +66,31 @@ export function ItemForm({ initial, onSubmit, onCancel, submitLabel = "Save" }: 
 
         {showMoreSettings && (
           <div className="grid gap-3 mt-3 animate-fade-in">
-            <textarea 
-              className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm transition-all duration-200 focus:border-[var(--blue)] focus:ring-2 focus:ring-[var(--blue)]/20 focus:outline-none resize-none" 
-              rows={3}
-              placeholder="Description" 
-              value={description} 
-              onChange={(e) => setDescription(e.target.value)} 
-            />
+            {/* Project selector */}
+            <div>
+              <label className="block text-xs font-medium text-slate-500 mb-1">Project</label>
+              <ProjectCombobox
+                projects={projects}
+                value={projectId}
+                onChange={setProjectId}
+                onCreateProject={onCreateProject ?? (async (name) => {
+                  // Fallback if no onCreateProject provided - shouldn't happen in practice
+                  throw new Error(`Cannot create project "${name}" - no handler provided`);
+                })}
+              />
+            </div>
+
+            {/* Description */}
+            <div>
+              <label className="block text-xs font-medium text-slate-500 mb-1">Description</label>
+              <textarea 
+                className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm transition-all duration-200 focus:border-[var(--blue)] focus:ring-2 focus:ring-[var(--blue)]/20 focus:outline-none resize-none w-full" 
+                rows={3}
+                placeholder="Add more details..." 
+                value={description} 
+                onChange={(e) => setDescription(e.target.value)} 
+              />
+            </div>
           </div>
         )}
       </div>

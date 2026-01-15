@@ -42,7 +42,12 @@ describe('Move to Top functionality', () => {
         index={1}
         onEdit={mockOnEdit}
         isFirst={false}
-        isLast={false}
+        onDragStart={jest.fn()}
+        onDragEnter={jest.fn()}
+        onDropItem={jest.fn()}
+        onDragEnd={jest.fn()}
+        draggingId={null}
+        dragOverId={null}
       />
     );
 
@@ -61,7 +66,12 @@ describe('Move to Top functionality', () => {
         index={0}
         onEdit={mockOnEdit}
         isFirst={true}
-        isLast={false}
+        onDragStart={jest.fn()}
+        onDragEnter={jest.fn()}
+        onDropItem={jest.fn()}
+        onDragEnd={jest.fn()}
+        draggingId={null}
+        dragOverId={null}
       />
     );
 
@@ -81,7 +91,12 @@ describe('Move to Top functionality', () => {
         index={2}
         onEdit={mockOnEdit}
         isFirst={false}
-        isLast={false}
+        onDragStart={jest.fn()}
+        onDragEnter={jest.fn()}
+        onDropItem={jest.fn()}
+        onDragEnd={jest.fn()}
+        draggingId={null}
+        dragOverId={null}
       />
     );
 
@@ -93,30 +108,27 @@ describe('Move to Top functionality', () => {
     });
   });
 
-  it('should be positioned to the left of the up arrow', () => {
+  it('does not render move-to-top for the first item', () => {
     render(
       <ItemRow
         item={mockItem}
         onChange={mockOnChange}
         onReorder={mockOnReorder}
         onOptimisticReorder={mockOnOptimisticReorder}
-        index={1}
+        index={0}
         onEdit={mockOnEdit}
-        isFirst={false}
-        isLast={false}
+        isFirst={true}
+        onDragStart={jest.fn()}
+        onDragEnter={jest.fn()}
+        onDropItem={jest.fn()}
+        onDragEnd={jest.fn()}
+        draggingId={null}
+        dragOverId={null}
       />
     );
 
-    const buttons = screen.getAllByRole('button');
-    const moveToTopButton = screen.getByLabelText('Move to top');
-    const moveUpButton = screen.getByLabelText('Move up');
-
-    // Find the indices of both buttons in the buttons array
-    const moveToTopIndex = buttons.indexOf(moveToTopButton);
-    const moveUpIndex = buttons.indexOf(moveUpButton);
-
-    // Move to top button should appear before (have a lower index than) the up button
-    expect(moveToTopIndex).toBeLessThan(moveUpIndex);
+    const moveToTopButton = screen.queryByLabelText('Move to top');
+    expect(moveToTopButton).toBeNull();
   });
 });
 

@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import type { Item } from "@/types";
-import { fetchItems, createItem, updateItem, deleteItem } from "@/lib/api";
+import type { Item, Project } from "@/types";
+import { fetchItems, createItem, updateItem, deleteItem, saveItemOrder, fetchProjects, createProject } from "@/lib/api";
 import { ItemRow } from "@/components/ItemRow";
 import { EmptyState } from "@/components/EmptyState";
 import { ItemForm } from "@/components/ItemForm";
@@ -20,10 +20,16 @@ export default function Home() {
   const router = useRouter();
   const { isAuthenticated, isLoading: authLoading, logout, user } = useAuth();
   const [items, setItems] = useState<Item[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
   const [editing, setEditing] = useState<Item | null>(null);
   const [showAdd, setShowAdd] = useState(false);
   const [loading, setLoading] = useState(true);
   const [scrollToItemId, setScrollToItemId] = useState<string | null>(null);
+  const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [dragOverId, setDragOverId] = useState<string | null>(null);
+  const dragSourceRef = useRef<string | null>(null);
+  const dragOverRef = useRef<string | null>(null);
+  const dropHandledRef = useRef(false);
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -32,14 +38,17 @@ export default function Home() {
     }
   }, [authLoading, isAuthenticated, router]);
 
-  // Fetch items when authenticated
+  // Fetch items and projects when authenticated
   useEffect(() => {
     if (isAuthenticated) {
       setLoading(true);
-      fetchItems()
-        .then(setItems)
+      Promise.all([fetchItems(), fetchProjects()])
+        .then(([itemsData, projectsData]) => {
+          setItems(itemsData);
+          setProjects(projectsData);
+        })
         .catch((error) => {
-          console.error('Failed to fetch items:', error);
+          console.error('Failed to fetch data:', error);
         })
         .finally(() => setLoading(false));
     }
@@ -79,7 +88,7 @@ export default function Home() {
       return;
     }
     // Update UI immediately for optimistic reordering
-    setItems(nextList);
+    setItems(nextList.map((item, index) => ({ ...item, position: index })));
   }
 
   // Optimistic reordering function that updates UI immediately
@@ -121,7 +130,7 @@ export default function Home() {
           return prev;
         }
         
-        return newList;
+        return newList.map((item, index) => ({ ...item, position: index }));
       } catch (error) {
         console.error('Error during optimistic reordering:', error);
         // Return empty array on error to prevent crashes
@@ -146,6 +155,83 @@ export default function Home() {
       console.error('Failed to delete item:', error);
       // Optionally refetch items to restore state
     }
+  }
+
+  async function handleCreateProject(name: string): Promise<Project> {
+    const newProject = await createProject({ name });
+    setProjects((prev) => [...prev, newProject]);
+    return newProject;
+  }
+
+  function reorderList(list: Item[], sourceId: string, targetId: string): Item[] {
+    const current = [...list];
+    const fromIndex = current.findIndex((entry) => entry.id === sourceId);
+    const toIndex = current.findIndex((entry) => entry.id === targetId);
+
+    if (fromIndex === -1 || toIndex === -1 || fromIndex === toIndex) {
+      return current;
+    }
+
+    const [moved] = current.splice(fromIndex, 1);
+    current.splice(toIndex, 0, moved);
+
+    return current.map((entry, position) => ({ ...entry, position }));
+  }
+
+  function handleDragStart(id: string) {
+    setDraggingId(id);
+    setDragOverId(id);
+    dragSourceRef.current = id;
+    dragOverRef.current = id;
+  }
+
+  function handleDragEnter(id: string) {
+    setDragOverId(id);
+    dragOverRef.current = id;
+  }
+
+  function handleDragEnd() {
+    if (dropHandledRef.current) {
+      dropHandledRef.current = false;
+      setDraggingId(null);
+      setDragOverId(null);
+      dragSourceRef.current = null;
+      dragOverRef.current = null;
+      return;
+    }
+
+    setDraggingId(null);
+    setDragOverId(null);
+    dragSourceRef.current = null;
+    dragOverRef.current = null;
+  }
+
+  function handleDrop(targetId: string) {
+    dropHandledRef.current = true;
+
+    setItems((prev) => {
+      if (!Array.isArray(prev)) {
+        return [];
+      }
+
+      const sourceId = draggingId;
+
+      const ordered =
+        sourceId && sourceId !== targetId
+          ? reorderList(prev, sourceId, targetId)
+          : prev.map((entry, position) => ({ ...entry, position }));
+
+      saveItemOrder(ordered).catch((error) => {
+        console.error("Failed to save item order:", error);
+      });
+
+      return ordered;
+    });
+
+    setDraggingId(null);
+    setDragOverId(null);
+    dragSourceRef.current = null;
+    dragOverRef.current = null;
   }
 
   // Show loading while checking auth
@@ -239,14 +325,17 @@ export default function Home() {
             <ItemForm
               submitLabel="Add"
               onCancel={() => setShowAdd(false)}
+              projects={projects}
+              onCreateProject={handleCreateProject}
               onSubmit={async (v) => {
                 // Create optimistic item for immediate UI feedback
                 // Use a more unique temporary ID to avoid conflicts
                 const tempId = `temp-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+                const selectedProject = v.project_id ? projects.find(p => p.id === v.project_id) : null;
                 const optimisticItem: Item = {
                   id: tempId, // Temporary ID
                   user_id: user?.id || "",
-                  project_id: null,
+                  project_id: v.project_id ?? null,
                   title: v.title,
                   description: v.description || null,
                   status: "todo",
@@ -254,6 +343,7 @@ export default function Home() {
                   created_at: new Date().toISOString(),
                   updated_at: new Date().toISOString(),
                   deleted_at: null,
+                  project: selectedProject ?? null,
                 };
                 
                 // Update UI immediately and close form
@@ -280,6 +370,7 @@ export default function Home() {
                   title: v.title,
                   description: v.description,
                   status: "todo",
+                  project_id: v.project_id,
                   position: items.length,
                 }).then((created) => {
                   const resolvedItem = normaliseItemResponse(created);
@@ -310,12 +401,17 @@ export default function Home() {
                 <ItemForm
                   initial={item}
                   onCancel={() => setEditing(null)}
+                  projects={projects}
+                  onCreateProject={handleCreateProject}
                   onSubmit={async (v) => {
                     // Create optimistic update for immediate UI feedback
+                    const selectedProject = v.project_id ? projects.find(p => p.id === v.project_id) : null;
                     const optimisticUpdate: Item = {
                       ...item,
                       title: v.title,
                       description: v.description || null,
+                      project_id: v.project_id ?? null,
+                      project: selectedProject ?? null,
                     };
                     
                     // Update UI immediately and close edit form
@@ -326,6 +422,7 @@ export default function Home() {
                     updateItem(item.id, {
                       title: v.title,
                       description: v.description || null,
+                      project_id: v.project_id,
                     }).catch((error) => {
                       console.error('Failed to update item:', error);
                       // Keep the optimistic update - user already sees their changes
@@ -350,7 +447,12 @@ export default function Home() {
                 index={index}
                 onEdit={() => setEditing(item)}
                 isFirst={index === 0}
-                isLast={index === filtered.length - 1}
+                onDragStart={handleDragStart}
+                onDragEnter={handleDragEnter}
+                onDropItem={handleDrop}
+                onDragEnd={handleDragEnd}
+                draggingId={draggingId}
+                dragOverId={dragOverId}
               />
             )}
           </div>
@@ -366,7 +468,7 @@ export default function Home() {
 
       {/* Footer */}
       <footer className="text-center py-6 text-sm text-slate-500">
-        Psycode Pty. Ltd. © 2025
+        Psycode Pty. Ltd. © {new Date().getFullYear()}
       </footer>
     </div>
   );

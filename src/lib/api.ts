@@ -1,4 +1,4 @@
-import type { Item, Status } from "@/types";
+import type { Item, Project, Status } from "@/types";
 import { getAuthHeaders, clearToken } from "./auth";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "";
@@ -51,7 +51,7 @@ function extractData<T>(payload: T | { data?: T }): T {
 /**
  * Build a URL for API requests
  */
-function buildUrl(path: string, params?: Record<string, string>): string {
+function buildUrl(path: string, params?: Record<string, string | undefined>): string {
   const baseUrl = API_BASE || (typeof window !== "undefined" ? window.location.origin : "http://localhost:3000");
   const url = new URL(path, baseUrl);
   
@@ -163,7 +163,30 @@ export async function moveItem(id: string, direction: "up" | "down" | "top"): Pr
     )
   );
 
-  return newItems;
+  return newItems.map((item, index) => ({ ...item, position: index }));
+}
+
+/**
+ * Persist an explicit item order by position.
+ */
+export async function saveItemOrder(orderedItems: Item[]): Promise<Item[]> {
+  if (!Array.isArray(orderedItems) || orderedItems.length === 0) {
+    return [];
+  }
+
+  const validItems = orderedItems.filter((item): item is Item => Boolean(item?.id));
+
+  await Promise.all(
+    validItems.map((item, index) =>
+      fetch(buildUrl(`/api/items/${item.id}`), {
+        method: "PATCH",
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ position: index }),
+      })
+    )
+  );
+
+  return validItems.map((item, index) => ({ ...item, position: index }));
 }
 
 /**
@@ -194,4 +217,43 @@ export async function deleteItem(id: string): Promise<{ ok: true }> {
 
   await handleResponse<void>(response);
   return { ok: true };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Projects
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Fetch all projects for the authenticated user
+ */
+export async function fetchProjects(): Promise<Project[]> {
+  const response = await fetch(buildUrl("/api/projects"), {
+    method: "GET",
+    headers: getAuthHeaders(),
+    cache: "no-store",
+  });
+
+  const payload = await handleResponse<Project[] | { data?: Project[] }>(response);
+  const projects = extractData(payload);
+  return Array.isArray(projects) ? projects : [];
+}
+
+/**
+ * Create a new project
+ */
+export async function createProject(payload: {
+  name: string;
+  color?: string | null;
+}): Promise<Project> {
+  const response = await fetch(buildUrl("/api/projects"), {
+    method: "POST",
+    headers: getAuthHeaders(),
+    body: JSON.stringify({
+      name: payload.name,
+      color: payload.color || null,
+    }),
+  });
+
+  const data = await handleResponse<Project | { data?: Project }>(response);
+  return extractData(data);
 }

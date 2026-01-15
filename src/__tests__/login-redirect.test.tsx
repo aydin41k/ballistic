@@ -40,3 +40,4 @@ describe("LoginPage", () => {
     await waitFor(() => expect(replaceMock).toHaveBeenCalledWith("/"));
   });
 });
+

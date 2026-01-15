@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ItemRow } from "@/components/ItemRow";
 import type { Item, Status } from "@/types";
@@ -38,6 +38,10 @@ describe("ItemRow", () => {
     const onReorder = jest.fn();
     const onOptimisticReorder = jest.fn();
     const onEdit = jest.fn();
+    const onDragStart = jest.fn();
+    const onDragEnter = jest.fn();
+    const onDropItem = jest.fn();
+    const onDragEnd = jest.fn();
     
     render(
       <ItemRow 
@@ -48,12 +52,60 @@ describe("ItemRow", () => {
         index={0}
         onEdit={onEdit}
         isFirst={false}
-        isLast={false}
+        onDragStart={onDragStart}
+        onDragEnter={onDragEnter}
+        onDropItem={onDropItem}
+        onDragEnd={onDragEnd}
+        draggingId={null}
+        dragOverId={null}
       />
     );
 
     const button = screen.getByRole("button", { name: /toggle status/i });
     await userEvent.click(button);
     expect(onChange).toHaveBeenCalled();
+  });
+
+  test("drag interactions trigger callbacks", () => {
+    const onChange = jest.fn();
+    const onReorder = jest.fn();
+    const onOptimisticReorder = jest.fn();
+    const onEdit = jest.fn();
+    const onDragStart = jest.fn();
+    const onDragEnter = jest.fn();
+    const onDropItem = jest.fn();
+    const onDragEnd = jest.fn();
+
+    render(
+      <ItemRow 
+        item={base} 
+        onChange={onChange} 
+        onReorder={onReorder} 
+        onOptimisticReorder={onOptimisticReorder}
+        index={0}
+        onEdit={onEdit}
+        isFirst={false}
+        onDragStart={onDragStart}
+        onDragEnter={onDragEnter}
+        onDropItem={onDropItem}
+        onDragEnd={onDragEnd}
+        draggingId={null}
+        dragOverId={null}
+      />
+    );
+
+    const row = document.querySelector('[data-item-id="1"]');
+    expect(row).not.toBeNull();
+
+    if (row) {
+      fireEvent.dragStart(row);
+      expect(onDragStart).toHaveBeenCalledWith("1");
+
+      fireEvent.dragEnter(row);
+      expect(onDragEnter).toHaveBeenCalledWith("1");
+
+      fireEvent.drop(row);
+      expect(onDropItem).toHaveBeenCalledWith("1");
+    }
   });
 });

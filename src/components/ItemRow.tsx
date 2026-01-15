@@ -14,10 +14,29 @@ type Props = {
   index: number;
   onEdit: () => void;
   isFirst: boolean;
-  isLast: boolean;
+  onDragStart: (id: string) => void;
+  onDragEnter: (id: string) => void;
+  onDropItem: (id: string) => void;
+  onDragEnd: () => void;
+  draggingId: string | null;
+  dragOverId: string | null;
 };
 
-export function ItemRow({ item, onChange, onReorder, onOptimisticReorder, index, onEdit, isFirst, isLast }: Props) {
+export function ItemRow({
+  item,
+  onChange,
+  onReorder,
+  onOptimisticReorder,
+  index,
+  onEdit,
+  isFirst,
+  onDragStart,
+  onDragEnter,
+  onDropItem,
+  onDragEnd,
+  draggingId,
+  dragOverId,
+}: Props) {
   const [optimisticItem, addOptimistic] = useOptimistic(
     item,
     (currentItem: Item, newStatus: Item["status"]) => ({
@@ -78,15 +97,45 @@ export function ItemRow({ item, onChange, onReorder, onOptimisticReorder, index,
 
   // Get project name from nested project object if available
   const projectName = optimisticItem.project?.name || null;
+  const isDragging = draggingId === item.id;
+  const isDragOver = dragOverId === item.id && draggingId !== item.id;
 
   return (
     <div 
       data-item-id={item.id}
-      className={`flex items-center gap-3 rounded-md bg-white p-3 shadow-sm transition-all duration-300 ease-out hover:shadow-md hover:-translate-y-0.5 animate-slide-in-up cursor-pointer`}
+      className={`flex items-center gap-3 rounded-md bg-white p-3 shadow-sm transition-all duration-300 ease-out hover:shadow-md hover:-translate-y-0.5 animate-slide-in-up cursor-pointer ${isDragging ? "opacity-70 ring-2 ring-[var(--blue)]/30" : ""} ${isDragOver ? "ring-2 ring-[var(--blue)]/50" : ""}`}
       style={{
         animationDelay: `${index * 50}ms`,
       }}
       onClick={onEdit}
+      draggable
+      onDragStart={(event) => {
+        event.stopPropagation();
+        if (event.dataTransfer) {
+          event.dataTransfer.effectAllowed = "move";
+          event.dataTransfer.setData("text/plain", item.id);
+        }
+        onDragStart(item.id);
+      }}
+      onDragEnter={(event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        onDragEnter(item.id);
+      }}
+      onDragOver={(event) => {
+        event.preventDefault();
+      }}
+      onDrop={(event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        onDragEnter(item.id);
+        onDropItem(item.id);
+      }}
+      onDragEnd={(event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        onDragEnd();
+      }}
     >
       {/* Status circle */}
       <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
@@ -123,24 +172,12 @@ export function ItemRow({ item, onChange, onReorder, onOptimisticReorder, index,
             ⇈
           </button>
         )}
-        {!isFirst && (
-          <button
-            className="tap-target rounded-md bg-slate-100 px-2 py-1 text-slate-700 transition-all duration-200 hover:bg-slate-200 active:scale-95"
-            onClick={() => onMove("up")}
-            aria-label="Move up"
-          >
-            ↑
-          </button>
-        )}
-        {!isLast && (
-          <button
-            className="tap-target rounded-md bg-slate-100 px-2 py-1 text-slate-700 transition-all duration-200 hover:bg-slate-200 active:scale-95"
-            onClick={() => onMove("down")}
-            aria-label="Move down"
-          >
-            ↓
-          </button>
-        )}
+        <span
+          className="tap-target rounded-md bg-slate-100 px-2 py-1 text-slate-700 transition-all duration-200 hover:bg-slate-200 active:scale-95 cursor-grab"
+          aria-label="Drag to reorder"
+        >
+          ☰
+        </span>
       </div>
     </div>
   );

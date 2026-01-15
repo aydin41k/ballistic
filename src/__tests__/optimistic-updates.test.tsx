@@ -38,6 +38,8 @@ jest.mock("@/lib/auth", () => ({
 
 // Mock the API functions
 jest.mock("@/lib/api", () => ({
+  fetchProjects: jest.fn().mockResolvedValue([]),
+  createProject: jest.fn().mockResolvedValue({ id: "new-proj", name: "New Project", user_id: "user-1", color: null, archived_at: null, created_at: "2025-01-01T00:00:00Z", updated_at: "2025-01-01T00:00:00Z", deleted_at: null }),
   fetchItems: jest.fn().mockResolvedValue([
     {
       id: "1",
@@ -90,6 +92,20 @@ jest.mock("@/lib/api", () => ({
   }),
   deleteItem: jest.fn().mockResolvedValue({ ok: true }),
   moveItem: jest.fn().mockResolvedValue([
+    {
+      id: "1",
+      user_id: "user-1",
+      project_id: null,
+      title: "Sample",
+      description: null,
+      status: "todo",
+      position: 0,
+      created_at: "2025-01-01T00:00:00Z",
+      updated_at: "2025-01-01T00:00:00Z",
+      deleted_at: null,
+    },
+  ]),
+  saveItemOrder: jest.fn().mockResolvedValue([
     {
       id: "1",
       user_id: "user-1",

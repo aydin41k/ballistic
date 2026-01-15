@@ -40,6 +40,8 @@ jest.mock('@/lib/auth', () => ({
 // Mock the API
 jest.mock('../lib/api', () => ({
   fetchItems: jest.fn(() => Promise.resolve([])),
+  fetchProjects: jest.fn(() => Promise.resolve([])),
+  createProject: jest.fn(() => Promise.resolve({ id: "new-proj", name: "New Project", user_id: "user-1", color: null, archived_at: null, created_at: "2025-01-01T00:00:00Z", updated_at: "2025-01-01T00:00:00Z", deleted_at: null })),
   createItem: jest.fn(),
 }));
 
@@ -99,7 +101,7 @@ describe('Item Creation Response Handling', () => {
     const moreSettingsButton = screen.getByText('More settings');
     fireEvent.click(moreSettingsButton);
 
-    const descriptionInput = screen.getByPlaceholderText('Description');
+    const descriptionInput = screen.getByPlaceholderText('Add more details...');
     fireEvent.change(descriptionInput, { target: { value: 'Test description' } });
 
     // Submit the form
@@ -115,6 +117,7 @@ describe('Item Creation Response Handling', () => {
         title: 'Test Task',
         description: 'Test description',
         status: 'todo',
+        project_id: null,
         position: 0,
       });
     }, { timeout: 200 });
@@ -155,7 +158,7 @@ describe('Item Creation Response Handling', () => {
 
     fireEvent.change(screen.getByPlaceholderText('Task'), { target: { value: 'Wrapped Task' } });
     fireEvent.click(screen.getByText('More settings'));
-    fireEvent.change(screen.getByPlaceholderText('Description'), { target: { value: 'Wrapped description' } });
+    fireEvent.change(screen.getByPlaceholderText('Add more details...'), { target: { value: 'Wrapped description' } });
     fireEvent.click(screen.getByText('Add'));
 
     expect(screen.getByText('Wrapped Task')).toBeInTheDocument();

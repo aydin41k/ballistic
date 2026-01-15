@@ -39,6 +39,8 @@ jest.mock('@/lib/auth', () => ({
 
 // Mock the API
 jest.mock('../lib/api', () => ({
+  fetchProjects: jest.fn(() => Promise.resolve([])),
+  createProject: jest.fn(() => Promise.resolve({ id: "new-proj", name: "New Project", user_id: "user-1", color: null, archived_at: null, created_at: "2025-01-01T00:00:00Z", updated_at: "2025-01-01T00:00:00Z", deleted_at: null })),
   fetchItems: jest.fn(() => Promise.resolve([
     {
       id: '1',
@@ -140,7 +142,7 @@ describe('Item Addition Order and Scrolling', () => {
       fireEvent.click(moreSettingsButton);
     });
 
-    const descriptionInput = screen.getByPlaceholderText('Description');
+    const descriptionInput = screen.getByPlaceholderText('Add more details...');
     await act(async () => {
       fireEvent.change(descriptionInput, { target: { value: 'New description' } });
     });
