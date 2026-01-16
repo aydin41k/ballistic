@@ -8,6 +8,18 @@ const nunito = Nunito({ subsets: ["latin"], weight: ["300", "400", "600", "700",
 export const metadata: Metadata = {
   title: "Ballistic – Bullet Journal",
   description: "Minimal mobile-first bullet journalling app",
+  manifest: "/manifest.json",
+  themeColor: "#000000",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Ballistic",
+  },
+  viewport: {
+    width: "device-width",
+    initialScale: 1,
+    maximumScale: 1,
+  },
 };
 
 export default function RootLayout({

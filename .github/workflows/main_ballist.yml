@@ -61,5 +61,6 @@ jobs:
         with:
           app-name: 'ballist'
           slot-name: 'Production'
-          package: .
+          package: ./node-app
+          startup-command: 'npm start'
           
