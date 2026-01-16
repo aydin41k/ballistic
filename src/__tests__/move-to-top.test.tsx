@@ -80,7 +80,7 @@ describe('Move to Top functionality', () => {
   });
 
   it('should call onOptimisticReorder with "top" direction when clicked', async () => {
-    (moveItem as jest.Mock).mockResolvedValue([]);
+    (moveItem as jest.Mock).mockResolvedValue([mockItem]);
 
     render(
       <ItemRow

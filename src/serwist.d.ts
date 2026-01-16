@@ -1,1 +1,7 @@
-declare const self: ServiceWorkerGlobalScope & { __SW_MANIFEST: any };
+declare global {
+  interface ServiceWorkerGlobalScope {
+    __SW_MANIFEST: Array<unknown>;
+  }
+}
+
+export {};

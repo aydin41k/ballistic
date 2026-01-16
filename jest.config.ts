@@ -1,5 +1,4 @@
 const config = {
-  preset: "ts-jest",
   testEnvironment: "jsdom",
   roots: ["<rootDir>/src"],
   moduleNameMapper: {
@@ -7,16 +6,10 @@ const config = {
   },
   setupFilesAfterEnv: ["<rootDir>/jest.setup.ts"],
   testPathIgnorePatterns: ["/node_modules/", "/.next/"],
-  globals: {
-    'ts-jest': {
-      tsconfig: {
-        jsx: 'react-jsx',
-      },
-      isolatedModules: true,
-    },
+  transform: {
+    "^.+\\.(ts|tsx)$": ["ts-jest", { tsconfig: { jsx: "react-jsx" } }],
   },
 };
 
 export default config;
-
 

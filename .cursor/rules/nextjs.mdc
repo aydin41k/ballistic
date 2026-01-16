@@ -1,5 +1,8 @@
 ---
-description: always run the tests as ./runtests.sh . don't cd or anything, it is all taken care of, just run that command.
-globs:
 alwaysApply: false
 ---
+after every task and before every commit, check:
+1. lint
+2. tests
+3. build
+after a major feature is developed, create tests and make sure they pass before handing over.

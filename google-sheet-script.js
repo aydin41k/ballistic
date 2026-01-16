@@ -8,9 +8,11 @@ const PROJECT_COL = 5;
 const STATUS_COL = 6;
 const NOTES_COL = 7;
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- Apps Script entrypoint.
 function doGet(e) {
   return handleRequest(e);
 }
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- Apps Script entrypoint.
 function doPost(e) {
   // For update/move we support POST with action param
   return handleRequest(e);
@@ -203,6 +205,7 @@ function mapRowToObject(values, rowNumber) {
   };
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- Reserved for future status handling.
 function jsonResponse(obj, code) {
   return ContentService
     .createTextOutput(JSON.stringify(obj))
