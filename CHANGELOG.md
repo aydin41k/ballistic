@@ -1,3 +1,10 @@
+## 0.5.1 - 2026-01-17
+
+- **Deployment Fix**: Fixed Azure Web App deployment workflow - corrected package path from `./node-app` to `.` to match artifact extraction location.
+- **Build Strategy**: Refactored CI/CD to build on Azure instead of GitHub Actions - source code is now uploaded to Azure which builds using environment variables from Azure portal.
+- **CI/CD Quality Gates**: Separated lint and test from build - CI/CD now runs lint and test as quality gates before deployment, while Azure handles the build.
+- **Environment Variable Simplification**: Azure environment variables (`NEXT_PUBLIC_API_BASE_URL`) now work directly during build without needing GitHub variable configuration.
+
 ## 0.5.0 - 2026-01-15
 
 - **Project Selection**: Tasks can now be assigned to projects when adding or editing. Select from existing projects or create new ones inline with a searchable combobox.
