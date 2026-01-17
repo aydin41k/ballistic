@@ -271,7 +271,7 @@ export default function Home() {
   }
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-3 pb-24">
       {/* Header */}
       <header className="sticky top-0 z-10 -mx-4 bg-[var(--page-bg)]/95 px-4 pb-2 pt-3 backdrop-blur">
         <div className="flex items-center justify-between">
@@ -279,47 +279,27 @@ export default function Home() {
             Ballistic<br/>
             <small>The Simplest Bullet Journal</small>
           </h1>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              aria-label="Filter"
-              onClick={() => alert('Feature coming soon')}
-              className="tap-target grid h-9 w-9 place-items-center rounded-md bg-white shadow-sm hover:shadow-md active:scale-95"
-            >
-              {/* funnel icon */}
-              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" className="text-[var(--navy)]">
-                <path d="M3 5h18l-7 8v5l-4 2v-7L3 5z" strokeWidth="1.5"/>
-              </svg>
-            </button>
-            <button
-              type="button"
-              aria-label="Logout"
-              onClick={handleLogout}
-              className="tap-target grid h-9 w-9 place-items-center rounded-md bg-white shadow-sm hover:shadow-md active:scale-95"
-              title={`Logout ${user?.name || ''}`}
-            >
-              {/* logout icon */}
-              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" className="text-[var(--navy)]">
-                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            </button>
-          </div>
+          <button
+            type="button"
+            aria-label="Logout"
+            onClick={() => {
+              if (confirm('Are you sure you want to logout?')) {
+                handleLogout();
+              }
+            }}
+            className="tap-target grid h-9 w-9 place-items-center rounded-md bg-white shadow-sm hover:shadow-md active:scale-95"
+            title={`Logout ${user?.name || ''}`}
+          >
+            {/* logout icon */}
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" className="text-[var(--navy)]">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </button>
         </div>
       </header>
 
       {/* List */}
       <div className="flex flex-col gap-2">
-        {/* Quick Add Row */}
-        <button
-          type="button"
-          aria-label="Add a new task"
-          onClick={() => setShowAdd(true)}
-          className="flex items-center gap-3 rounded-md bg-white p-3 shadow-sm hover:shadow-md active:scale-[0.99] transition-all duration-200"
-        >
-          <span className="grid h-10 w-10 place-items-center rounded-full border-2 border-[var(--navy)] text-[var(--navy)] text-xl font-semibold">+</span>
-          <span className="text-slate-500">Add new task...</span>
-        </button>
-
         {showAdd && (
           <div className="rounded-md bg-white p-3 shadow-sm animate-scale-in">
             <ItemForm
@@ -470,6 +450,46 @@ export default function Home() {
       <footer className="text-center py-6 text-sm text-slate-500">
         Psycode Pty. Ltd. © {new Date().getFullYear()}
       </footer>
+
+      {/* Bottom Bar */}
+      <div className="fixed inset-x-0 bottom-0 z-20 px-4 pb-4">
+        <div className="mx-auto flex max-w-md items-center justify-between rounded-2xl bg-white/90 p-3 shadow-lg backdrop-blur h-12">
+          <button
+            type="button"
+            aria-label="Settings"
+            onClick={() => alert("Settings coming soon")}
+            className="tap-target grid h-11 w-11 place-items-center rounded-full bg-white shadow-sm hover:shadow-md active:scale-95"
+          >
+            {/* gear icon */}
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" className="text-[var(--navy)]">
+              <path
+                d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Zm7.4-3.5a7.4 7.4 0 0 0-.1-1l2.1-1.6-2-3.4-2.5 1a7.6 7.6 0 0 0-1.7-1l-.4-2.6H9.2L8.8 6a7.6 7.6 0 0 0-1.7 1l-2.5-1-2 3.4 2.1 1.6a7.4 7.4 0 0 0 0 2L2.6 14l2 3.4 2.5-1a7.6 7.6 0 0 0 1.7 1l.4 2.6h5.6l.4-2.6a7.6 7.6 0 0 0 1.7-1l2.5 1 2-3.4-2.1-1.6c.1-.3.1-.7.1-1Z"
+                strokeWidth="1.4"
+              />
+            </svg>
+          </button>
+          <button
+            type="button"
+            aria-label="Add a new task"
+            onClick={() => setShowAdd(true)}
+            className="tap-target grid h-14 w-14 place-items-center rounded-full bg-gradient-to-b from-sky-600 to-gray-600 text-white shadow-xl hover:shadow-2xl active:scale-95"
+          >
+            <span className="sr-only">Add new task...</span>
+            <span className="text-3xl leading-none">+</span>
+          </button>
+          <button
+            type="button"
+            aria-label="Filter"
+            onClick={() => alert("Feature coming soon")}
+            className="tap-target grid h-11 w-11 place-items-center rounded-full bg-white shadow-sm hover:shadow-md active:scale-95"
+          >
+            {/* funnel icon */}
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" className="text-[var(--navy)]">
+              <path d="M3 5h18l-7 8v5l-4 2v-7L3 5z" strokeWidth="1.5"/>
+            </svg>
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
