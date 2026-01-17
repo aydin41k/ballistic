@@ -29,6 +29,20 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+       <head>
+        {/* Add service worker registration */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              if ('serviceWorker' in navigator) {
+                window.addEventListener('load', () => {
+                  navigator.serviceWorker.register('/sw.js').catch(() => {});
+                });
+              }
+            `,
+          }}
+        />
+      </head>
       <body className={`min-h-dvh bg-[var(--page-bg)] text-[var(--text)] ${nunito.className}`}>
         <AuthProvider>
           <div className="mx-auto w-full max-w-screen-sm p-4">
