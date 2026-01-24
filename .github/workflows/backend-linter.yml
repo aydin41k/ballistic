@@ -1,0 +1,77 @@
+name: Backend Linter
+
+on:
+  push:
+    paths:
+      - "apps/backend/**"
+      - ".github/workflows/backend-linter.yml"
+  pull_request:
+    paths:
+      - "apps/backend/**"
+      - ".github/workflows/backend-linter.yml"
+
+concurrency:
+  group: backend-linter-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: apps/backend
+        shell: bash
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.4"
+          tools: composer:v2
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: apps/backend/package-lock.json
+
+      - name: Cache Composer
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.composer/cache/files
+            ~/.cache/composer
+          key: ${{ runner.os }}-composer-${{ hashFiles('apps/backend/composer.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-composer-
+
+      - name: Install PHP dependencies
+        run: |
+          composer install --no-ansi --no-interaction --no-progress --prefer-dist
+
+      - name: Install Node dependencies
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci
+          else
+            npm install
+          fi
+
+      - name: Pint (check only)
+        run: |
+          vendor/bin/pint --test
+
+      - name: JS format (check only)
+        run: |
+          npm run format --if-present
+
+      - name: JS lint
+        run: |
+          npm run lint --if-present

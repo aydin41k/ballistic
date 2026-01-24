@@ -5,15 +5,21 @@
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build --turbopack",
-    "start": "node ./node_modules/next/dist/bin/next start -p $PORT",
-    "lint": "eslint",
-    "test": "jest"
+    "start": "next start -p $PORT",
+    "test": "jest",
+    "lint": "next lint --max-warnings=0",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "format:check": "prettier --check .",
+    "format": "prettier --write .",
+    "test:ci": "jest --ci"
   },
   "dependencies": {
     "@serwist/next": "^9.5.0",
     "next": "15.5.2",
     "react": "19.1.0",
-    "react-dom": "19.1.0"
+    "react-dom": "19.1.0",
+    "prettier": "^3.0.0",
+    "eslint-config-prettier": "^9.0.0"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
