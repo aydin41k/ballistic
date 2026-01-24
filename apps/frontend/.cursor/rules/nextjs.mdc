@@ -1,0 +1,8 @@
+---
+alwaysApply: false
+---
+after every task and before every commit, check:
+1. lint
+2. tests
+3. build
+after a major feature is developed, create tests and make sure they pass before handing over.
