@@ -64,7 +64,10 @@ export default function LoginPage() {
           )}
 
           <div>
-            <label htmlFor="email" className="mb-1 block text-sm font-medium text-slate-700">
+            <label
+              htmlFor="email"
+              className="mb-1 block text-sm font-medium text-slate-700"
+            >
               Email
             </label>
             <input
@@ -80,12 +83,17 @@ export default function LoginPage() {
               placeholder="you@example.com"
             />
             {fieldErrors.email && (
-              <p className="mt-1 text-sm text-red-600">{fieldErrors.email[0]}</p>
+              <p className="mt-1 text-sm text-red-600">
+                {fieldErrors.email[0]}
+              </p>
             )}
           </div>
 
           <div>
-            <label htmlFor="password" className="mb-1 block text-sm font-medium text-slate-700">
+            <label
+              htmlFor="password"
+              className="mb-1 block text-sm font-medium text-slate-700"
+            >
               Password
             </label>
             <input
@@ -101,7 +109,9 @@ export default function LoginPage() {
               placeholder="••••••••"
             />
             {fieldErrors.password && (
-              <p className="mt-1 text-sm text-red-600">{fieldErrors.password[0]}</p>
+              <p className="mt-1 text-sm text-red-600">
+                {fieldErrors.password[0]}
+              </p>
             )}
           </div>
 
@@ -112,9 +122,24 @@ export default function LoginPage() {
           >
             {isSubmitting ? (
               <span className="flex items-center justify-center gap-2">
-                <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                <svg
+                  className="h-4 w-4 animate-spin"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  />
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                  />
                 </svg>
                 Signing in...
               </span>
@@ -127,7 +152,10 @@ export default function LoginPage() {
         {/* Register link */}
         <p className="mt-6 text-center text-sm text-slate-500">
           Don&apos;t have an account?{" "}
-          <Link href="/register" className="font-medium text-[var(--blue-600)] hover:text-[var(--blue)]">
+          <Link
+            href="/register"
+            className="font-medium text-[var(--blue-600)] hover:text-[var(--blue)]"
+          >
             Create one
           </Link>
         </p>
@@ -135,4 +163,3 @@ export default function LoginPage() {
     </div>
   );
 }
-

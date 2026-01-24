@@ -29,12 +29,19 @@ export function Filters({ value, onChange, projects }: Props) {
       >
         <option value="">All projects</option>
         {projects.map((p) => (
-          <option key={p} value={p}>{p}</option>
+          <option key={p} value={p}>
+            {p}
+          </option>
         ))}
       </select>
       <select
         value={value.status}
-        onChange={(e) => onChange({ ...value, status: e.target.value as Props["value"]["status"] })}
+        onChange={(e) =>
+          onChange({
+            ...value,
+            status: e.target.value as Props["value"]["status"],
+          })
+        }
         className="col-span-3 rounded-md border border-slate-200 bg-white px-2 py-2 text-sm focus:border-[var(--blue)] focus:ring-2 focus:ring-[var(--blue)]/20 focus:outline-none"
       >
         <option value="all">All</option>
@@ -52,5 +59,3 @@ export function Filters({ value, onChange, projects }: Props) {
     </div>
   );
 }
-
-

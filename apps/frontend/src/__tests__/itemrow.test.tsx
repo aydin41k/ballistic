@@ -4,18 +4,20 @@ import { ItemRow } from "@/components/ItemRow";
 import type { Item, Status } from "@/types";
 
 jest.mock("@/lib/api", () => ({
-  updateStatus: jest.fn().mockImplementation(async (_id: string, _status: Status) => ({
-    id: _id,
-    user_id: "user-1",
-    project_id: null,
-    title: "Sample",
-    description: null,
-    status: _status,
-    position: 0,
-    created_at: "2025-01-01T00:00:00Z",
-    updated_at: "2025-01-01T00:00:00Z",
-    deleted_at: null,
-  })),
+  updateStatus: jest
+    .fn()
+    .mockImplementation(async (_id: string, _status: Status) => ({
+      id: _id,
+      user_id: "user-1",
+      project_id: null,
+      title: "Sample",
+      description: null,
+      status: _status,
+      position: 0,
+      created_at: "2025-01-01T00:00:00Z",
+      updated_at: "2025-01-01T00:00:00Z",
+      deleted_at: null,
+    })),
   moveItem: jest.fn().mockResolvedValue([]),
 }));
 
@@ -42,12 +44,12 @@ describe("ItemRow", () => {
     const onDragEnter = jest.fn();
     const onDropItem = jest.fn();
     const onDragEnd = jest.fn();
-    
+
     render(
-      <ItemRow 
-        item={base} 
-        onChange={onChange} 
-        onReorder={onReorder} 
+      <ItemRow
+        item={base}
+        onChange={onChange}
+        onReorder={onReorder}
         onOptimisticReorder={onOptimisticReorder}
         index={0}
         onEdit={onEdit}
@@ -58,7 +60,7 @@ describe("ItemRow", () => {
         onDragEnd={onDragEnd}
         draggingId={null}
         dragOverId={null}
-      />
+      />,
     );
 
     const button = screen.getByRole("button", { name: /toggle status/i });
@@ -77,10 +79,10 @@ describe("ItemRow", () => {
     const onDragEnd = jest.fn();
 
     render(
-      <ItemRow 
-        item={base} 
-        onChange={onChange} 
-        onReorder={onReorder} 
+      <ItemRow
+        item={base}
+        onChange={onChange}
+        onReorder={onReorder}
         onOptimisticReorder={onOptimisticReorder}
         index={0}
         onEdit={onEdit}
@@ -91,7 +93,7 @@ describe("ItemRow", () => {
         onDragEnd={onDragEnd}
         draggingId={null}
         dragOverId={null}
-      />
+      />,
     );
 
     const row = document.querySelector('[data-item-id="1"]');

@@ -19,17 +19,20 @@ Thank you for your interest in contributing to Ballistic! We welcome contributio
    - This creates a copy of the repository in your GitHub account
 
 2. **Clone your fork**
+
    ```bash
    git clone https://github.com/YOUR_USERNAME/ballistic.git
    cd ballistic
    ```
 
 3. **Add the upstream remote**
+
    ```bash
    git remote add upstream https://github.com/ORIGINAL_OWNER/ballistic.git
    ```
 
 4. **Install dependencies**
+
    ```bash
    npm install
    ```
@@ -51,11 +54,13 @@ Thank you for your interest in contributing to Ballistic! We welcome contributio
 ### Making Changes
 
 1. **Create a new branch**
+
    ```bash
    git checkout -b feature/your-feature-name
    # or
    git checkout -b fix/your-bug-fix-name
    ```
+
    Use descriptive branch names like `feature/add-dark-mode` or `fix/drag-drop-bug`
 
 2. **Make your changes**
@@ -65,9 +70,11 @@ Thank you for your interest in contributing to Ballistic! We welcome contributio
    - Keep commits focused and atomic
 
 3. **Test your changes**
+
    ```bash
    ./runtests.sh
    ```
+
    Make sure all tests pass before submitting your pull request.
 
 4. **Write tests for new features**
@@ -76,11 +83,12 @@ Thank you for your interest in contributing to Ballistic! We welcome contributio
    - Ensure your new feature has adequate test coverage
 
 5. **Commit your changes**
+
    ```bash
    git add .
    git commit -m "feat: add dark mode toggle"
    ```
-   
+
    Use conventional commit messages:
    - `feat:` for new features
    - `fix:` for bug fixes
@@ -91,6 +99,7 @@ Thank you for your interest in contributing to Ballistic! We welcome contributio
    - `chore:` for maintenance tasks
 
 6. **Keep your fork up to date**
+
    ```bash
    git fetch upstream
    git rebase upstream/main
@@ -169,4 +178,3 @@ Thank you for your interest in contributing to Ballistic! We welcome contributio
 All contributors will be recognised in the project. Your contributions, no matter how small, are valued and appreciated!
 
 Thank you for contributing to Ballistic! 🚀
-

@@ -35,7 +35,7 @@ describe("ProjectCombobox", () => {
         value={null}
         onChange={jest.fn()}
         onCreateProject={jest.fn()}
-      />
+      />,
     );
 
     expect(screen.getByText("No project")).toBeInTheDocument();
@@ -48,7 +48,7 @@ describe("ProjectCombobox", () => {
         value="proj-1"
         onChange={jest.fn()}
         onCreateProject={jest.fn()}
-      />
+      />,
     );
 
     expect(screen.getByText("Work")).toBeInTheDocument();
@@ -61,13 +61,15 @@ describe("ProjectCombobox", () => {
         value={null}
         onChange={jest.fn()}
         onCreateProject={jest.fn()}
-      />
+      />,
     );
 
     const trigger = screen.getByRole("button");
     await userEvent.click(trigger);
 
-    expect(screen.getByPlaceholderText("Search or create...")).toBeInTheDocument();
+    expect(
+      screen.getByPlaceholderText("Search or create..."),
+    ).toBeInTheDocument();
     expect(screen.getByText("Work")).toBeInTheDocument();
     expect(screen.getByText("Personal")).toBeInTheDocument();
   });
@@ -79,7 +81,7 @@ describe("ProjectCombobox", () => {
         value={null}
         onChange={jest.fn()}
         onCreateProject={jest.fn()}
-      />
+      />,
     );
 
     const trigger = screen.getByRole("button");
@@ -100,7 +102,7 @@ describe("ProjectCombobox", () => {
         value={null}
         onChange={jest.fn()}
         onCreateProject={jest.fn()}
-      />
+      />,
     );
 
     const trigger = screen.getByRole("button");
@@ -120,7 +122,7 @@ describe("ProjectCombobox", () => {
         value={null}
         onChange={onChange}
         onCreateProject={jest.fn()}
-      />
+      />,
     );
 
     const trigger = screen.getByRole("button");
@@ -140,7 +142,7 @@ describe("ProjectCombobox", () => {
         value="proj-1"
         onChange={onChange}
         onCreateProject={jest.fn()}
-      />
+      />,
     );
 
     // Trigger shows "Work" since value is proj-1
@@ -173,7 +175,7 @@ describe("ProjectCombobox", () => {
         value={null}
         onChange={onChange}
         onCreateProject={onCreateProject}
-      />
+      />,
     );
 
     const trigger = screen.getByRole("button");
@@ -198,17 +200,21 @@ describe("ProjectCombobox", () => {
         value={null}
         onChange={jest.fn()}
         onCreateProject={jest.fn()}
-      />
+      />,
     );
 
     const trigger = screen.getByRole("button");
     await userEvent.click(trigger);
 
-    expect(screen.getByPlaceholderText("Search or create...")).toBeInTheDocument();
+    expect(
+      screen.getByPlaceholderText("Search or create..."),
+    ).toBeInTheDocument();
 
     await userEvent.keyboard("{Escape}");
 
-    expect(screen.queryByPlaceholderText("Search or create...")).not.toBeInTheDocument();
+    expect(
+      screen.queryByPlaceholderText("Search or create..."),
+    ).not.toBeInTheDocument();
   });
 });
 
@@ -237,7 +243,7 @@ describe("ItemForm with ProjectCombobox", () => {
         onCancel={onCancel}
         projects={mockProjects}
         onCreateProject={onCreateProject}
-      />
+      />,
     );
 
     // Fill in the title
@@ -276,7 +282,7 @@ describe("ItemForm with ProjectCombobox", () => {
         onCancel={onCancel}
         projects={mockProjects}
         onCreateProject={jest.fn()}
-      />
+      />,
     );
 
     // Fill in the title

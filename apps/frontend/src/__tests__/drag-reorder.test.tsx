@@ -24,8 +24,8 @@ jest.mock("@/lib/auth", () => ({
   logout: jest.fn(),
   getAuthHeaders: jest.fn(() => ({
     "Content-Type": "application/json",
-    "Accept": "application/json",
-    "Authorization": "Bearer test-token",
+    Accept: "application/json",
+    Authorization: "Bearer test-token",
   })),
   AuthError: class AuthError extends Error {},
 }));
@@ -33,7 +33,16 @@ jest.mock("@/lib/auth", () => ({
 // Mock the API functions
 jest.mock("@/lib/api", () => ({
   fetchProjects: jest.fn().mockResolvedValue([]),
-  createProject: jest.fn().mockResolvedValue({ id: "new-proj", name: "New Project", user_id: "user-1", color: null, archived_at: null, created_at: "2025-01-01T00:00:00Z", updated_at: "2025-01-01T00:00:00Z", deleted_at: null }),
+  createProject: jest.fn().mockResolvedValue({
+    id: "new-proj",
+    name: "New Project",
+    user_id: "user-1",
+    color: null,
+    archived_at: null,
+    created_at: "2025-01-01T00:00:00Z",
+    updated_at: "2025-01-01T00:00:00Z",
+    deleted_at: null,
+  }),
   fetchItems: jest.fn().mockResolvedValue([
     {
       id: "1",
@@ -101,7 +110,9 @@ jest.mock("@/lib/api", () => ({
       deleted_at: null,
     },
   ]),
-  saveItemOrder: jest.fn().mockImplementation(async (ordered: Item[]) => ordered),
+  saveItemOrder: jest
+    .fn()
+    .mockImplementation(async (ordered: Item[]) => ordered),
 }));
 
 // Mock next/navigation
@@ -111,7 +122,8 @@ jest.mock("next/navigation", () => ({
   }),
 }));
 
-const renderWithAuth = (component: React.ReactElement) => render(<AuthProvider>{component}</AuthProvider>);
+const renderWithAuth = (component: React.ReactElement) =>
+  render(<AuthProvider>{component}</AuthProvider>);
 
 describe("Drag and drop ordering", () => {
   test("dragging an item reorders list and persists", async () => {
@@ -142,17 +154,15 @@ describe("Drag and drop ordering", () => {
     fireEvent.dragEnd(secondRow, { dataTransfer });
 
     await waitFor(() => {
-      expect((saveItemOrder as jest.Mock)).toHaveBeenCalled();
+      expect(saveItemOrder as jest.Mock).toHaveBeenCalled();
     });
 
     await waitFor(() => {
-      const orderedIds = Array.from(document.querySelectorAll("[data-item-id]")).map(
-        (node) => node.getAttribute("data-item-id")
-      );
+      const orderedIds = Array.from(
+        document.querySelectorAll("[data-item-id]"),
+      ).map((node) => node.getAttribute("data-item-id"));
       expect(orderedIds[0]).toBe("2");
       expect(orderedIds[1]).toBe("1");
     });
   });
 });
-
-

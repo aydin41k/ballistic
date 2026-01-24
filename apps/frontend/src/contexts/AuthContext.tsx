@@ -1,6 +1,13 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  useCallback,
+  type ReactNode,
+} from "react";
 import type { User } from "@/types";
 import {
   getToken,
@@ -16,7 +23,12 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (name: string, email: string, password: string, passwordConfirmation: string) => Promise<void>;
+  register: (
+    name: string,
+    email: string,
+    password: string,
+    passwordConfirmation: string,
+  ) => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -43,15 +55,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(response.user);
   }, []);
 
-  const register = useCallback(async (
-    name: string,
-    email: string,
-    password: string,
-    passwordConfirmation: string
-  ) => {
-    const response = await authRegister(name, email, password, passwordConfirmation);
-    setUser(response.user);
-  }, []);
+  const register = useCallback(
+    async (
+      name: string,
+      email: string,
+      password: string,
+      passwordConfirmation: string,
+    ) => {
+      const response = await authRegister(
+        name,
+        email,
+        password,
+        passwordConfirmation,
+      );
+      setUser(response.user);
+    },
+    [],
+  );
 
   const logout = useCallback(async () => {
     await authLogout();
@@ -67,11 +87,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     logout,
   };
 
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth(): AuthContextType {
@@ -83,5 +99,3 @@ export function useAuth(): AuthContextType {
 }
 
 export { AuthError };
-
-

@@ -22,7 +22,9 @@ async function handleResponse<T>(response: Response): Promise<T> {
   }
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ message: "Request failed" }));
+    const error = await response
+      .json()
+      .catch(() => ({ message: "Request failed" }));
     throw new Error(error.message || "Request failed");
   }
 
@@ -51,16 +53,23 @@ function extractData<T>(payload: T | { data?: T }): T {
 /**
  * Build a URL for API requests
  */
-function buildUrl(path: string, params?: Record<string, string | undefined>): string {
-  const baseUrl = API_BASE || (typeof window !== "undefined" ? window.location.origin : "http://localhost:3000");
+function buildUrl(
+  path: string,
+  params?: Record<string, string | undefined>,
+): string {
+  const baseUrl =
+    API_BASE ||
+    (typeof window !== "undefined"
+      ? window.location.origin
+      : "http://localhost:3000");
   const url = new URL(path, baseUrl);
-  
+
   if (params) {
     Object.entries(params).forEach(([key, value]) => {
       if (value) url.searchParams.set(key, value);
     });
   }
-  
+
   return url.toString();
 }
 
@@ -82,9 +91,11 @@ export async function fetchItems(params?: ListParams): Promise<Item[]> {
   const payload = await handleResponse<Item[] | { data?: Item[] }>(response);
   const items = extractData(payload);
   const list = Array.isArray(items) ? items : [];
-  
+
   // Filter out completed/cancelled tasks for the main view
-  return list.filter((item) => item.status !== "done" && item.status !== "wontdo");
+  return list.filter(
+    (item) => item.status !== "done" && item.status !== "wontdo",
+  );
 }
 
 /**
@@ -131,22 +142,31 @@ export async function createItem(payload: {
  * Move an item (reorder)
  * Note: The backend uses position field, so we need to calculate new positions
  */
-export async function moveItem(id: string, direction: "up" | "down" | "top"): Promise<Item[]> {
+export async function moveItem(
+  id: string,
+  direction: "up" | "down" | "top",
+): Promise<Item[]> {
   // For now, we'll fetch the current list and recalculate positions client-side
   // In a more robust implementation, the backend would handle this
   const items = await fetchItems();
   const currentIndex = items.findIndex((item) => item.id === id);
-  
+
   if (currentIndex === -1) {
     return items;
   }
 
   const newItems = [...items];
-  
+
   if (direction === "up" && currentIndex > 0) {
-    [newItems[currentIndex], newItems[currentIndex - 1]] = [newItems[currentIndex - 1], newItems[currentIndex]];
+    [newItems[currentIndex], newItems[currentIndex - 1]] = [
+      newItems[currentIndex - 1],
+      newItems[currentIndex],
+    ];
   } else if (direction === "down" && currentIndex < newItems.length - 1) {
-    [newItems[currentIndex], newItems[currentIndex + 1]] = [newItems[currentIndex + 1], newItems[currentIndex]];
+    [newItems[currentIndex], newItems[currentIndex + 1]] = [
+      newItems[currentIndex + 1],
+      newItems[currentIndex],
+    ];
   } else if (direction === "top" && currentIndex > 0) {
     const [item] = newItems.splice(currentIndex, 1);
     newItems.unshift(item);
@@ -154,13 +174,13 @@ export async function moveItem(id: string, direction: "up" | "down" | "top"): Pr
 
   // Update positions on the backend
   await Promise.all(
-    newItems.map((item, index) => 
+    newItems.map((item, index) =>
       fetch(buildUrl(`/api/items/${item.id}`), {
         method: "PATCH",
         headers: getAuthHeaders(),
         body: JSON.stringify({ position: index }),
-      })
-    )
+      }),
+    ),
   );
 
   return newItems.map((item, index) => ({ ...item, position: index }));
@@ -174,7 +194,9 @@ export async function saveItemOrder(orderedItems: Item[]): Promise<Item[]> {
     return [];
   }
 
-  const validItems = orderedItems.filter((item): item is Item => Boolean(item?.id));
+  const validItems = orderedItems.filter((item): item is Item =>
+    Boolean(item?.id),
+  );
 
   await Promise.all(
     validItems.map((item, index) =>
@@ -182,8 +204,8 @@ export async function saveItemOrder(orderedItems: Item[]): Promise<Item[]> {
         method: "PATCH",
         headers: getAuthHeaders(),
         body: JSON.stringify({ position: index }),
-      })
-    )
+      }),
+    ),
   );
 
   return validItems.map((item, index) => ({ ...item, position: index }));
@@ -194,7 +216,9 @@ export async function saveItemOrder(orderedItems: Item[]): Promise<Item[]> {
  */
 export async function updateItem(
   id: string,
-  fields: Partial<Pick<Item, "title" | "description" | "project_id" | "position">>
+  fields: Partial<
+    Pick<Item, "title" | "description" | "project_id" | "position">
+  >,
 ): Promise<Item> {
   const response = await fetch(buildUrl(`/api/items/${id}`), {
     method: "PATCH",
@@ -233,7 +257,9 @@ export async function fetchProjects(): Promise<Project[]> {
     cache: "no-store",
   });
 
-  const payload = await handleResponse<Project[] | { data?: Project[] }>(response);
+  const payload = await handleResponse<Project[] | { data?: Project[] }>(
+    response,
+  );
   const projects = extractData(payload);
   return Array.isArray(projects) ? projects : [];
 }

@@ -128,7 +128,7 @@
 ## 0.3.0 - 2025-08-28
 
 - **Major UI Redesign**: Completely redesigned the application to match the exact design specification
-- **Enhanced Task Management**: 
+- **Enhanced Task Management**:
   - Added start date and due date fields (replacing single date field)
   - Removed status selection for new tasks (always pending)
   - Added collapsible "More settings" section for project, notes, and dates
@@ -203,5 +203,3 @@
 - Wired client to Google Apps Script backend via env var `NEXT_PUBLIC_GAS_BASE_URL`
 - Implemented list/search (`?action=list`), add (`?action=add`), update (`?action=update`), move (`?action=move`)
 - Hooked filter UI to remote queries; added add/edit/delete/archiving
-
-

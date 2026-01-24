@@ -62,22 +62,25 @@ export function isAuthenticated(): boolean {
 /**
  * Login with email and password
  */
-export async function login(email: string, password: string): Promise<AuthResponse> {
+export async function login(
+  email: string,
+  password: string,
+): Promise<AuthResponse> {
   const response = await fetch(`${API_BASE}/api/login`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "Accept": "application/json",
+      Accept: "application/json",
     },
     body: JSON.stringify({ email, password }),
   });
 
   if (!response.ok) {
-    const error = await response.json() as ValidationError;
+    const error = (await response.json()) as ValidationError;
     throw new AuthError(error.message, error.errors);
   }
 
-  const data = await response.json() as AuthResponse;
+  const data = (await response.json()) as AuthResponse;
   setToken(data.token);
   setStoredUser(data.user);
   return data;
@@ -90,23 +93,23 @@ export async function register(
   name: string,
   email: string,
   password: string,
-  password_confirmation: string
+  password_confirmation: string,
 ): Promise<AuthResponse> {
   const response = await fetch(`${API_BASE}/api/register`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "Accept": "application/json",
+      Accept: "application/json",
     },
     body: JSON.stringify({ name, email, password, password_confirmation }),
   });
 
   if (!response.ok) {
-    const error = await response.json() as ValidationError;
+    const error = (await response.json()) as ValidationError;
     throw new AuthError(error.message, error.errors);
   }
 
-  const data = await response.json() as AuthResponse;
+  const data = (await response.json()) as AuthResponse;
   setToken(data.token);
   setStoredUser(data.user);
   return data;
@@ -117,22 +120,22 @@ export async function register(
  */
 export async function logout(): Promise<void> {
   const token = getToken();
-  
+
   if (token) {
     try {
       await fetch(`${API_BASE}/api/logout`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Accept": "application/json",
-          "Authorization": `Bearer ${token}`,
+          Accept: "application/json",
+          Authorization: `Bearer ${token}`,
         },
       });
     } catch {
       // Ignore errors - we'll clear local state anyway
     }
   }
-  
+
   clearToken();
 }
 
@@ -156,14 +159,12 @@ export function getAuthHeaders(): Record<string, string> {
   const token = getToken();
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
-    "Accept": "application/json",
+    Accept: "application/json",
   };
-  
+
   if (token) {
     headers["Authorization"] = `Bearer ${token}`;
   }
-  
+
   return headers;
 }
-
-

@@ -10,32 +10,53 @@ type Props = {
 
 export function StatusCircle({ status, onClick, size = "md" }: Props) {
   const dimension = size === "sm" ? "w-7 h-7" : "w-9 h-9";
-  
+
   const getStatusIcon = (status: Status) => {
     switch (status) {
       case "todo":
         return (
           <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor">
-            <circle cx="12" cy="12" r="3"/>
+            <circle cx="12" cy="12" r="3" />
           </svg>
         );
       case "done":
         return (
-          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M20 6L9 17l-5-5"/>
+          <svg
+            viewBox="0 0 24 24"
+            width="16"
+            height="16"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+          >
+            <path d="M20 6L9 17l-5-5" />
           </svg>
         );
       case "wontdo":
         return (
-          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M18 6L6 18M6 6l12 12"/>
+          <svg
+            viewBox="0 0 24 24"
+            width="16"
+            height="16"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+          >
+            <path d="M18 6L6 18M6 6l12 12" />
           </svg>
         );
       case "doing":
         return (
-          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
-            <circle cx="12" cy="12" r="10"/>
-            <polyline points="12,6 12,12 16,14"/>
+          <svg
+            viewBox="0 0 24 24"
+            width="16"
+            height="16"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+          >
+            <circle cx="12" cy="12" r="10" />
+            <polyline points="12,6 12,12 16,14" />
           </svg>
         );
     }

@@ -1,11 +1,6 @@
 import type { Status } from "@/types";
 
-export const STATUS_CYCLE: Status[] = [
-  "todo",
-  "done",
-  "wontdo",
-  "doing",
-];
+export const STATUS_CYCLE: Status[] = ["todo", "done", "wontdo", "doing"];
 
 export function cycleStatus(current: Status): Status {
   const index = STATUS_CYCLE.indexOf(current);

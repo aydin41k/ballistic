@@ -1,25 +1,25 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { ItemRow } from '@/components/ItemRow';
-import type { Item } from '@/types';
-import { moveItem } from '@/lib/api';
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { ItemRow } from "@/components/ItemRow";
+import type { Item } from "@/types";
+import { moveItem } from "@/lib/api";
 
 // Mock the API functions
-jest.mock('@/lib/api', () => ({
+jest.mock("@/lib/api", () => ({
   updateStatus: jest.fn(),
   moveItem: jest.fn(),
 }));
 
-describe('Move to Top functionality', () => {
+describe("Move to Top functionality", () => {
   const mockItem: Item = {
-    id: '2',
-    user_id: 'user-1',
+    id: "2",
+    user_id: "user-1",
     project_id: null,
-    title: 'Second Task',
+    title: "Second Task",
     description: null,
-    status: 'todo',
+    status: "todo",
     position: 1,
-    created_at: '2025-01-01T00:00:00Z',
-    updated_at: '2025-01-01T00:00:00Z',
+    created_at: "2025-01-01T00:00:00Z",
+    updated_at: "2025-01-01T00:00:00Z",
     deleted_at: null,
   };
 
@@ -32,7 +32,7 @@ describe('Move to Top functionality', () => {
     jest.clearAllMocks();
   });
 
-  it('should render the move to top button when item is not first', () => {
+  it("should render the move to top button when item is not first", () => {
     render(
       <ItemRow
         item={mockItem}
@@ -48,15 +48,15 @@ describe('Move to Top functionality', () => {
         onDragEnd={jest.fn()}
         draggingId={null}
         dragOverId={null}
-      />
+      />,
     );
 
-    const moveToTopButton = screen.getByLabelText('Move to top');
+    const moveToTopButton = screen.getByLabelText("Move to top");
     expect(moveToTopButton).toBeInTheDocument();
-    expect(moveToTopButton).toHaveTextContent('⇈');
+    expect(moveToTopButton).toHaveTextContent("⇈");
   });
 
-  it('should not render the move to top button when item is first', () => {
+  it("should not render the move to top button when item is first", () => {
     render(
       <ItemRow
         item={mockItem}
@@ -72,10 +72,10 @@ describe('Move to Top functionality', () => {
         onDragEnd={jest.fn()}
         draggingId={null}
         dragOverId={null}
-      />
+      />,
     );
 
-    const moveToTopButton = screen.queryByLabelText('Move to top');
+    const moveToTopButton = screen.queryByLabelText("Move to top");
     expect(moveToTopButton).not.toBeInTheDocument();
   });
 
@@ -97,18 +97,18 @@ describe('Move to Top functionality', () => {
         onDragEnd={jest.fn()}
         draggingId={null}
         dragOverId={null}
-      />
+      />,
     );
 
-    const moveToTopButton = screen.getByLabelText('Move to top');
+    const moveToTopButton = screen.getByLabelText("Move to top");
     fireEvent.click(moveToTopButton);
 
     await waitFor(() => {
-      expect(mockOnOptimisticReorder).toHaveBeenCalledWith('2', 'top');
+      expect(mockOnOptimisticReorder).toHaveBeenCalledWith("2", "top");
     });
   });
 
-  it('does not render move-to-top for the first item', () => {
+  it("does not render move-to-top for the first item", () => {
     render(
       <ItemRow
         item={mockItem}
@@ -124,114 +124,114 @@ describe('Move to Top functionality', () => {
         onDragEnd={jest.fn()}
         draggingId={null}
         dragOverId={null}
-      />
+      />,
     );
 
-    const moveToTopButton = screen.queryByLabelText('Move to top');
+    const moveToTopButton = screen.queryByLabelText("Move to top");
     expect(moveToTopButton).toBeNull();
   });
 });
 
-describe('Move to Top optimistic update', () => {
-  it('should move item to the top of the list', () => {
+describe("Move to Top optimistic update", () => {
+  it("should move item to the top of the list", () => {
     const items: Item[] = [
       {
-        id: '1',
-        user_id: 'user-1',
+        id: "1",
+        user_id: "user-1",
         project_id: null,
-        title: 'First Task',
+        title: "First Task",
         description: null,
-        status: 'todo',
+        status: "todo",
         position: 0,
-        created_at: '2025-01-01T00:00:00Z',
-        updated_at: '2025-01-01T00:00:00Z',
+        created_at: "2025-01-01T00:00:00Z",
+        updated_at: "2025-01-01T00:00:00Z",
         deleted_at: null,
       },
       {
-        id: '2',
-        user_id: 'user-1',
+        id: "2",
+        user_id: "user-1",
         project_id: null,
-        title: 'Second Task',
+        title: "Second Task",
         description: null,
-        status: 'todo',
+        status: "todo",
         position: 1,
-        created_at: '2025-01-02T00:00:00Z',
-        updated_at: '2025-01-02T00:00:00Z',
+        created_at: "2025-01-02T00:00:00Z",
+        updated_at: "2025-01-02T00:00:00Z",
         deleted_at: null,
       },
       {
-        id: '3',
-        user_id: 'user-1',
+        id: "3",
+        user_id: "user-1",
         project_id: null,
-        title: 'Third Task',
+        title: "Third Task",
         description: null,
-        status: 'todo',
+        status: "todo",
         position: 2,
-        created_at: '2025-01-03T00:00:00Z',
-        updated_at: '2025-01-03T00:00:00Z',
+        created_at: "2025-01-03T00:00:00Z",
+        updated_at: "2025-01-03T00:00:00Z",
         deleted_at: null,
       },
     ];
 
     // Simulate the optimistic reorder logic
-    const itemId = '3';
-    const direction = 'top';
+    const itemId = "3";
+    const direction = "top";
     const currentIndex = items.findIndex((item) => item.id === itemId);
     const newList = [...items];
-    
-    if (direction === 'top' && currentIndex > 0) {
+
+    if (direction === "top" && currentIndex > 0) {
       const [item] = newList.splice(currentIndex, 1);
       newList.unshift(item);
     }
 
-    expect(newList[0].id).toBe('3');
-    expect(newList[1].id).toBe('1');
-    expect(newList[2].id).toBe('2');
+    expect(newList[0].id).toBe("3");
+    expect(newList[1].id).toBe("1");
+    expect(newList[2].id).toBe("2");
     expect(newList).toHaveLength(3);
   });
 
-  it('should not modify the list when item is already at the top', () => {
+  it("should not modify the list when item is already at the top", () => {
     const items: Item[] = [
       {
-        id: '1',
-        user_id: 'user-1',
+        id: "1",
+        user_id: "user-1",
         project_id: null,
-        title: 'First Task',
+        title: "First Task",
         description: null,
-        status: 'todo',
+        status: "todo",
         position: 0,
-        created_at: '2025-01-01T00:00:00Z',
-        updated_at: '2025-01-01T00:00:00Z',
+        created_at: "2025-01-01T00:00:00Z",
+        updated_at: "2025-01-01T00:00:00Z",
         deleted_at: null,
       },
       {
-        id: '2',
-        user_id: 'user-1',
+        id: "2",
+        user_id: "user-1",
         project_id: null,
-        title: 'Second Task',
+        title: "Second Task",
         description: null,
-        status: 'todo',
+        status: "todo",
         position: 1,
-        created_at: '2025-01-02T00:00:00Z',
-        updated_at: '2025-01-02T00:00:00Z',
+        created_at: "2025-01-02T00:00:00Z",
+        updated_at: "2025-01-02T00:00:00Z",
         deleted_at: null,
       },
     ];
 
     // Simulate the optimistic reorder logic for the first item
-    const itemId = '1';
-    const direction = 'top';
+    const itemId = "1";
+    const direction = "top";
     const currentIndex = items.findIndex((item) => item.id === itemId);
     const newList = [...items];
-    
-    if (direction === 'top' && currentIndex > 0) {
+
+    if (direction === "top" && currentIndex > 0) {
       const [item] = newList.splice(currentIndex, 1);
       newList.unshift(item);
     }
 
     // List should remain unchanged
-    expect(newList[0].id).toBe('1');
-    expect(newList[1].id).toBe('2');
+    expect(newList[0].id).toBe("1");
+    expect(newList[1].id).toBe("2");
     expect(newList).toHaveLength(2);
   });
 });

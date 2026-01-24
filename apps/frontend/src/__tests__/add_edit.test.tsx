@@ -23,8 +23,8 @@ jest.mock("@/lib/auth", () => ({
   logout: jest.fn(),
   getAuthHeaders: jest.fn(() => ({
     "Content-Type": "application/json",
-    "Accept": "application/json",
-    "Authorization": "Bearer test-token",
+    Accept: "application/json",
+    Authorization: "Bearer test-token",
   })),
   AuthError: class AuthError extends Error {
     errors: Record<string, string[]>;
@@ -38,7 +38,16 @@ jest.mock("@/lib/auth", () => ({
 
 jest.mock("@/lib/api", () => ({
   fetchProjects: jest.fn().mockResolvedValue([]),
-  createProject: jest.fn().mockResolvedValue({ id: "new-proj", name: "New Project", user_id: "user-1", color: null, archived_at: null, created_at: "2025-01-01T00:00:00Z", updated_at: "2025-01-01T00:00:00Z", deleted_at: null }),
+  createProject: jest.fn().mockResolvedValue({
+    id: "new-proj",
+    name: "New Project",
+    user_id: "user-1",
+    color: null,
+    archived_at: null,
+    created_at: "2025-01-01T00:00:00Z",
+    updated_at: "2025-01-01T00:00:00Z",
+    deleted_at: null,
+  }),
   fetchItems: jest.fn().mockResolvedValue([
     {
       id: "1",
@@ -93,13 +102,17 @@ const renderWithAuth = (component: React.ReactElement) => {
 describe("add/edit", () => {
   test("open add form and submit", async () => {
     renderWithAuth(<Home />);
-    
+
     // Wait for loading to complete
     await waitFor(() => {
-      expect(screen.getByRole("button", { name: /add a new task/i })).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: /add a new task/i }),
+      ).toBeInTheDocument();
     });
 
-    await userEvent.click(screen.getByRole("button", { name: /add a new task/i }));
+    await userEvent.click(
+      screen.getByRole("button", { name: /add a new task/i }),
+    );
     const field = screen.getByPlaceholderText(/^Task$/i);
     await userEvent.type(field, "New task");
     await userEvent.click(screen.getByRole("button", { name: /^add$/i }));

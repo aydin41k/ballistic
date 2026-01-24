@@ -73,7 +73,10 @@ export default function RegisterPage() {
           )}
 
           <div>
-            <label htmlFor="name" className="mb-1 block text-sm font-medium text-slate-700">
+            <label
+              htmlFor="name"
+              className="mb-1 block text-sm font-medium text-slate-700"
+            >
               Name
             </label>
             <input
@@ -94,7 +97,10 @@ export default function RegisterPage() {
           </div>
 
           <div>
-            <label htmlFor="email" className="mb-1 block text-sm font-medium text-slate-700">
+            <label
+              htmlFor="email"
+              className="mb-1 block text-sm font-medium text-slate-700"
+            >
               Email
             </label>
             <input
@@ -110,12 +116,17 @@ export default function RegisterPage() {
               placeholder="you@example.com"
             />
             {fieldErrors.email && (
-              <p className="mt-1 text-sm text-red-600">{fieldErrors.email[0]}</p>
+              <p className="mt-1 text-sm text-red-600">
+                {fieldErrors.email[0]}
+              </p>
             )}
           </div>
 
           <div>
-            <label htmlFor="password" className="mb-1 block text-sm font-medium text-slate-700">
+            <label
+              htmlFor="password"
+              className="mb-1 block text-sm font-medium text-slate-700"
+            >
               Password
             </label>
             <input
@@ -132,13 +143,20 @@ export default function RegisterPage() {
               placeholder="••••••••"
             />
             {fieldErrors.password && (
-              <p className="mt-1 text-sm text-red-600">{fieldErrors.password[0]}</p>
+              <p className="mt-1 text-sm text-red-600">
+                {fieldErrors.password[0]}
+              </p>
             )}
-            <p className="mt-1 text-xs text-slate-500">Must be at least 8 characters</p>
+            <p className="mt-1 text-xs text-slate-500">
+              Must be at least 8 characters
+            </p>
           </div>
 
           <div>
-            <label htmlFor="password_confirmation" className="mb-1 block text-sm font-medium text-slate-700">
+            <label
+              htmlFor="password_confirmation"
+              className="mb-1 block text-sm font-medium text-slate-700"
+            >
               Confirm Password
             </label>
             <input
@@ -150,12 +168,16 @@ export default function RegisterPage() {
               autoComplete="new-password"
               minLength={8}
               className={`w-full rounded-md border bg-white px-3 py-2 text-[var(--navy)] shadow-sm focus:border-[var(--blue-600)] focus:outline-none focus:ring-1 focus:ring-[var(--blue-600)] ${
-                fieldErrors.password_confirmation ? "border-red-500" : "border-slate-300"
+                fieldErrors.password_confirmation
+                  ? "border-red-500"
+                  : "border-slate-300"
               }`}
               placeholder="••••••••"
             />
             {fieldErrors.password_confirmation && (
-              <p className="mt-1 text-sm text-red-600">{fieldErrors.password_confirmation[0]}</p>
+              <p className="mt-1 text-sm text-red-600">
+                {fieldErrors.password_confirmation[0]}
+              </p>
             )}
           </div>
 
@@ -166,9 +188,24 @@ export default function RegisterPage() {
           >
             {isSubmitting ? (
               <span className="flex items-center justify-center gap-2">
-                <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                <svg
+                  className="h-4 w-4 animate-spin"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  />
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                  />
                 </svg>
                 Creating account...
               </span>
@@ -181,7 +218,10 @@ export default function RegisterPage() {
         {/* Login link */}
         <p className="mt-6 text-center text-sm text-slate-500">
           Already have an account?{" "}
-          <Link href="/login" className="font-medium text-[var(--blue-600)] hover:text-[var(--blue)]">
+          <Link
+            href="/login"
+            className="font-medium text-[var(--blue-600)] hover:text-[var(--blue)]"
+          >
             Sign in
           </Link>
         </p>
@@ -189,5 +229,3 @@ export default function RegisterPage() {
     </div>
   );
 }
-
-

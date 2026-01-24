@@ -30,7 +30,9 @@ describe("LoginPage", () => {
 
   test("renders login form when unauthenticated", () => {
     render(<LoginPage />);
-    expect(screen.getByRole("button", { name: /sign in/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /sign in/i }),
+    ).toBeInTheDocument();
     expect(replaceMock).not.toHaveBeenCalled();
   });
 
@@ -40,4 +42,3 @@ describe("LoginPage", () => {
     await waitFor(() => expect(replaceMock).toHaveBeenCalledWith("/"));
   });
 });
-

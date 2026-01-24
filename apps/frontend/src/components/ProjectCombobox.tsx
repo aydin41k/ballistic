@@ -10,7 +10,12 @@ type Props = {
   onCreateProject: (name: string) => Promise<Project>;
 };
 
-export function ProjectCombobox({ projects, value, onChange, onCreateProject }: Props) {
+export function ProjectCombobox({
+  projects,
+  value,
+  onChange,
+  onCreateProject,
+}: Props) {
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [highlightedIndex, setHighlightedIndex] = useState(0);
@@ -23,12 +28,12 @@ export function ProjectCombobox({ projects, value, onChange, onCreateProject }: 
 
   // Filter projects by search
   const filteredProjects = projects.filter((p) =>
-    p.name.toLowerCase().includes(search.toLowerCase())
+    p.name.toLowerCase().includes(search.toLowerCase()),
   );
 
   // Check if search matches an existing project exactly
   const exactMatch = projects.some(
-    (p) => p.name.toLowerCase() === search.toLowerCase()
+    (p) => p.name.toLowerCase() === search.toLowerCase(),
   );
 
   // Show "Create" option if search has text and no exact match
@@ -40,7 +45,10 @@ export function ProjectCombobox({ projects, value, onChange, onCreateProject }: 
   // Close dropdown when clicking outside
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(event.target as Node)
+      ) {
         setIsOpen(false);
         setSearch("");
       }
@@ -62,11 +70,14 @@ export function ProjectCombobox({ projects, value, onChange, onCreateProject }: 
     setHighlightedIndex(0);
   }, [search, filteredProjects.length]);
 
-  const handleSelect = useCallback((projectId: string | null) => {
-    onChange(projectId);
-    setIsOpen(false);
-    setSearch("");
-  }, [onChange]);
+  const handleSelect = useCallback(
+    (projectId: string | null) => {
+      onChange(projectId);
+      setIsOpen(false);
+      setSearch("");
+    },
+    [onChange],
+  );
 
   const handleCreate = useCallback(async () => {
     if (!search.trim() || isCreating) return;
@@ -84,44 +95,55 @@ export function ProjectCombobox({ projects, value, onChange, onCreateProject }: 
     }
   }, [search, isCreating, onCreateProject, onChange]);
 
-  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (!isOpen) {
-      if (e.key === "Enter" || e.key === " " || e.key === "ArrowDown") {
-        e.preventDefault();
-        setIsOpen(true);
-      }
-      return;
-    }
-
-    switch (e.key) {
-      case "ArrowDown":
-        e.preventDefault();
-        setHighlightedIndex((prev) => Math.min(prev + 1, totalOptions - 1));
-        break;
-      case "ArrowUp":
-        e.preventDefault();
-        setHighlightedIndex((prev) => Math.max(prev - 1, 0));
-        break;
-      case "Enter":
-        e.preventDefault();
-        // Index 0 = "No project"
-        // Index 1 to filteredProjects.length = projects
-        // Last index (if showCreateOption) = "Create" option
-        if (highlightedIndex === 0) {
-          handleSelect(null);
-        } else if (highlightedIndex <= filteredProjects.length) {
-          handleSelect(filteredProjects[highlightedIndex - 1].id);
-        } else if (showCreateOption) {
-          handleCreate();
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (!isOpen) {
+        if (e.key === "Enter" || e.key === " " || e.key === "ArrowDown") {
+          e.preventDefault();
+          setIsOpen(true);
         }
-        break;
-      case "Escape":
-        e.preventDefault();
-        setIsOpen(false);
-        setSearch("");
-        break;
-    }
-  }, [isOpen, highlightedIndex, totalOptions, filteredProjects, showCreateOption, handleSelect, handleCreate]);
+        return;
+      }
+
+      switch (e.key) {
+        case "ArrowDown":
+          e.preventDefault();
+          setHighlightedIndex((prev) => Math.min(prev + 1, totalOptions - 1));
+          break;
+        case "ArrowUp":
+          e.preventDefault();
+          setHighlightedIndex((prev) => Math.max(prev - 1, 0));
+          break;
+        case "Enter":
+          e.preventDefault();
+          // Index 0 = "No project"
+          // Index 1 to filteredProjects.length = projects
+          // Last index (if showCreateOption) = "Create" option
+          if (highlightedIndex === 0) {
+            handleSelect(null);
+          } else if (highlightedIndex <= filteredProjects.length) {
+            handleSelect(filteredProjects[highlightedIndex - 1].id);
+          } else if (showCreateOption) {
+            handleCreate();
+          }
+          break;
+        case "Escape":
+          e.preventDefault();
+          setIsOpen(false);
+          setSearch("");
+          break;
+      }
+    },
+    [
+      isOpen,
+      highlightedIndex,
+      totalOptions,
+      filteredProjects,
+      showCreateOption,
+      handleSelect,
+      handleCreate,
+    ],
+  );
 
   // Get project colour dot
   const getColourDot = (color: string | null) => {
@@ -159,7 +181,12 @@ export function ProjectCombobox({ projects, value, onChange, onCreateProject }: 
           stroke="currentColor"
           className={`text-slate-400 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
         >
-          <path d="m6 9 6 6 6-6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          <path
+            d="m6 9 6 6 6-6"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
         </svg>
       </button>
 
@@ -186,9 +213,7 @@ export function ProjectCombobox({ projects, value, onChange, onCreateProject }: 
               type="button"
               onClick={() => handleSelect(null)}
               className={`w-full flex items-center gap-2 px-3 py-2 text-sm text-left transition-colors ${
-                highlightedIndex === 0
-                  ? "bg-slate-100"
-                  : "hover:bg-slate-50"
+                highlightedIndex === 0 ? "bg-slate-100" : "hover:bg-slate-50"
               } ${value === null ? "text-[var(--blue)] font-medium" : "text-slate-600"}`}
             >
               <span className="inline-block w-2.5 h-2.5 rounded-full border border-slate-300 shrink-0" />

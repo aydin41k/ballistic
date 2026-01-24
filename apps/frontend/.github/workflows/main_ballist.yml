@@ -21,7 +21,7 @@ jobs:
       - name: Set up Node.js version
         uses: actions/setup-node@v3
         with:
-          node-version: '24.x'
+          node-version: "24.x"
 
       - name: Install dependencies
         run: npm install
@@ -55,7 +55,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: node-app
-      
+
       - name: Login to Azure
         uses: azure/login@v2
         with:
@@ -63,14 +63,13 @@ jobs:
           tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_EA4D74A6D7A241BAA947ABDB9E907E02 }}
           subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_1F0B0DD4FD02466DB3D503D9B6AC5074 }}
 
-      - name: 'Deploy to Azure Web App'
+      - name: "Deploy to Azure Web App"
         id: deploy-to-webapp
         uses: azure/webapps-deploy@v3
         with:
-          app-name: 'ballist'
-          slot-name: 'Production'
+          app-name: "ballist"
+          slot-name: "Production"
           package: .
           # Azure will run 'npm install' and 'npm run build' automatically
           # using environment variables configured in the Azure portal
-          startup-command: 'npm start'
-          
+          startup-command: "npm start"

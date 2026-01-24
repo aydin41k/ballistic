@@ -3,14 +3,27 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Item, Project } from "@/types";
-import { fetchItems, createItem, updateItem, deleteItem, saveItemOrder, fetchProjects, createProject } from "@/lib/api";
+import {
+  fetchItems,
+  createItem,
+  updateItem,
+  deleteItem,
+  saveItemOrder,
+  fetchProjects,
+  createProject,
+} from "@/lib/api";
 import { ItemRow } from "@/components/ItemRow";
 import { EmptyState } from "@/components/EmptyState";
 import { ItemForm } from "@/components/ItemForm";
 import { useAuth } from "@/contexts/AuthContext";
 
 function normaliseItemResponse(payload: Item | { data?: Item }): Item {
-  if (payload && typeof payload === "object" && "data" in payload && (payload as { data?: Item }).data) {
+  if (
+    payload &&
+    typeof payload === "object" &&
+    "data" in payload &&
+    (payload as { data?: Item }).data
+  ) {
     return (payload as { data: Item }).data;
   }
   return payload as Item;
@@ -48,7 +61,7 @@ export default function Home() {
           setProjects(projectsData);
         })
         .catch((error) => {
-          console.error('Failed to fetch data:', error);
+          console.error("Failed to fetch data:", error);
         })
         .finally(() => setLoading(false));
     }
@@ -58,13 +71,15 @@ export default function Home() {
   useEffect(() => {
     if (scrollToItemId) {
       const timer = setTimeout(() => {
-        const element = document.querySelector(`[data-item-id="${scrollToItemId}"]`);
+        const element = document.querySelector(
+          `[data-item-id="${scrollToItemId}"]`,
+        );
         if (element) {
-          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          element.scrollIntoView({ behavior: "smooth", block: "center" });
         }
         setScrollToItemId(null);
       }, 100);
-      
+
       return () => clearTimeout(timer);
     }
   }, [scrollToItemId]);
@@ -74,7 +89,7 @@ export default function Home() {
   function onRowChange(updated: Item) {
     setItems((prev) => {
       if (!Array.isArray(prev)) {
-        console.error('Previous items state is not an array:', prev);
+        console.error("Previous items state is not an array:", prev);
         return [];
       }
       return prev.map((i) => (i.id === updated.id ? updated : i));
@@ -84,7 +99,7 @@ export default function Home() {
   function onReorder(nextList: Item[]) {
     // Ensure nextList is an array before setting it
     if (!Array.isArray(nextList)) {
-      console.error('onReorder received non-array:', nextList);
+      console.error("onReorder received non-array:", nextList);
       return;
     }
     // Update UI immediately for optimistic reordering
@@ -92,15 +107,18 @@ export default function Home() {
   }
 
   // Optimistic reordering function that updates UI immediately
-  function onOptimisticReorder(itemId: string, direction: "up" | "down" | "top") {
+  function onOptimisticReorder(
+    itemId: string,
+    direction: "up" | "down" | "top",
+  ) {
     setItems((prev) => {
       try {
         // Ensure prev is always an array
         if (!Array.isArray(prev)) {
-          console.error('Previous items state is not an array:', prev);
+          console.error("Previous items state is not an array:", prev);
           return [];
         }
-        
+
         const currentIndex = prev.findIndex((item) => item.id === itemId);
         if (currentIndex === -1) {
           console.warn(`Item with id ${itemId} not found for reordering`);
@@ -110,29 +128,37 @@ export default function Home() {
         const newList = [...prev];
         if (direction === "up" && currentIndex > 0) {
           // Swap with previous item
-          [newList[currentIndex], newList[currentIndex - 1]] = [newList[currentIndex - 1], newList[currentIndex]];
+          [newList[currentIndex], newList[currentIndex - 1]] = [
+            newList[currentIndex - 1],
+            newList[currentIndex],
+          ];
         } else if (direction === "down" && currentIndex < newList.length - 1) {
           // Swap with next item
-          [newList[currentIndex], newList[currentIndex + 1]] = [newList[currentIndex + 1], newList[currentIndex]];
+          [newList[currentIndex], newList[currentIndex + 1]] = [
+            newList[currentIndex + 1],
+            newList[currentIndex],
+          ];
         } else if (direction === "top" && currentIndex > 0) {
           // Move to top - remove from current position and insert at the beginning
           const [item] = newList.splice(currentIndex, 1);
           newList.unshift(item);
         } else {
           // Invalid move direction for this item
-          console.warn(`Invalid move direction ${direction} for item at index ${currentIndex}`);
+          console.warn(
+            `Invalid move direction ${direction} for item at index ${currentIndex}`,
+          );
           return prev;
         }
-        
+
         // Ensure we're returning an array
         if (!Array.isArray(newList)) {
-          console.error('Generated newList is not an array:', newList);
+          console.error("Generated newList is not an array:", newList);
           return prev;
         }
-        
+
         return newList.map((item, index) => ({ ...item, position: index }));
       } catch (error) {
-        console.error('Error during optimistic reordering:', error);
+        console.error("Error during optimistic reordering:", error);
         // Return empty array on error to prevent crashes
         return [];
       }
@@ -148,11 +174,11 @@ export default function Home() {
     // Optimistic delete
     setItems((prev) => prev.filter((item) => item.id !== id));
     setEditing(null);
-    
+
     try {
       await deleteItem(id);
     } catch (error) {
-      console.error('Failed to delete item:', error);
+      console.error("Failed to delete item:", error);
       // Optionally refetch items to restore state
     }
   }
@@ -163,7 +189,11 @@ export default function Home() {
     return newProject;
   }
 
-  function reorderList(list: Item[], sourceId: string, targetId: string): Item[] {
+  function reorderList(
+    list: Item[],
+    sourceId: string,
+    targetId: string,
+  ): Item[] {
     const current = [...list];
     const fromIndex = current.findIndex((entry) => entry.id === sourceId);
     const toIndex = current.findIndex((entry) => entry.id === targetId);
@@ -241,7 +271,8 @@ export default function Home() {
         <header className="sticky top-0 z-10 -mx-4 bg-[var(--page-bg)]/95 px-4 pb-2 pt-3 backdrop-blur">
           <div className="flex items-center justify-between">
             <h1 className="text-lg font-semibold text-[var(--navy)]">
-              Ballistic<br/>
+              Ballistic
+              <br />
               <small>The Simplest Bullet Journal</small>
             </h1>
             <div className="w-16 h-9 bg-slate-200 rounded-md animate-pulse"></div>
@@ -258,10 +289,11 @@ export default function Home() {
         <header className="sticky top-0 z-10 -mx-4 bg-[var(--page-bg)]/95 px-4 pb-2 pt-3 backdrop-blur">
           <div className="flex items-center justify-between">
             <h1 className="text-lg font-semibold text-[var(--navy)]">
-              Ballistic<br/>
+              Ballistic
+              <br />
               <small>The Simplest Bullet Journal</small>
             </h1>
-            
+
             <div className="w-16 h-9 bg-slate-200 rounded-md animate-pulse"></div>
           </div>
         </header>
@@ -276,23 +308,36 @@ export default function Home() {
       <header className="sticky top-0 z-10 -mx-4 bg-[var(--page-bg)]/95 px-4 pb-2 pt-3 backdrop-blur">
         <div className="flex items-center justify-between">
           <h1 className="text-xl font-semibold text-[var(--navy)]">
-            Ballistic<br/>
+            Ballistic
+            <br />
             <small>The Simplest Bullet Journal</small>
           </h1>
           <button
             type="button"
             aria-label="Logout"
             onClick={() => {
-              if (confirm('Are you sure you want to logout?')) {
+              if (confirm("Are you sure you want to logout?")) {
                 handleLogout();
               }
             }}
             className="tap-target grid h-9 w-9 place-items-center rounded-md bg-white shadow-sm hover:shadow-md active:scale-95"
-            title={`Logout ${user?.name || ''}`}
+            title={`Logout ${user?.name || ""}`}
           >
             {/* logout icon */}
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" className="text-[var(--navy)]">
-              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            <svg
+              viewBox="0 0 24 24"
+              width="18"
+              height="18"
+              fill="none"
+              stroke="currentColor"
+              className="text-[var(--navy)]"
+            >
+              <path
+                d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
             </svg>
           </button>
         </div>
@@ -311,7 +356,9 @@ export default function Home() {
                 // Create optimistic item for immediate UI feedback
                 // Use a more unique temporary ID to avoid conflicts
                 const tempId = `temp-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
-                const selectedProject = v.project_id ? projects.find(p => p.id === v.project_id) : null;
+                const selectedProject = v.project_id
+                  ? projects.find((p) => p.id === v.project_id)
+                  : null;
                 const optimisticItem: Item = {
                   id: tempId, // Temporary ID
                   user_id: user?.id || "",
@@ -325,7 +372,7 @@ export default function Home() {
                   deleted_at: null,
                   project: selectedProject ?? null,
                 };
-                
+
                 // Update UI immediately and close form
                 setItems((prev) => {
                   // Ensure we're working with an array and no duplicate IDs
@@ -333,18 +380,20 @@ export default function Home() {
                     return [optimisticItem];
                   }
                   // Check for duplicate IDs before adding
-                  const hasDuplicate = prev.some(item => item.id === tempId);
+                  const hasDuplicate = prev.some((item) => item.id === tempId);
                   if (hasDuplicate) {
-                    console.warn('Duplicate ID detected, skipping optimistic item');
+                    console.warn(
+                      "Duplicate ID detected, skipping optimistic item",
+                    );
                     return prev;
                   }
                   return [...prev, optimisticItem];
                 });
                 setShowAdd(false);
-                
+
                 // Set the item to scroll to
                 setScrollToItemId(tempId);
-                
+
                 // Send API request in background (fire and forget)
                 createItem({
                   title: v.title,
@@ -352,22 +401,24 @@ export default function Home() {
                   status: "todo",
                   project_id: v.project_id,
                   position: items.length,
-                }).then((created) => {
-                  const resolvedItem = normaliseItemResponse(created);
-                  // Update the optimistic item with the real item from server
-                  setItems((prev) => {
-                    if (!Array.isArray(prev)) {
-                      return [resolvedItem];
-                    }
-                    return prev.map((item) => 
-                      item.id === tempId ? resolvedItem : item
-                    );
+                })
+                  .then((created) => {
+                    const resolvedItem = normaliseItemResponse(created);
+                    // Update the optimistic item with the real item from server
+                    setItems((prev) => {
+                      if (!Array.isArray(prev)) {
+                        return [resolvedItem];
+                      }
+                      return prev.map((item) =>
+                        item.id === tempId ? resolvedItem : item,
+                      );
+                    });
+                  })
+                  .catch((error) => {
+                    console.error("Failed to create item:", error);
+                    // Keep the optimistic item - user already sees their new task
+                    // Optionally show a subtle error notification if needed
                   });
-                }).catch((error) => {
-                  console.error('Failed to create item:', error);
-                  // Keep the optimistic item - user already sees their new task
-                  // Optionally show a subtle error notification if needed
-                });
               }}
             />
           </div>
@@ -385,7 +436,9 @@ export default function Home() {
                   onCreateProject={handleCreateProject}
                   onSubmit={async (v) => {
                     // Create optimistic update for immediate UI feedback
-                    const selectedProject = v.project_id ? projects.find(p => p.id === v.project_id) : null;
+                    const selectedProject = v.project_id
+                      ? projects.find((p) => p.id === v.project_id)
+                      : null;
                     const optimisticUpdate: Item = {
                       ...item,
                       title: v.title,
@@ -393,18 +446,22 @@ export default function Home() {
                       project_id: v.project_id ?? null,
                       project: selectedProject ?? null,
                     };
-                    
+
                     // Update UI immediately and close edit form
-                    setItems((prev) => prev.map((i) => (i.id === item.id ? optimisticUpdate : i)));
+                    setItems((prev) =>
+                      prev.map((i) =>
+                        i.id === item.id ? optimisticUpdate : i,
+                      ),
+                    );
                     setEditing(null);
-                    
+
                     // Send API request in background (fire and forget)
                     updateItem(item.id, {
                       title: v.title,
                       description: v.description || null,
                       project_id: v.project_id,
                     }).catch((error) => {
-                      console.error('Failed to update item:', error);
+                      console.error("Failed to update item:", error);
                       // Keep the optimistic update - user already sees their changes
                       // Optionally show a subtle error notification if needed
                     });
@@ -439,9 +496,13 @@ export default function Home() {
         ))}
 
         {filtered.length === 0 && !loading && (
-          <EmptyState 
+          <EmptyState
             type={items.length === 0 ? "no-items" : "no-results"}
-            message={items.length === 0 ? "Start your bullet journal journey by adding your first task!" : undefined}
+            message={
+              items.length === 0
+                ? "Start your bullet journal journey by adding your first task!"
+                : undefined
+            }
           />
         )}
       </div>
@@ -461,7 +522,14 @@ export default function Home() {
             className="tap-target grid h-11 w-11 place-items-center rounded-full bg-white shadow-sm hover:shadow-md active:scale-95"
           >
             {/* gear icon */}
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" className="text-[var(--navy)]">
+            <svg
+              viewBox="0 0 24 24"
+              width="18"
+              height="18"
+              fill="none"
+              stroke="currentColor"
+              className="text-[var(--navy)]"
+            >
               <path
                 d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Zm7.4-3.5a7.4 7.4 0 0 0-.1-1l2.1-1.6-2-3.4-2.5 1a7.6 7.6 0 0 0-1.7-1l-.4-2.6H9.2L8.8 6a7.6 7.6 0 0 0-1.7 1l-2.5-1-2 3.4 2.1 1.6a7.4 7.4 0 0 0 0 2L2.6 14l2 3.4 2.5-1a7.6 7.6 0 0 0 1.7 1l.4 2.6h5.6l.4-2.6a7.6 7.6 0 0 0 1.7-1l2.5 1 2-3.4-2.1-1.6c.1-.3.1-.7.1-1Z"
                 strokeWidth="1.4"
@@ -484,8 +552,15 @@ export default function Home() {
             className="tap-target grid h-11 w-11 place-items-center rounded-full bg-white shadow-sm hover:shadow-md active:scale-95"
           >
             {/* funnel icon */}
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" className="text-[var(--navy)]">
-              <path d="M3 5h18l-7 8v5l-4 2v-7L3 5z" strokeWidth="1.5"/>
+            <svg
+              viewBox="0 0 24 24"
+              width="18"
+              height="18"
+              fill="none"
+              stroke="currentColor"
+              className="text-[var(--navy)]"
+            >
+              <path d="M3 5h18l-7 8v5l-4 2v-7L3 5z" strokeWidth="1.5" />
             </svg>
           </button>
         </div>
