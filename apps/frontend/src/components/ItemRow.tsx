@@ -155,7 +155,7 @@ export function ItemRow({
           {optimisticItem.title}
         </div>
         {/* Project and assignment badges */}
-        <div className="flex flex-wrap gap-2 mt-1">
+        <div className="flex flex-wrap gap-1.5 mt-1">
           {projectName && (
             <span
               className={`text-xs px-2 py-0.5 rounded-full transition-colors duration-200 ${isCompleted || isCancelled ? "bg-slate-100 text-slate-300" : "bg-[var(--blue)]/10 text-[var(--blue-600)]"}`}
@@ -165,30 +165,21 @@ export function ItemRow({
           )}
           {optimisticItem.is_delegated && optimisticItem.assignee && (
             <span
-              className={`text-xs px-2 py-0.5 rounded-full transition-colors duration-200 ${isCompleted || isCancelled ? "bg-slate-100 text-slate-300" : "bg-amber-100 text-amber-700"}`}
+              className={`text-xs font-medium px-2 py-0.5 rounded-full transition-colors duration-200 ${isCompleted || isCancelled ? "bg-slate-100 text-slate-300" : "bg-amber-100 text-amber-700 border border-amber-200"}`}
             >
-              Delegated to {optimisticItem.assignee.name}
+              → {optimisticItem.assignee.name}
             </span>
           )}
           {optimisticItem.is_assigned &&
             !optimisticItem.is_delegated &&
             optimisticItem.owner && (
               <span
-                className={`text-xs px-2 py-0.5 rounded-full transition-colors duration-200 ${isCompleted || isCancelled ? "bg-slate-100 text-slate-300" : "bg-emerald-100 text-emerald-700"}`}
+                className={`text-xs font-medium px-2 py-0.5 rounded-full transition-colors duration-200 ${isCompleted || isCancelled ? "bg-slate-100 text-slate-300" : "bg-emerald-100 text-emerald-700 border border-emerald-200"}`}
               >
-                From {optimisticItem.owner.name}
+                ← {optimisticItem.owner.name}
               </span>
             )}
         </div>
-        {optimisticItem.description && (
-          <div
-            className={`text-sm mt-1 transition-colors duration-200 ${isCompleted || isCancelled ? "text-slate-300" : "text-slate-500"}`}
-          >
-            {optimisticItem.description.length > 50
-              ? `${optimisticItem.description.slice(0, 50)}...`
-              : optimisticItem.description}
-          </div>
-        )}
       </div>
 
       {/* Move controls - always visible */}

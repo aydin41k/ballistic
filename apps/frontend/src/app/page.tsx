@@ -29,8 +29,6 @@ function normaliseItemResponse(payload: Item | { data?: Item }): Item {
   return payload as Item;
 }
 
-type ViewMode = "my-tasks" | "assigned-to-me" | "delegated";
-
 export default function Home() {
   const router = useRouter();
   const { isAuthenticated, isLoading: authLoading, logout, user } = useAuth();
@@ -44,7 +42,6 @@ export default function Home() {
   const [scrollToItemId, setScrollToItemId] = useState<string | null>(null);
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [dragOverId, setDragOverId] = useState<string | null>(null);
-  const [viewMode, setViewMode] = useState<ViewMode>("my-tasks");
   const dragSourceRef = useRef<string | null>(null);
   const dragOverRef = useRef<string | null>(null);
   const dropHandledRef = useRef(false);
@@ -96,13 +93,13 @@ export default function Home() {
     }
   }, [scrollToItemId]);
 
-  // Select items based on current view mode
-  const filtered =
-    viewMode === "my-tasks"
-      ? items
-      : viewMode === "assigned-to-me"
-        ? assignedItems
-        : delegatedItems;
+  // Combine all items: my tasks, assigned to me, and delegated
+  // Assigned items come first, then my tasks, then delegated (tasks I gave to others)
+  const allItems = [
+    ...assignedItems, // Tasks assigned to me (from others)
+    ...items, // My own tasks (not delegated)
+    ...delegatedItems, // Tasks I delegated to others
+  ];
 
   function onRowChange(updated: Item) {
     setItems((prev) => {
@@ -321,7 +318,7 @@ export default function Home() {
   }
 
   return (
-    <div className="flex flex-col gap-3 pb-24">
+    <div className="flex flex-col gap-3 pb-20">
       {/* Header */}
       <header className="sticky top-0 z-10 -mx-4 bg-[var(--page-bg)]/95 px-4 pb-2 pt-3 backdrop-blur">
         <div className="flex items-center justify-between">
@@ -360,56 +357,6 @@ export default function Home() {
           </button>
         </div>
       </header>
-
-      {/* View Mode Selector */}
-      <div className="flex gap-1 p-1 bg-slate-100 rounded-lg">
-        <button
-          type="button"
-          onClick={() => setViewMode("my-tasks")}
-          className={`flex-1 px-3 py-1.5 text-sm font-medium rounded-md transition-all duration-200 ${
-            viewMode === "my-tasks"
-              ? "bg-white text-[var(--navy)] shadow-sm"
-              : "text-slate-600 hover:text-slate-800"
-          }`}
-        >
-          My Tasks
-          {items.length > 0 && (
-            <span className="ml-1 text-xs opacity-70">({items.length})</span>
-          )}
-        </button>
-        <button
-          type="button"
-          onClick={() => setViewMode("assigned-to-me")}
-          className={`flex-1 px-3 py-1.5 text-sm font-medium rounded-md transition-all duration-200 ${
-            viewMode === "assigned-to-me"
-              ? "bg-white text-[var(--navy)] shadow-sm"
-              : "text-slate-600 hover:text-slate-800"
-          }`}
-        >
-          Assigned
-          {assignedItems.length > 0 && (
-            <span className="ml-1 text-xs opacity-70">
-              ({assignedItems.length})
-            </span>
-          )}
-        </button>
-        <button
-          type="button"
-          onClick={() => setViewMode("delegated")}
-          className={`flex-1 px-3 py-1.5 text-sm font-medium rounded-md transition-all duration-200 ${
-            viewMode === "delegated"
-              ? "bg-white text-[var(--navy)] shadow-sm"
-              : "text-slate-600 hover:text-slate-800"
-          }`}
-        >
-          Delegated
-          {delegatedItems.length > 0 && (
-            <span className="ml-1 text-xs opacity-70">
-              ({delegatedItems.length})
-            </span>
-          )}
-        </button>
-      </div>
 
       {/* List */}
       <div className="flex flex-col gap-2">
@@ -504,7 +451,7 @@ export default function Home() {
         )}
 
         {/* Task Items */}
-        {filtered.map((item, index) => (
+        {allItems.map((item, index) => (
           <div key={item.id || `item-${index}`} className="flex flex-col gap-2">
             {editing?.id === item.id ? (
               <div className="rounded-md bg-white p-3 shadow-sm animate-scale-in">
@@ -574,14 +521,10 @@ export default function Home() {
           </div>
         ))}
 
-        {filtered.length === 0 && !loading && (
+        {allItems.length === 0 && !loading && (
           <EmptyState
-            type={items.length === 0 ? "no-items" : "no-results"}
-            message={
-              items.length === 0
-                ? "Start your bullet journal journey by adding your first task!"
-                : undefined
-            }
+            type="no-items"
+            message="Start your bullet journal journey by adding your first task!"
           />
         )}
       </div>
@@ -591,20 +534,20 @@ export default function Home() {
         Psycode Pty. Ltd. © {new Date().getFullYear()}
       </footer>
 
-      {/* Bottom Bar */}
-      <div className="fixed inset-x-0 bottom-0 z-20 px-4 pb-4">
-        <div className="mx-auto flex max-w-md items-center justify-between rounded-2xl bg-white/90 p-3 shadow-lg backdrop-blur h-12">
+      {/* Bottom Bar - Glassy style matching top bar */}
+      <div className="fixed inset-x-0 bottom-0 z-20 bg-[var(--page-bg)]/95 backdrop-blur border-t border-slate-200/50">
+        <div className="mx-auto flex max-w-sm items-center justify-between px-4 py-3">
           <button
             type="button"
             aria-label="Settings"
             onClick={() => alert("Settings coming soon")}
-            className="tap-target grid h-11 w-11 place-items-center rounded-full bg-white shadow-sm hover:shadow-md active:scale-95"
+            className="tap-target grid h-10 w-10 place-items-center rounded-md hover:bg-slate-100 active:scale-95 transition-all duration-200"
           >
             {/* gear icon */}
             <svg
               viewBox="0 0 24 24"
-              width="18"
-              height="18"
+              width="20"
+              height="20"
               fill="none"
               stroke="currentColor"
               className="text-[var(--navy)]"
@@ -619,22 +562,22 @@ export default function Home() {
             type="button"
             aria-label="Add a new task"
             onClick={() => setShowAdd(true)}
-            className="tap-target grid h-14 w-14 place-items-center rounded-full bg-gradient-to-b from-sky-600 to-gray-600 text-white shadow-xl hover:shadow-2xl active:scale-95"
+            className="tap-target grid h-12 w-12 place-items-center rounded-full bg-[var(--blue)] text-white shadow-md hover:shadow-lg hover:bg-[var(--blue-600)] active:scale-95 transition-all duration-200"
           >
             <span className="sr-only">Add new task...</span>
-            <span className="text-3xl leading-none">+</span>
+            <span className="text-2xl leading-none font-light">+</span>
           </button>
           <button
             type="button"
             aria-label="Filter"
             onClick={() => alert("Feature coming soon")}
-            className="tap-target grid h-11 w-11 place-items-center rounded-full bg-white shadow-sm hover:shadow-md active:scale-95"
+            className="tap-target grid h-10 w-10 place-items-center rounded-md hover:bg-slate-100 active:scale-95 transition-all duration-200"
           >
             {/* funnel icon */}
             <svg
               viewBox="0 0 24 24"
-              width="18"
-              height="18"
+              width="20"
+              height="20"
               fill="none"
               stroke="currentColor"
               className="text-[var(--navy)]"
