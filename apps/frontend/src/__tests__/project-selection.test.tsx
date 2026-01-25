@@ -269,6 +269,10 @@ describe("ItemForm with ProjectCombobox", () => {
       title: "My new task",
       description: undefined,
       project_id: "proj-1",
+      scheduled_date: null,
+      due_date: null,
+      recurrence_rule: null,
+      recurrence_strategy: null,
     });
   });
 
@@ -297,6 +301,10 @@ describe("ItemForm with ProjectCombobox", () => {
       title: "Task without project",
       description: undefined,
       project_id: null,
+      scheduled_date: null,
+      due_date: null,
+      recurrence_rule: null,
+      recurrence_strategy: null,
     });
   });
 });

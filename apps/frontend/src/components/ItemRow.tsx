@@ -22,6 +22,7 @@ type Props = {
   onDragEnd: () => void;
   draggingId: string | null;
   dragOverId: string | null;
+  onError: (message: string) => void;
 };
 
 export function ItemRow({
@@ -37,6 +38,7 @@ export function ItemRow({
   onDragEnd,
   draggingId,
   dragOverId,
+  onError,
 }: Props) {
   const [optimisticItem, addOptimistic] = useOptimistic(
     item,
@@ -90,6 +92,8 @@ export function ItemRow({
       })
       .catch((error) => {
         console.error("Failed to update status:", error);
+        onChange(item);
+        onError("Failed to update status. Change reverted.");
       });
   }
 

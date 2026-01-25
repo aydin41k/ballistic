@@ -11,7 +11,6 @@ use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Validation\Rules;
@@ -71,12 +70,7 @@ final class AuthController extends Controller
         /** @var User $user */
         $user = Auth::user();
 
-        $token = DB::transaction(function () use ($user): string {
-            // Revoke existing tokens for this device/session
-            $user->tokens()->delete();
-
-            return $user->createToken('api-token')->plainTextToken;
-        });
+        $token = $user->createToken('api-token')->plainTextToken;
 
         return response()->json([
             'message' => 'Login successful',

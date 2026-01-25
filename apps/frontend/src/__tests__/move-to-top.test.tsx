@@ -48,6 +48,7 @@ describe("Move to Top functionality", () => {
         onDragEnd={jest.fn()}
         draggingId={null}
         dragOverId={null}
+        onError={jest.fn()}
       />,
     );
 
@@ -72,6 +73,7 @@ describe("Move to Top functionality", () => {
         onDragEnd={jest.fn()}
         draggingId={null}
         dragOverId={null}
+        onError={jest.fn()}
       />,
     );
 
@@ -97,6 +99,7 @@ describe("Move to Top functionality", () => {
         onDragEnd={jest.fn()}
         draggingId={null}
         dragOverId={null}
+        onError={jest.fn()}
       />,
     );
 
@@ -124,6 +127,7 @@ describe("Move to Top functionality", () => {
         onDragEnd={jest.fn()}
         draggingId={null}
         dragOverId={null}
+        onError={jest.fn()}
       />,
     );
 

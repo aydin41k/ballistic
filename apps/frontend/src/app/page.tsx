@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Item, ItemScope, Project } from "@/types";
 import {
@@ -83,6 +83,14 @@ export default function Home() {
   const dragOverRef = useRef<string | null>(null);
   const dropHandledRef = useRef(false);
   const [viewScope, setViewScope] = useState<ItemScope>("active");
+  const [toast, setToast] = useState<string | null>(null);
+  const toastTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const showError = useCallback((message: string) => {
+    if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
+    setToast(message);
+    toastTimeoutRef.current = setTimeout(() => setToast(null), 4000);
+  }, []);
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -174,7 +182,11 @@ export default function Home() {
 
       // Persist via single bulk reorder call
       reorderItems(ordered.map((item, i) => ({ id: item.id, position: i })))
-        .catch((error) => console.error("Failed to persist reorder:", error));
+        .catch((error) => {
+          console.error("Failed to persist reorder:", error);
+          setItems(prev);
+          showError("Failed to reorder. Changes reverted.");
+        });
 
       return ordered;
     });
@@ -186,6 +198,8 @@ export default function Home() {
   }
 
   async function handleDelete(id: string) {
+    const deletedItem = items.find((item) => item.id === id);
+
     // Optimistic delete
     setItems((prev) => prev.filter((item) => item.id !== id));
     setEditing(null);
@@ -194,7 +208,12 @@ export default function Home() {
       await deleteItem(id);
     } catch (error) {
       console.error("Failed to delete item:", error);
-      // Optionally refetch items to restore state
+      if (deletedItem) {
+        setItems((prev) =>
+          [...prev, deletedItem].sort((a, b) => a.position - b.position),
+        );
+      }
+      showError("Failed to delete task. It has been restored.");
     }
   }
 
@@ -266,7 +285,11 @@ export default function Home() {
 
       // Persist via single bulk reorder call
       reorderItems(ordered.map((item, i) => ({ id: item.id, position: i })))
-        .catch((error) => console.error("Failed to persist reorder:", error));
+        .catch((error) => {
+          console.error("Failed to persist reorder:", error);
+          setItems(prev);
+          showError("Failed to reorder. Changes reverted.");
+        });
 
       return ordered;
     });
@@ -317,6 +340,25 @@ export default function Home() {
 
   return (
     <div className="flex flex-col gap-3 pb-24">
+      {/* Error toast */}
+      {toast && (
+        <div className="fixed top-4 inset-x-4 z-30 mx-auto max-w-md animate-fade-in">
+          <div className="flex items-center gap-2 rounded-md bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700 shadow-lg">
+            <span className="flex-1">{toast}</span>
+            <button
+              type="button"
+              onClick={() => setToast(null)}
+              className="shrink-0 text-red-400 hover:text-red-600 transition-colors"
+              aria-label="Dismiss"
+            >
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor">
+                <path d="M18 6 6 18M6 6l12 12" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <header className="sticky top-0 z-10 -mx-4 bg-[var(--page-bg)]/95 px-4 pb-2 pt-3 backdrop-blur">
         <div className="flex items-center justify-between">
@@ -455,8 +497,10 @@ export default function Home() {
                   })
                   .catch((error) => {
                     console.error("Failed to create item:", error);
-                    // Keep the optimistic item - user already sees their new task
-                    // Optionally show a subtle error notification if needed
+                    setItems((prev) =>
+                      prev.filter((item) => item.id !== tempId),
+                    );
+                    showError("Failed to create task. Please try again.");
                   });
               }}
             />
@@ -510,8 +554,10 @@ export default function Home() {
                       recurrence_strategy: (v.recurrence_strategy as Item["recurrence_strategy"]) ?? null,
                     }).catch((error) => {
                       console.error("Failed to update item:", error);
-                      // Keep the optimistic update - user already sees their changes
-                      // Optionally show a subtle error notification if needed
+                      setItems((prev) =>
+                        prev.map((i) => (i.id === item.id ? item : i)),
+                      );
+                      showError("Failed to update task. Changes reverted.");
                     });
                   }}
                 />
@@ -537,6 +583,7 @@ export default function Home() {
                 onDragEnd={handleDragEnd}
                 draggingId={draggingId}
                 dragOverId={dragOverId}
+                onError={showError}
               />
             )}
           </div>

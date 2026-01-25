@@ -60,6 +60,7 @@ describe("ItemRow", () => {
         onDragEnd={onDragEnd}
         draggingId={null}
         dragOverId={null}
+        onError={jest.fn()}
       />,
     );
 
@@ -93,6 +94,7 @@ describe("ItemRow", () => {
         onDragEnd={onDragEnd}
         draggingId={null}
         dragOverId={null}
+        onError={jest.fn()}
       />,
     );
 

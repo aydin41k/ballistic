@@ -1,8 +1,7 @@
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import Home from "@/app/page";
 import { AuthProvider } from "@/contexts/AuthContext";
-import type { Item } from "@/types";
-import { saveItemOrder } from "@/lib/api";
+import { reorderItems } from "@/lib/api";
 
 // Mock auth
 jest.mock("@/lib/auth", () => ({
@@ -110,9 +109,7 @@ jest.mock("@/lib/api", () => ({
       deleted_at: null,
     },
   ]),
-  saveItemOrder: jest
-    .fn()
-    .mockImplementation(async (ordered: Item[]) => ordered),
+  reorderItems: jest.fn().mockResolvedValue(undefined),
 }));
 
 // Mock next/navigation
@@ -154,7 +151,7 @@ describe("Drag and drop ordering", () => {
     fireEvent.dragEnd(secondRow, { dataTransfer });
 
     await waitFor(() => {
-      expect(saveItemOrder as jest.Mock).toHaveBeenCalled();
+      expect(reorderItems as jest.Mock).toHaveBeenCalled();
     });
 
     await waitFor(() => {

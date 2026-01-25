@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.1] - 2026-01-26
+
+### Fixed
+
+#### Optimistic UI Error Recovery
+- **Create item**: On backend failure, the phantom optimistic item is removed from the list and the user is notified via an error toast
+- **Update item**: On backend failure, the item reverts to its pre-edit state and the user is notified
+- **Delete item**: On backend failure, the deleted item is restored to its original position and the user is notified
+- **Reorder (move buttons + drag-and-drop)**: On backend failure, the list reverts to its pre-reorder order and the user is notified
+- **Status toggle**: On backend failure, the item reverts to its original status and the user is notified
+- Added auto-dismissing error toast banner (4 seconds) with manual dismiss
+
+#### Multi-Device Login
+- Login no longer revokes all existing user tokens — each device gets its own session
+- Logging in from a new device no longer signs out existing sessions
+- Logout still correctly revokes only the current device's token
+
+### Tests
+- Updated `test_login_preserves_existing_tokens` to verify old tokens remain valid after a new login
+- Updated frontend Jest tests for new `recurrence_*` fields in form submissions and API calls
+- Added `onError` prop to ItemRow test renders
+- Fixed drag-reorder test to use `reorderItems` instead of removed `saveItemOrder`
+- Backend: 115 tests (368 assertions); Frontend: 40 tests
+
 ## [0.7.0] - 2026-01-26
 
 ### Added
