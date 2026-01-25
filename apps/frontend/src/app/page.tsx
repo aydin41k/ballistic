@@ -2,13 +2,13 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import type { Item, Project } from "@/types";
+import type { Item, ItemScope, Project } from "@/types";
 import {
   fetchItems,
   createItem,
   updateItem,
   deleteItem,
-  saveItemOrder,
+  reorderItems,
   fetchProjects,
   createProject,
 } from "@/lib/api";
@@ -29,6 +29,45 @@ function normaliseItemResponse(payload: Item | { data?: Item }): Item {
   return payload as Item;
 }
 
+function getUrgencyRank(
+  item: Item,
+  todayStr: string,
+  in72hMs: number,
+): number {
+  if (!item.due_date) return 4; // No deadline = lowest priority
+
+  const dueMs = new Date(item.due_date + "T23:59:59").getTime();
+
+  if (item.due_date < todayStr) return 1; // Overdue
+  if (dueMs <= in72hMs) return 2; // Due within 72 hours
+  return 3; // Has deadline, not urgent yet
+}
+
+function sortByUrgency(items: Item[]): Item[] {
+  const now = new Date();
+  const todayStr = now.toISOString().split("T")[0]; // YYYY-MM-DD
+  const in72hMs = now.getTime() + 72 * 60 * 60 * 1000;
+
+  return [...items].sort((a, b) => {
+    const urgencyA = getUrgencyRank(a, todayStr, in72hMs);
+    const urgencyB = getUrgencyRank(b, todayStr, in72hMs);
+
+    if (urgencyA !== urgencyB) {
+      return urgencyA - urgencyB; // Lower rank = higher priority
+    }
+
+    // Within the same urgency tier, sort by due_date ascending (nearest deadline first)
+    if (a.due_date && b.due_date) {
+      return a.due_date.localeCompare(b.due_date);
+    }
+    if (a.due_date) return -1;
+    if (b.due_date) return 1;
+
+    // Finally, fall back to position
+    return a.position - b.position;
+  });
+}
+
 export default function Home() {
   const router = useRouter();
   const { isAuthenticated, isLoading: authLoading, logout, user } = useAuth();
@@ -43,6 +82,7 @@ export default function Home() {
   const dragSourceRef = useRef<string | null>(null);
   const dragOverRef = useRef<string | null>(null);
   const dropHandledRef = useRef(false);
+  const [viewScope, setViewScope] = useState<ItemScope>("active");
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -55,7 +95,7 @@ export default function Home() {
   useEffect(() => {
     if (isAuthenticated) {
       setLoading(true);
-      Promise.all([fetchItems(), fetchProjects()])
+      Promise.all([fetchItems({ scope: viewScope }), fetchProjects()])
         .then(([itemsData, projectsData]) => {
           setItems(itemsData);
           setProjects(projectsData);
@@ -65,14 +105,14 @@ export default function Home() {
         })
         .finally(() => setLoading(false));
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, viewScope]);
 
   // Handle scrolling to newly added items
   useEffect(() => {
     if (scrollToItemId) {
       const timer = setTimeout(() => {
         const element = document.querySelector(
-          `[data-item-id="${scrollToItemId}"]`,
+          `[data-item-id="${CSS.escape(scrollToItemId)}"]`,
         );
         if (element) {
           element.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -84,84 +124,59 @@ export default function Home() {
     }
   }, [scrollToItemId]);
 
-  const filtered = items;
+  const filtered = sortByUrgency(items);
 
-  function onRowChange(updated: Item) {
+  function onRowChange(itemOrUpdater: Item | ((current: Item) => Item)) {
     setItems((prev) => {
-      if (!Array.isArray(prev)) {
-        console.error("Previous items state is not an array:", prev);
-        return [];
+      if (!Array.isArray(prev)) return [];
+      if (typeof itemOrUpdater === "function") {
+        return prev.map(itemOrUpdater);
       }
-      return prev.map((i) => (i.id === updated.id ? updated : i));
+      return prev.map((i) =>
+        i.id === itemOrUpdater.id ? itemOrUpdater : i,
+      );
     });
   }
 
-  function onReorder(nextList: Item[]) {
-    // Ensure nextList is an array before setting it
-    if (!Array.isArray(nextList)) {
-      console.error("onReorder received non-array:", nextList);
-      return;
-    }
-    // Update UI immediately for optimistic reordering
-    setItems(nextList.map((item, index) => ({ ...item, position: index })));
-  }
-
-  // Optimistic reordering function that updates UI immediately
+  // Optimistic reordering function that updates UI immediately and persists via bulk API
   function onOptimisticReorder(
     itemId: string,
     direction: "up" | "down" | "top",
   ) {
     setItems((prev) => {
-      try {
-        // Ensure prev is always an array
-        if (!Array.isArray(prev)) {
-          console.error("Previous items state is not an array:", prev);
-          return [];
-        }
+      if (!Array.isArray(prev)) return [];
 
-        const currentIndex = prev.findIndex((item) => item.id === itemId);
-        if (currentIndex === -1) {
-          console.warn(`Item with id ${itemId} not found for reordering`);
-          return prev;
-        }
+      const currentIndex = prev.findIndex((item) => item.id === itemId);
+      if (currentIndex === -1) return prev;
 
-        const newList = [...prev];
-        if (direction === "up" && currentIndex > 0) {
-          // Swap with previous item
-          [newList[currentIndex], newList[currentIndex - 1]] = [
-            newList[currentIndex - 1],
-            newList[currentIndex],
-          ];
-        } else if (direction === "down" && currentIndex < newList.length - 1) {
-          // Swap with next item
-          [newList[currentIndex], newList[currentIndex + 1]] = [
-            newList[currentIndex + 1],
-            newList[currentIndex],
-          ];
-        } else if (direction === "top" && currentIndex > 0) {
-          // Move to top - remove from current position and insert at the beginning
-          const [item] = newList.splice(currentIndex, 1);
-          newList.unshift(item);
-        } else {
-          // Invalid move direction for this item
-          console.warn(
-            `Invalid move direction ${direction} for item at index ${currentIndex}`,
-          );
-          return prev;
-        }
-
-        // Ensure we're returning an array
-        if (!Array.isArray(newList)) {
-          console.error("Generated newList is not an array:", newList);
-          return prev;
-        }
-
-        return newList.map((item, index) => ({ ...item, position: index }));
-      } catch (error) {
-        console.error("Error during optimistic reordering:", error);
-        // Return empty array on error to prevent crashes
-        return [];
+      const newList = [...prev];
+      if (direction === "up" && currentIndex > 0) {
+        [newList[currentIndex], newList[currentIndex - 1]] = [
+          newList[currentIndex - 1],
+          newList[currentIndex],
+        ];
+      } else if (direction === "down" && currentIndex < newList.length - 1) {
+        [newList[currentIndex], newList[currentIndex + 1]] = [
+          newList[currentIndex + 1],
+          newList[currentIndex],
+        ];
+      } else if (direction === "top" && currentIndex > 0) {
+        const [item] = newList.splice(currentIndex, 1);
+        newList.unshift(item);
+      } else {
+        return prev;
       }
+
+      const ordered = newList.map((item, index) => ({
+        ...item,
+        position: index,
+      }));
+
+      // Persist via single bulk reorder call
+      reorderItems(ordered.map((item, i) => ({ id: item.id, position: i })))
+        .catch((error) => console.error("Failed to persist reorder:", error));
+
+      return ordered;
     });
   }
 
@@ -240,9 +255,7 @@ export default function Home() {
     dropHandledRef.current = true;
 
     setItems((prev) => {
-      if (!Array.isArray(prev)) {
-        return [];
-      }
+      if (!Array.isArray(prev)) return [];
 
       const sourceId = draggingId;
 
@@ -251,9 +264,9 @@ export default function Home() {
           ? reorderList(prev, sourceId, targetId)
           : prev.map((entry, position) => ({ ...entry, position }));
 
-      saveItemOrder(ordered).catch((error) => {
-        console.error("Failed to save item order:", error);
-      });
+      // Persist via single bulk reorder call
+      reorderItems(ordered.map((item, i) => ({ id: item.id, position: i })))
+        .catch((error) => console.error("Failed to persist reorder:", error));
 
       return ordered;
     });
@@ -343,6 +356,20 @@ export default function Home() {
         </div>
       </header>
 
+      {/* Planned view banner */}
+      {viewScope === "planned" && (
+        <div className="flex items-center justify-between rounded-md bg-sky-50 px-3 py-2 text-sm text-sky-700 border border-sky-200">
+          <span>Showing planned items (future scheduled dates)</span>
+          <button
+            type="button"
+            onClick={() => setViewScope("active")}
+            className="text-xs font-medium text-sky-600 hover:text-sky-800 underline"
+          >
+            Back to active
+          </button>
+        </div>
+      )}
+
       {/* List */}
       <div className="flex flex-col gap-2">
         {showAdd && (
@@ -367,6 +394,14 @@ export default function Home() {
                   description: v.description || null,
                   status: "todo",
                   position: items.length,
+                  scheduled_date: v.scheduled_date ?? null,
+                  due_date: v.due_date ?? null,
+                  completed_at: null,
+                  recurrence_rule: v.recurrence_rule ?? null,
+                  recurrence_parent_id: null,
+                  recurrence_strategy: (v.recurrence_strategy as Item["recurrence_strategy"]) ?? null,
+                  is_recurring_template: !!v.recurrence_rule,
+                  is_recurring_instance: false,
                   created_at: new Date().toISOString(),
                   updated_at: new Date().toISOString(),
                   deleted_at: null,
@@ -401,6 +436,10 @@ export default function Home() {
                   status: "todo",
                   project_id: v.project_id,
                   position: items.length,
+                  scheduled_date: v.scheduled_date,
+                  due_date: v.due_date,
+                  recurrence_rule: v.recurrence_rule,
+                  recurrence_strategy: v.recurrence_strategy,
                 })
                   .then((created) => {
                     const resolvedItem = normaliseItemResponse(created);
@@ -445,6 +484,11 @@ export default function Home() {
                       description: v.description || null,
                       project_id: v.project_id ?? null,
                       project: selectedProject ?? null,
+                      scheduled_date: v.scheduled_date ?? null,
+                      due_date: v.due_date ?? null,
+                      recurrence_rule: v.recurrence_rule ?? null,
+                      recurrence_strategy: (v.recurrence_strategy as Item["recurrence_strategy"]) ?? null,
+                      is_recurring_template: !!v.recurrence_rule,
                     };
 
                     // Update UI immediately and close edit form
@@ -460,6 +504,10 @@ export default function Home() {
                       title: v.title,
                       description: v.description || null,
                       project_id: v.project_id,
+                      scheduled_date: v.scheduled_date,
+                      due_date: v.due_date,
+                      recurrence_rule: v.recurrence_rule,
+                      recurrence_strategy: (v.recurrence_strategy as Item["recurrence_strategy"]) ?? null,
                     }).catch((error) => {
                       console.error("Failed to update item:", error);
                       // Keep the optimistic update - user already sees their changes
@@ -479,7 +527,6 @@ export default function Home() {
               <ItemRow
                 item={item}
                 onChange={onRowChange}
-                onReorder={onReorder}
                 onOptimisticReorder={onOptimisticReorder}
                 index={index}
                 onEdit={() => setEditing(item)}
@@ -547,9 +594,15 @@ export default function Home() {
           </button>
           <button
             type="button"
-            aria-label="Filter"
-            onClick={() => alert("Feature coming soon")}
-            className="tap-target grid h-11 w-11 place-items-center rounded-full bg-white shadow-sm hover:shadow-md active:scale-95"
+            aria-label={
+              viewScope === "planned"
+                ? "Show active items"
+                : "Show planned items"
+            }
+            onClick={() =>
+              setViewScope(viewScope === "active" ? "planned" : "active")
+            }
+            className={`tap-target grid h-11 w-11 place-items-center rounded-full shadow-sm hover:shadow-md active:scale-95 ${viewScope === "planned" ? "bg-[var(--blue)] text-white" : "bg-white"}`}
           >
             {/* funnel icon */}
             <svg
@@ -558,7 +611,9 @@ export default function Home() {
               height="18"
               fill="none"
               stroke="currentColor"
-              className="text-[var(--navy)]"
+              className={
+                viewScope === "planned" ? "text-white" : "text-[var(--navy)]"
+              }
             >
               <path d="M3 5h18l-7 8v5l-4 2v-7L3 5z" strokeWidth="1.5" />
             </svg>

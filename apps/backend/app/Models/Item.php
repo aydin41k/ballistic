@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -31,6 +32,7 @@ final class Item extends Model
         'due_date',
         'completed_at',
         'recurrence_rule',
+        'recurrence_strategy',
         'recurrence_parent_id',
     ];
 
@@ -107,5 +109,36 @@ final class Item extends Model
     public function isRecurringInstance(): bool
     {
         return $this->recurrence_parent_id !== null;
+    }
+
+    /**
+     * Scope to only return active items (not scheduled for the future).
+     * Items with no scheduled_date or scheduled_date <= today are included.
+     */
+    public function scopeActive(Builder $query): Builder
+    {
+        return $query->where(function (Builder $q): void {
+            $q->whereNull('scheduled_date')
+                ->orWhereDate('scheduled_date', '<=', now());
+        });
+    }
+
+    /**
+     * Scope to only return items scheduled in the future.
+     */
+    public function scopePlanned(Builder $query): Builder
+    {
+        return $query->whereNotNull('scheduled_date')
+            ->whereDate('scheduled_date', '>', now());
+    }
+
+    /**
+     * Scope to return items that are overdue (due_date is in the past, not completed).
+     */
+    public function scopeOverdue(Builder $query): Builder
+    {
+        return $query->whereNotNull('due_date')
+            ->whereDate('due_date', '<', now())
+            ->whereNotIn('status', ['done', 'wontdo']);
     }
 }

@@ -1,8 +1,17 @@
 "use client";
 
-import type { Item, Project } from "@/types";
+import type { Item, Project, RecurrencePreset } from "@/types";
+import { RECURRENCE_PRESET_RULES } from "@/types";
 import { useState } from "react";
 import { ProjectCombobox } from "./ProjectCombobox";
+
+function derivePreset(rule: string | null | undefined): RecurrencePreset {
+  if (!rule) return "none";
+  for (const [key, value] of Object.entries(RECURRENCE_PRESET_RULES)) {
+    if (value === rule) return key as RecurrencePreset;
+  }
+  return "none";
+}
 
 type Props = {
   initial?: Partial<Item>;
@@ -10,6 +19,10 @@ type Props = {
     title: string;
     description?: string;
     project_id?: string | null;
+    scheduled_date?: string | null;
+    due_date?: string | null;
+    recurrence_rule?: string | null;
+    recurrence_strategy?: string | null;
   }) => void;
   onCancel: () => void;
   submitLabel?: string;
@@ -30,6 +43,16 @@ export function ItemForm({
   const [projectId, setProjectId] = useState<string | null>(
     initial?.project_id ?? null,
   );
+  const [scheduledDate, setScheduledDate] = useState<string>(
+    initial?.scheduled_date ?? "",
+  );
+  const [dueDate, setDueDate] = useState<string>(initial?.due_date ?? "");
+  const [recurrencePreset, setRecurrencePreset] = useState<RecurrencePreset>(
+    derivePreset(initial?.recurrence_rule),
+  );
+  const [recurrenceStrategy, setRecurrenceStrategy] = useState<string>(
+    initial?.recurrence_strategy ?? "carry_over",
+  );
   const [showMoreSettings, setShowMoreSettings] = useState(!!initial); // Open by default for edit mode
 
   return (
@@ -41,6 +64,11 @@ export function ItemForm({
           title,
           description: description || undefined,
           project_id: projectId,
+          scheduled_date: scheduledDate || null,
+          due_date: dueDate || null,
+          recurrence_rule: RECURRENCE_PRESET_RULES[recurrencePreset],
+          recurrence_strategy:
+            recurrencePreset !== "none" ? recurrenceStrategy : null,
         });
       }}
     >
@@ -115,6 +143,82 @@ export function ItemForm({
                 onChange={(e) => setDescription(e.target.value)}
               />
             </div>
+
+            {/* Scheduled Date */}
+            <div>
+              <label className="block text-xs font-medium text-slate-500 mb-1">
+                Scheduled date
+              </label>
+              <input
+                type="date"
+                className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm transition-all duration-200 focus:border-[var(--blue)] focus:ring-2 focus:ring-[var(--blue)]/20 focus:outline-none"
+                value={scheduledDate}
+                onChange={(e) => setScheduledDate(e.target.value)}
+              />
+              <p className="mt-1 text-xs text-slate-400">
+                Item will appear on this date. Leave empty for immediate
+                visibility.
+              </p>
+            </div>
+
+            {/* Due Date */}
+            <div>
+              <label className="block text-xs font-medium text-slate-500 mb-1">
+                Due date
+              </label>
+              <input
+                type="date"
+                className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm transition-all duration-200 focus:border-[var(--blue)] focus:ring-2 focus:ring-[var(--blue)]/20 focus:outline-none"
+                value={dueDate}
+                onChange={(e) => setDueDate(e.target.value)}
+                min={scheduledDate || undefined}
+              />
+              <p className="mt-1 text-xs text-slate-400">
+                Deadline for this item.
+              </p>
+            </div>
+
+            {/* Repeat */}
+            <div>
+              <label className="block text-xs font-medium text-slate-500 mb-1">
+                Repeat
+              </label>
+              <select
+                className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm transition-all duration-200 focus:border-[var(--blue)] focus:ring-2 focus:ring-[var(--blue)]/20 focus:outline-none"
+                value={recurrencePreset}
+                onChange={(e) =>
+                  setRecurrencePreset(e.target.value as RecurrencePreset)
+                }
+              >
+                <option value="none">None</option>
+                <option value="daily">Daily</option>
+                <option value="weekdays">Weekdays (Mon–Fri)</option>
+                <option value="weekly">Weekly</option>
+                <option value="monthly">Monthly</option>
+              </select>
+            </div>
+
+            {/* If missed — only shown when repeat is set */}
+            {recurrencePreset !== "none" && (
+              <div>
+                <label className="block text-xs font-medium text-slate-500 mb-1">
+                  If missed
+                </label>
+                <select
+                  className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm transition-all duration-200 focus:border-[var(--blue)] focus:ring-2 focus:ring-[var(--blue)]/20 focus:outline-none"
+                  value={recurrenceStrategy}
+                  onChange={(e) => setRecurrenceStrategy(e.target.value)}
+                >
+                  <option value="carry_over">Carries over until done</option>
+                  <option value="expires">Expires if missed</option>
+                </select>
+                <p className="mt-1 text-xs text-slate-400">
+                  {recurrenceStrategy === "expires"
+                    ? "Past occurrences are automatically skipped."
+                    : "Past occurrences stay overdue until completed."}
+                </p>
+              </div>
+            )}
           </div>
         )}
       </div>

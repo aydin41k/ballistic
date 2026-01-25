@@ -28,11 +28,21 @@ export interface Item {
   description: string | null;
   status: Status;
   position: number;
+  scheduled_date: string | null;
+  due_date: string | null;
+  completed_at: string | null;
+  recurrence_rule: string | null;
+  recurrence_parent_id: string | null;
+  recurrence_strategy: "expires" | "carry_over" | null;
+  is_recurring_template: boolean;
+  is_recurring_instance: boolean;
   created_at: string;
   updated_at: string;
   deleted_at: string | null;
   project?: Project | null;
 }
+
+export type ItemScope = "active" | "planned" | "all";
 
 export interface AuthResponse {
   message: string;
@@ -44,3 +54,13 @@ export interface ValidationError {
   message: string;
   errors: Record<string, string[]>;
 }
+
+export type RecurrencePreset = "none" | "daily" | "weekdays" | "weekly" | "monthly";
+
+export const RECURRENCE_PRESET_RULES: Record<RecurrencePreset, string | null> = {
+  none: null,
+  daily: "FREQ=DAILY",
+  weekdays: "FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR",
+  weekly: "FREQ=WEEKLY",
+  monthly: "FREQ=MONTHLY",
+};

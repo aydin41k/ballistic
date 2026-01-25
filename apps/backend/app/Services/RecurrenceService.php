@@ -6,6 +6,7 @@ namespace App\Services;
 
 use App\Models\Item;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 use DateInterval;
 use DatePeriod;
 use DateTime;
@@ -85,7 +86,7 @@ final class RecurrenceService
                 $occurrenceCount++;
             }
 
-            $current = $this->advanceDate($current, $freq, $interval);
+            $current = $this->advanceDate($current, $freq, $interval, $rule);
         }
 
         return $occurrences;
@@ -139,15 +140,30 @@ final class RecurrenceService
 
     /**
      * Advance a date based on frequency.
+     *
+     * @param array<string, mixed> $rule Parsed RRULE components
      */
-    private function advanceDate(Carbon $date, string $freq, int $interval): Carbon
+    private function advanceDate(Carbon $date, string $freq, int $interval, array $rule = []): Carbon
     {
+        // When FREQ=WEEKLY with BYDAY, step day-by-day so every specified
+        // weekday within the week is visited. At the Monday week boundary,
+        // honour INTERVAL by skipping (interval - 1) additional weeks.
+        if ($freq === 'WEEKLY' && isset($rule['BYDAY'])) {
+            $next = $date->copy()->addDay();
+
+            if ($next->dayOfWeek === Carbon::MONDAY && $interval > 1) {
+                $next->addWeeks($interval - 1);
+            }
+
+            return $next;
+        }
+
         return match ($freq) {
-            'DAILY' => $date->addDays($interval),
-            'WEEKLY' => $date->addWeeks($interval),
-            'MONTHLY' => $date->addMonths($interval),
-            'YEARLY' => $date->addYears($interval),
-            default => $date->addDays($interval),
+            'DAILY' => $date->copy()->addDays($interval),
+            'WEEKLY' => $date->copy()->addWeeks($interval),
+            'MONTHLY' => $date->copy()->addMonths($interval),
+            'YEARLY' => $date->copy()->addYears($interval),
+            default => $date->copy()->addDays($interval),
         };
     }
 
@@ -171,41 +187,44 @@ final class RecurrenceService
             $endDate
         );
 
-        $instances = [];
+        return DB::transaction(function () use ($templateItem, $occurrences): array {
+            $instances = [];
 
-        foreach ($occurrences as $date) {
-            // Check if an instance already exists for this date
-            $existingInstance = Item::where('recurrence_parent_id', $templateItem->id)
-                ->whereDate('scheduled_date', $date)
-                ->first();
+            foreach ($occurrences as $date) {
+                // Check if an instance already exists for this date
+                $existingInstance = Item::where('recurrence_parent_id', $templateItem->id)
+                    ->whereDate('scheduled_date', $date)
+                    ->first();
 
-            if ($existingInstance) {
-                $instances[] = $existingInstance;
-                continue;
+                if ($existingInstance) {
+                    $instances[] = $existingInstance;
+                    continue;
+                }
+
+                // Create a new instance
+                $instance = Item::create([
+                    'user_id' => $templateItem->user_id,
+                    'project_id' => $templateItem->project_id,
+                    'title' => $templateItem->title,
+                    'description' => $templateItem->description,
+                    'status' => 'todo',
+                    'position' => $templateItem->position,
+                    'scheduled_date' => $date,
+                    'due_date' => $templateItem->due_date ? $date : null,
+                    'recurrence_parent_id' => $templateItem->id,
+                    'recurrence_strategy' => $templateItem->recurrence_strategy,
+                ]);
+
+                // Copy tags from template
+                if ($templateItem->tags->isNotEmpty()) {
+                    $instance->tags()->sync($templateItem->tags->pluck('id'));
+                }
+
+                $instances[] = $instance;
             }
 
-            // Create a new instance
-            $instance = Item::create([
-                'user_id' => $templateItem->user_id,
-                'project_id' => $templateItem->project_id,
-                'title' => $templateItem->title,
-                'description' => $templateItem->description,
-                'status' => 'todo',
-                'position' => $templateItem->position,
-                'scheduled_date' => $date,
-                'due_date' => $templateItem->due_date ? $date : null,
-                'recurrence_parent_id' => $templateItem->id,
-            ]);
-
-            // Copy tags from template
-            if ($templateItem->tags->isNotEmpty()) {
-                $instance->tags()->sync($templateItem->tags->pluck('id'));
-            }
-
-            $instances[] = $instance;
-        }
-
-        return $instances;
+            return $instances;
+        });
     }
 
     /**

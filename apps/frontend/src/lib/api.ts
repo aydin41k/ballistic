@@ -1,4 +1,4 @@
-import type { Item, Project, Status } from "@/types";
+import type { Item, ItemScope, Project, Status } from "@/types";
 import { getAuthHeaders, clearToken } from "./auth";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "";
@@ -6,6 +6,7 @@ const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "";
 type ListParams = {
   project_id?: string;
   status?: Status | "all";
+  scope?: ItemScope;
 };
 
 /**
@@ -80,6 +81,7 @@ export async function fetchItems(params?: ListParams): Promise<Item[]> {
   const url = buildUrl("/api/items", {
     project_id: params?.project_id,
     status: params?.status !== "all" ? params?.status : undefined,
+    scope: params?.scope,
   });
 
   const response = await fetch(url, {
@@ -121,6 +123,10 @@ export async function createItem(payload: {
   status: Status;
   project_id?: string | null;
   position?: number;
+  scheduled_date?: string | null;
+  due_date?: string | null;
+  recurrence_rule?: string | null;
+  recurrence_strategy?: string | null;
 }): Promise<Item> {
   const response = await fetch(buildUrl("/api/items"), {
     method: "POST",
@@ -131,6 +137,10 @@ export async function createItem(payload: {
       status: payload.status,
       project_id: payload.project_id || null,
       position: payload.position ?? 0,
+      scheduled_date: payload.scheduled_date || null,
+      due_date: payload.due_date || null,
+      recurrence_rule: payload.recurrence_rule || null,
+      recurrence_strategy: payload.recurrence_strategy || null,
     }),
   });
 
@@ -139,76 +149,21 @@ export async function createItem(payload: {
 }
 
 /**
- * Move an item (reorder)
- * Note: The backend uses position field, so we need to calculate new positions
+ * Bulk-reorder items via the dedicated reorder endpoint.
+ * Sends a single POST instead of N individual PATCH requests.
  */
-export async function moveItem(
-  id: string,
-  direction: "up" | "down" | "top",
-): Promise<Item[]> {
-  // For now, we'll fetch the current list and recalculate positions client-side
-  // In a more robust implementation, the backend would handle this
-  const items = await fetchItems();
-  const currentIndex = items.findIndex((item) => item.id === id);
+export async function reorderItems(
+  orderedItems: { id: string; position: number }[],
+): Promise<void> {
+  if (orderedItems.length === 0) return;
 
-  if (currentIndex === -1) {
-    return items;
-  }
+  const response = await fetch(buildUrl("/api/items/reorder"), {
+    method: "POST",
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ items: orderedItems }),
+  });
 
-  const newItems = [...items];
-
-  if (direction === "up" && currentIndex > 0) {
-    [newItems[currentIndex], newItems[currentIndex - 1]] = [
-      newItems[currentIndex - 1],
-      newItems[currentIndex],
-    ];
-  } else if (direction === "down" && currentIndex < newItems.length - 1) {
-    [newItems[currentIndex], newItems[currentIndex + 1]] = [
-      newItems[currentIndex + 1],
-      newItems[currentIndex],
-    ];
-  } else if (direction === "top" && currentIndex > 0) {
-    const [item] = newItems.splice(currentIndex, 1);
-    newItems.unshift(item);
-  }
-
-  // Update positions on the backend
-  await Promise.all(
-    newItems.map((item, index) =>
-      fetch(buildUrl(`/api/items/${item.id}`), {
-        method: "PATCH",
-        headers: getAuthHeaders(),
-        body: JSON.stringify({ position: index }),
-      }),
-    ),
-  );
-
-  return newItems.map((item, index) => ({ ...item, position: index }));
-}
-
-/**
- * Persist an explicit item order by position.
- */
-export async function saveItemOrder(orderedItems: Item[]): Promise<Item[]> {
-  if (!Array.isArray(orderedItems) || orderedItems.length === 0) {
-    return [];
-  }
-
-  const validItems = orderedItems.filter((item): item is Item =>
-    Boolean(item?.id),
-  );
-
-  await Promise.all(
-    validItems.map((item, index) =>
-      fetch(buildUrl(`/api/items/${item.id}`), {
-        method: "PATCH",
-        headers: getAuthHeaders(),
-        body: JSON.stringify({ position: index }),
-      }),
-    ),
-  );
-
-  return validItems.map((item, index) => ({ ...item, position: index }));
+  await handleResponse<{ message: string }>(response);
 }
 
 /**
@@ -217,7 +172,17 @@ export async function saveItemOrder(orderedItems: Item[]): Promise<Item[]> {
 export async function updateItem(
   id: string,
   fields: Partial<
-    Pick<Item, "title" | "description" | "project_id" | "position">
+    Pick<
+      Item,
+      | "title"
+      | "description"
+      | "project_id"
+      | "position"
+      | "scheduled_date"
+      | "due_date"
+      | "recurrence_rule"
+      | "recurrence_strategy"
+    >
   >,
 ): Promise<Item> {
   const response = await fetch(buildUrl(`/api/items/${id}`), {

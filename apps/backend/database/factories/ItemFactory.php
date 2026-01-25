@@ -31,6 +31,7 @@ final class ItemFactory extends Factory
             'due_date' => null,
             'completed_at' => null,
             'recurrence_rule' => null,
+            'recurrence_strategy' => null,
             'recurrence_parent_id' => null,
         ];
     }
@@ -89,6 +90,27 @@ final class ItemFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'recurrence_rule' => $rule,
+        ]);
+    }
+
+    /**
+     * Create an item that is overdue.
+     */
+    public function overdue(int $daysAgo = 3): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'due_date' => now()->subDays($daysAgo)->toDateString(),
+            'status' => 'todo',
+        ]);
+    }
+
+    /**
+     * Create an item scheduled for the future.
+     */
+    public function futureScheduled(int $daysAhead = 7): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'scheduled_date' => now()->addDays($daysAhead)->toDateString(),
         ]);
     }
 }

@@ -5,6 +5,142 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.0] - 2026-01-26
+
+### Added
+
+#### Recurring Items — Frontend & Expiry Strategy
+- **Recurrence UI**: ItemForm now includes a "Repeat" dropdown (None, Daily, Weekdays, Weekly, Monthly) and an "If missed" dropdown (Carries over until done / Expires if missed), shown inside the collapsible "More settings" section
+- **Recurrence Indicator**: ItemRow displays a small repeat/loop icon next to the title for recurring templates and instances
+- **Recurrence Strategy Column**: New nullable `recurrence_strategy` column on items table (`'expires'` or `'carry_over'`)
+- **Auto-Expiry**: `GET /api/items` now automatically marks past recurring instances with `expires` strategy as `wontdo` (items scheduled for today are not affected; templates are never expired)
+- **Strategy Inheritance**: Recurring instances generated via `RecurrenceService::generateInstances()` inherit `recurrence_strategy` from their template
+
+### Fixed
+
+#### WEEKLY BYDAY Recurrence Bug
+- **Multi-Day Weekly Recurrences**: `FREQ=WEEKLY;BYDAY=MO,WE,FR` now correctly generates occurrences for all specified weekdays instead of only one per week
+- `advanceDate()` steps day-by-day when `FREQ=WEEKLY` with `BYDAY` is present, and honours `INTERVAL` at week boundaries
+
+### Changed
+- Frontend `Item` interface now includes `recurrence_strategy` field
+- Frontend `createItem()` and `updateItem()` API calls now include `recurrence_rule` and `recurrence_strategy`
+- Frontend `page.tsx` create and edit handlers wire recurrence fields through to optimistic updates and API calls
+- Backend `StoreItemRequest` and `UpdateItemRequest` validate `recurrence_strategy` (nullable, must be `expires` or `carry_over`)
+- Backend `ItemResource` now includes `recurrence_strategy` in the JSON response
+- Backend `Item` model `$fillable` includes `recurrence_strategy`
+
+### Documentation
+- Updated OpenAPI spec to v0.7.0 with `recurrence_strategy` on Item schema and all create/update request bodies
+
+### Tests
+- Added 9 new backend tests:
+  - 3 BYDAY recurrence tests (single week, multi-week, without BYDAY regression)
+  - 3 strategy validation tests (valid create, invalid create, update)
+  - 3 auto-expiry tests (expires past instances, does not expire today, does not expire templates)
+- Total: 115 tests passing (367 assertions)
+
+## [0.6.2] - 2026-01-26
+
+### Changed
+
+#### Data Integrity
+- **DB Transactions**: All multi-write operations are now wrapped in `DB::transaction()` to guarantee atomicity:
+  - `ItemController::store()` — item creation + tag sync
+  - `ItemController::update()` — item update + tag sync
+  - `ItemController::reorder()` — all position updates across submitted and non-submitted items
+  - `RecurrenceService::generateInstances()` — recurring item creation + tag sync in loop
+  - `AuthController::login()` — token revocation + token creation
+  - `UserController::update()` — profile update + email verification reset
+
+### Documentation
+
+#### OpenAPI Specification
+- **`POST /api/items/reorder`**: Documented bulk reorder endpoint with request schema (max 100 items, positions 0–9999), response, and error codes (401, 422, 429)
+- **`POST /api/items/{id}/generate-recurrences`**: Documented recurrence generation endpoint with date range request body, Item array response, and error codes (400, 401, 403, 404, 422, 429)
+- Updated OpenAPI spec version to 0.6.2
+
+## [0.6.1] - 2026-01-26
+
+### Changed
+
+#### API Efficiency
+- **Bulk Reorder**: Frontend now uses `POST /api/items/reorder` for all reorder operations (move-to-top, drag-and-drop) instead of firing N individual PATCH requests per item
+- **Removed Redundant Fetch**: Move operations no longer re-fetch the full item list from the server before reordering — positions are computed from client state
+- **Simplified ItemRow**: Reorder logic delegated entirely to the parent component; ItemRow only triggers the optimistic update
+
+### Security
+
+#### API Rate Limiting
+- **Global API Throttle**: All API routes now enforce 60 requests per minute per authenticated user (falls back to IP for unauthenticated requests) via `throttle:api` middleware
+- Added `RateLimiter::for('api')` definition in `AppServiceProvider`
+- Added `$middleware->throttleApi()` in `bootstrap/app.php`
+
+#### Input Hardening
+- **Reorder Payload Limits**: `POST /api/items/reorder` now rejects arrays exceeding 100 items and positions exceeding 9999
+- **Removed `exists` Validation on Reorder IDs**: Replaced N per-ID `exists:items,id` database queries with a single ownership-check query using `whereIn`, preventing enumeration of item IDs across users
+- **Scope Parameter Validation**: `?scope=` query parameter on `GET /api/items` now rejects invalid values (only accepts `active`, `planned`, `all`)
+- **CSS Selector Sanitisation**: `scrollToItemId` value is now escaped via `CSS.escape()` before use in `querySelector`
+
+### Fixed
+
+#### Reorder Position Conflicts
+- **Position Double-ups**: Reordering active items no longer leaves completed/cancelled items with conflicting positions
+- The `POST /api/items/reorder` endpoint now renumbers all non-submitted items to positions after the submitted range, preserving their relative order
+- Every item owned by a user is guaranteed a unique position after any reorder operation
+
+#### Frontend completed_at Mismatch
+- **Optimistic completed_at**: Status toggle now correctly computes `completed_at` in the optimistic update (set on `done`, cleared when leaving `done`)
+- **Server Reconciliation**: After `updateStatus()` resolves, server-authoritative `completed_at` and `updated_at` are merged into client state
+- **Race Condition Guard**: If the user toggles status again before the server responds, the stale response is skipped (prevents UI flicker)
+- `onRowChange` now accepts a functional updater `(current: Item) => Item` for safe concurrent reconciliation
+
+### Tests
+- Added 6 new tests for the reorder endpoint:
+  - Bulk reorder updates positions correctly
+  - Reorder silently skips items not owned by the requesting user
+  - Oversized payload (>100 items) is rejected with 422
+  - Excessive position value (>9999) is rejected with 422
+  - Unauthenticated requests receive 401
+  - Reorder renumbers non-submitted items to avoid position conflicts
+- Total: 106 tests passing (344 assertions)
+
+## [0.6.0] - 2026-01-26
+
+### Added
+
+#### Time Intelligence
+- **Query Scopes**: Added `active`, `planned`, and `overdue` Eloquent query scopes to Item model
+  - `active`: Returns items with no scheduled date or scheduled date <= today
+  - `planned`: Returns items with scheduled date > today (future-only)
+  - `overdue`: Returns items past their due date that are not done/wontdo
+- **Default Scope Filtering**: `GET /api/items` now hides future-scheduled items by default
+  - `?scope=planned` returns only future-scheduled items
+  - `?scope=all` returns all items regardless of scheduling
+- **Date Validation**: `due_date` must not be before `scheduled_date` (enforced in both StoreItemRequest and UpdateItemRequest)
+- **Factory States**: Added `overdue()` and `futureScheduled()` factory states for test convenience
+- **Frontend Date Pickers**: ItemForm now includes date inputs for scheduled date and due date
+- **Frontend Urgency Sorting**: Items are sorted by urgency (overdue first, due within 72 hours second, nearest deadline third, then by position)
+- **Frontend Urgency Indicators**: Visual cues on items — red left border + "Overdue" label for past-due items, amber border for items due within 72 hours
+- **Frontend Planned View**: Filter button toggles between active and planned views, fetching future-scheduled items via `?scope=planned`
+
+### Changed
+- Updated OpenAPI specification with `scheduled_date`, `due_date`, `completed_at`, recurrence fields, and new query parameters
+- Updated frontend TypeScript `Item` interface with all scheduling and recurrence fields
+- Updated frontend API client (`createItem`, `updateItem`, `fetchItems`) to support date fields and scope parameter
+
+### Tests
+- Added 11 new feature tests covering:
+  - Creating items with scheduled/due dates
+  - Validation: due_date cannot precede scheduled_date
+  - Validation: due_date can equal scheduled_date
+  - Update validation for date ordering
+  - Default index excludes future-scheduled items
+  - `?scope=planned` returns only future items
+  - `?scope=all` returns everything
+  - Overdue filter functionality
+  - Today-scheduled items are visible by default
+
 ## [0.5.3] - 2025-12-10
 
 ### Fixed
