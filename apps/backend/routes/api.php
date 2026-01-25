@@ -16,11 +16,14 @@ use App\Http\Controllers\UserLookupController;
 use Illuminate\Support\Facades\Route;
 
 // Public API routes (no authentication required)
-Route::post('/register', [AuthController::class, 'register']);
-Route::post('/login', [AuthController::class, 'login']);
+// Rate limited to prevent brute force and mass account creation
+Route::middleware(['throttle:auth'])->group(function () {
+    Route::post('/register', [AuthController::class, 'register']);
+    Route::post('/login', [AuthController::class, 'login']);
+});
 
 // Protected API routes (authentication required)
-Route::middleware(['auth:sanctum'])->group(function () {
+Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
     // Authentication
     Route::post('/logout', [AuthController::class, 'logout']);
 
@@ -29,10 +32,12 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::patch('/user', [UserController::class, 'update']);
 
     // User lookup (for task assignment - only shows connected users)
-    Route::get('/users/lookup', UserLookupController::class);
+    // Extra rate limiting to prevent enumeration attacks
+    Route::get('/users/lookup', UserLookupController::class)->middleware('throttle:user-search');
 
     // User discovery (for finding users to connect with - exact email/phone match)
-    Route::post('/users/discover', UserDiscoveryController::class);
+    // Extra rate limiting to prevent enumeration attacks
+    Route::post('/users/discover', UserDiscoveryController::class)->middleware('throttle:user-search');
 
     // Notifications (poll-based)
     Route::get('/notifications', [NotificationController::class, 'index']);
@@ -40,8 +45,9 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('/notifications/read-all', [NotificationController::class, 'markAllAsRead']);
 
     // Connections (mutual consent for task assignment)
+    // Extra rate limiting on store to prevent spam requests
     Route::get('/connections', [ConnectionController::class, 'index']);
-    Route::post('/connections', [ConnectionController::class, 'store']);
+    Route::post('/connections', [ConnectionController::class, 'store'])->middleware('throttle:connections');
     Route::post('/connections/{connection}/accept', [ConnectionController::class, 'accept']);
     Route::post('/connections/{connection}/decline', [ConnectionController::class, 'decline']);
     Route::delete('/connections/{connection}', [ConnectionController::class, 'destroy']);

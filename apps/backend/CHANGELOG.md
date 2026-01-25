@@ -5,6 +5,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.0] - 2026-01-25
+
+### Security
+
+#### API Rate Limiting
+- **Route-Level Throttling**: Added comprehensive rate limiting middleware to prevent API abuse
+  - `auth` limiter (5 requests/minute per IP) - Applied to `/api/register` and `/api/login`
+  - `user-search` limiter (30 requests/minute per user) - Applied to `/api/users/lookup` and `/api/users/discover`
+  - `connections` limiter (10 requests/minute per user) - Applied to `POST /api/connections`
+  - `api` limiter (60 requests/minute per user) - Applied to all authenticated endpoints as general protection
+- **Defence in Depth**: Route-level throttling works alongside existing controller-level rate limiting on login
+- **Retry-After Header**: Rate limited responses include standard `Retry-After` header
+
+#### Protected Attack Vectors
+- **Brute Force Prevention**: Login and registration endpoints limited to 5 requests/minute per IP
+- **Enumeration Attack Prevention**: User discovery and lookup endpoints throttled to prevent harvesting user information
+- **Spam Prevention**: Connection request endpoint throttled to prevent spam connection requests
+- **General API Abuse**: All authenticated endpoints have baseline rate limiting
+
+### Changed
+- **AppServiceProvider**: Now configures all custom rate limiters in `boot()` method
+- **routes/api.php**: All routes now have appropriate throttle middleware applied
+
+### Tests
+- Added RateLimitingTest with 8 tests covering all throttled endpoints
+- Updated AuthenticationTest to accept both route-level (429) and controller-level (422) rate limiting responses
+- Total: 165 tests passing
+
 ## [0.7.0] - 2026-01-25
 
 ### Added
