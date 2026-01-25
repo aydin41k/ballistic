@@ -7,7 +7,6 @@ import {
   fetchItems,
   createItem,
   updateItem,
-  deleteItem,
   saveItemOrder,
   fetchProjects,
   createProject,
@@ -15,6 +14,7 @@ import {
 import { ItemRow } from "@/components/ItemRow";
 import { EmptyState } from "@/components/EmptyState";
 import { ItemForm } from "@/components/ItemForm";
+import { SplashScreen } from "@/components/SplashScreen";
 import { useAuth } from "@/contexts/AuthContext";
 
 function normaliseItemResponse(payload: Item | { data?: Item }): Item {
@@ -185,19 +185,6 @@ export default function Home() {
     router.push("/login");
   }
 
-  async function handleDelete(id: string) {
-    // Optimistic delete
-    setItems((prev) => prev.filter((item) => item.id !== id));
-    setEditing(null);
-
-    try {
-      await deleteItem(id);
-    } catch (error) {
-      console.error("Failed to delete item:", error);
-      // Optionally refetch items to restore state
-    }
-  }
-
   async function handleCreateProject(name: string): Promise<Project> {
     const newProject = await createProject({ name });
     setProjects((prev) => [...prev, newProject]);
@@ -279,42 +266,9 @@ export default function Home() {
     dragOverRef.current = null;
   }
 
-  // Show loading while checking auth
-  if (authLoading || (!isAuthenticated && !authLoading)) {
-    return (
-      <div className="flex flex-col gap-3">
-        <header className="sticky top-0 z-10 -mx-4 bg-[var(--page-bg)]/95 px-4 pb-2 pt-3 backdrop-blur">
-          <div className="flex items-center justify-between">
-            <h1 className="text-lg font-semibold text-[var(--navy)]">
-              Ballistic
-              <br />
-              <small>The Simplest Bullet Journal</small>
-            </h1>
-            <div className="w-16 h-9 bg-slate-200 rounded-md animate-pulse"></div>
-          </div>
-        </header>
-        <EmptyState type="loading" />
-      </div>
-    );
-  }
-
-  if (loading) {
-    return (
-      <div className="flex flex-col gap-3">
-        <header className="sticky top-0 z-10 -mx-4 bg-[var(--page-bg)]/95 px-4 pb-2 pt-3 backdrop-blur">
-          <div className="flex items-center justify-between">
-            <h1 className="text-lg font-semibold text-[var(--navy)]">
-              Ballistic
-              <br />
-              <small>The Simplest Bullet Journal</small>
-            </h1>
-
-            <div className="w-16 h-9 bg-slate-200 rounded-md animate-pulse"></div>
-          </div>
-        </header>
-        <EmptyState type="loading" />
-      </div>
-    );
+  // Show splash screen while checking auth or loading data
+  if (authLoading || (!isAuthenticated && !authLoading) || loading) {
+    return <SplashScreen />;
   }
 
   return (
@@ -493,13 +447,6 @@ export default function Home() {
                     });
                   }}
                 />
-                <button
-                  type="button"
-                  onClick={() => handleDelete(item.id)}
-                  className="mt-2 w-full rounded-md bg-red-50 px-3 py-2 text-sm text-red-600 hover:bg-red-100 transition-colors"
-                >
-                  Delete task
-                </button>
               </div>
             ) : (
               <ItemRow

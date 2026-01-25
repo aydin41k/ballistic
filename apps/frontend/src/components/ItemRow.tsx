@@ -108,7 +108,7 @@ export function ItemRow({
   return (
     <div
       data-item-id={item.id}
-      className={`flex items-center gap-3 rounded-md bg-white p-3 shadow-sm transition-all duration-300 ease-out hover:shadow-md hover:-translate-y-0.5 animate-slide-in-up cursor-pointer ${isDragging ? "opacity-70 ring-2 ring-[var(--blue)]/30" : ""} ${isDragOver ? "ring-2 ring-[var(--blue)]/50" : ""}`}
+      className={`flex items-center gap-3 rounded-md bg-white p-3 shadow-sm transition-all duration-200 ease-out hover:shadow-md hover:-translate-y-0.5 animate-slide-in-up cursor-pointer ${isDragging ? "scale-105 shadow-xl ring-2 ring-[var(--blue)]/40 bg-blue-50/50 z-50" : ""} ${isDragOver ? "ring-2 ring-[var(--blue)]/60 bg-blue-50/30" : ""}`}
       style={{
         animationDelay: `${index * 50}ms`,
       }}
