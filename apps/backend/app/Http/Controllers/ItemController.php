@@ -25,9 +25,11 @@ final class ItemController extends Controller
      * Display a listing of the resource.
      *
      * Filter modes:
-     * - assigned_to_me: Items where current user is the assignee
+     * - assigned_to_me: Items where current user is the assignee (excludes self-owned)
      * - delegated: Items owned by current user that have been assigned to someone else
      * - (default): Items owned by current user that are NOT assigned to anyone
+     *
+     * By default, completed/cancelled items are excluded. Use include_completed=true to include them.
      */
     public function index(Request $request): AnonymousResourceCollection
     {
@@ -35,14 +37,16 @@ final class ItemController extends Controller
 
         // Determine query mode based on filter parameter
         if ($request->boolean('assigned_to_me')) {
-            // Items assigned to the current user by others
+            // Items assigned to the current user by others (not self-owned)
             $query = Item::where('assignee_id', $userId)
+                ->where('user_id', '!=', $userId) // Exclude self-assigned items
                 ->with(['project', 'tags', 'user', 'assignee'])
                 ->orderBy('position');
         } elseif ($request->boolean('delegated')) {
-            // Items owned by current user that are assigned to others
+            // Items owned by current user that are assigned to others (not self)
             $query = Item::where('user_id', $userId)
                 ->whereNotNull('assignee_id')
+                ->where('assignee_id', '!=', $userId) // Exclude self-assigned items
                 ->with(['project', 'tags', 'assignee'])
                 ->orderBy('position');
         } else {
@@ -53,11 +57,18 @@ final class ItemController extends Controller
                 ->orderBy('position');
         }
 
+        // Exclude completed/cancelled items by default
+        if (! $request->boolean('include_completed')) {
+            $query->whereNotIn('status', ['done', 'wontdo']);
+        }
+
         if ($request->has('project_id')) {
             $query->where('project_id', $request->project_id);
         }
 
+        // Allow specific status filter (overrides the default exclusion)
         if ($request->has('status')) {
+            // Remove the previous whereNotIn if a specific status is requested
             $query->where('status', $request->status);
         }
 

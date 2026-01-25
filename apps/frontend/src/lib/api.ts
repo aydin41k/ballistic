@@ -14,6 +14,7 @@ type ListParams = {
   status?: Status | "all";
   assigned_to_me?: boolean;
   delegated?: boolean;
+  include_completed?: boolean;
 };
 
 /**
@@ -85,6 +86,7 @@ function buildUrl(
  * Fetch all items for the authenticated user
  *
  * By default, returns items owned by the user that are NOT assigned to anyone else.
+ * Completed/cancelled items are excluded by default (use include_completed=true to include).
  * Use assigned_to_me=true to get items assigned to you by other users.
  * Use delegated=true to get items you own that are assigned to others.
  */
@@ -94,6 +96,7 @@ export async function fetchItems(params?: ListParams): Promise<Item[]> {
     status: params?.status !== "all" ? params?.status : undefined,
     assigned_to_me: params?.assigned_to_me ? "true" : undefined,
     delegated: params?.delegated ? "true" : undefined,
+    include_completed: params?.include_completed ? "true" : undefined,
   });
 
   const response = await fetch(url, {
@@ -104,16 +107,7 @@ export async function fetchItems(params?: ListParams): Promise<Item[]> {
 
   const payload = await handleResponse<Item[] | { data?: Item[] }>(response);
   const items = extractData(payload);
-  const list = Array.isArray(items) ? items : [];
-
-  // Filter out completed/cancelled tasks for the main view (unless fetching specific views)
-  if (!params?.assigned_to_me && !params?.delegated) {
-    return list.filter(
-      (item) => item.status !== "done" && item.status !== "wontdo",
-    );
-  }
-
-  return list;
+  return Array.isArray(items) ? items : [];
 }
 
 /**

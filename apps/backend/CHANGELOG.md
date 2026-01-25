@@ -5,6 +5,38 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.0] - 2026-01-25
+
+### Fixed
+
+#### Items API Filtering
+- **Completed Items Excluded by Default**: All item endpoints now exclude completed (`done`) and cancelled (`wontdo`) items by default
+  - Use `?include_completed=true` to include completed/cancelled items
+- **Self-Assignment Exclusion**: `assigned_to_me` and `delegated` filters now properly exclude self-assigned items
+- **Correct Filter Behaviour**: Fixed potential issues where `assigned_to_me` and `delegated` might return incorrect items
+
+### Added
+
+#### Tags Display (Frontend)
+- **Tags in Item Row**: Items now display their tags as coloured badges next to the project name
+- **Tag Type Definition**: Added `Tag` interface to frontend types
+- **Custom Tag Colours**: Tags with custom colours display with tinted backgrounds
+
+### Changed
+
+#### API Behaviour
+- **Server-Side Filtering**: Moved completed/cancelled filtering from client-side to server-side for consistency
+- **Frontend API**: Removed client-side filtering of completed items, added `include_completed` parameter
+
+### Tests
+- Added 4 new tests for completed items filtering:
+  - `test_items_api_excludes_completed_by_default`
+  - `test_items_api_includes_completed_when_requested`
+  - `test_assigned_to_me_excludes_completed_by_default`
+  - `test_delegated_excludes_completed_by_default`
+- Updated existing tests to explicitly set item status to avoid false failures
+- Total: 169 tests passing
+
 ## [0.8.0] - 2026-01-25
 
 ### Security

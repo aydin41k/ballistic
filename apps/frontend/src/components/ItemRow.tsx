@@ -154,7 +154,7 @@ export function ItemRow({
         >
           {optimisticItem.title}
         </div>
-        {/* Project and assignment badges */}
+        {/* Project, tags, and assignment badges */}
         <div className="flex flex-wrap gap-1.5 mt-1">
           {projectName && (
             <span
@@ -163,6 +163,23 @@ export function ItemRow({
               {projectName}
             </span>
           )}
+          {/* Tags */}
+          {optimisticItem.tags?.map((tag) => (
+            <span
+              key={tag.id}
+              className={`text-xs px-2 py-0.5 rounded-full transition-colors duration-200 ${isCompleted || isCancelled ? "bg-slate-100 text-slate-300" : "bg-violet-100 text-violet-700"}`}
+              style={
+                tag.color && !isCompleted && !isCancelled
+                  ? {
+                      backgroundColor: `${tag.color}20`,
+                      color: tag.color,
+                    }
+                  : undefined
+              }
+            >
+              {tag.name}
+            </span>
+          ))}
           {optimisticItem.is_delegated && optimisticItem.assignee && (
             <span
               className={`text-xs font-medium px-2 py-0.5 rounded-full transition-colors duration-200 ${isCompleted || isCancelled ? "bg-slate-100 text-slate-300" : "bg-amber-100 text-amber-700 border border-amber-200"}`}

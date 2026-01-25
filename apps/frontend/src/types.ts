@@ -27,6 +27,15 @@ export interface Project {
   deleted_at: string | null;
 }
 
+export interface Tag {
+  id: string;
+  user_id: string;
+  name: string;
+  color: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Item {
   id: string;
   user_id: string;
@@ -49,6 +58,7 @@ export interface Item {
   updated_at: string;
   deleted_at: string | null;
   project?: Project | null;
+  tags?: Tag[];
   assignee?: UserLookup | null;
   owner?: UserLookup | null;
 }

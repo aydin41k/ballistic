@@ -270,10 +270,14 @@ final class ItemAssignmentTest extends TestCase
         $assignee = User::factory()->create();
         $this->createConnection($owner, $assignee);
 
-        $ownedItem = Item::factory()->create(['user_id' => $assignee->id]);
+        $ownedItem = Item::factory()->create([
+            'user_id' => $assignee->id,
+            'status' => 'todo',
+        ]);
         $assignedItem = Item::factory()->create([
             'user_id' => $owner->id,
             'assignee_id' => $assignee->id,
+            'status' => 'todo',
         ]);
 
         $response = $this->actingAs($assignee)
@@ -290,10 +294,14 @@ final class ItemAssignmentTest extends TestCase
         $assignee = User::factory()->create();
         $this->createConnection($owner, $assignee);
 
-        $unassignedItem = Item::factory()->create(['user_id' => $owner->id]);
+        $unassignedItem = Item::factory()->create([
+            'user_id' => $owner->id,
+            'status' => 'todo',
+        ]);
         $delegatedItem = Item::factory()->create([
             'user_id' => $owner->id,
             'assignee_id' => $assignee->id,
+            'status' => 'todo',
         ]);
 
         $response = $this->actingAs($owner)
@@ -556,5 +564,102 @@ final class ItemAssignmentTest extends TestCase
 
         $this->assertEquals(1, $item1->fresh()->position);
         $this->assertEquals(0, $item2->fresh()->position);
+    }
+
+    public function test_items_api_excludes_completed_by_default(): void
+    {
+        $owner = User::factory()->create();
+
+        $todoItem = Item::factory()->create([
+            'user_id' => $owner->id,
+            'status' => 'todo',
+        ]);
+        $doneItem = Item::factory()->create([
+            'user_id' => $owner->id,
+            'status' => 'done',
+        ]);
+        $wontdoItem = Item::factory()->create([
+            'user_id' => $owner->id,
+            'status' => 'wontdo',
+        ]);
+
+        $response = $this->actingAs($owner)
+            ->getJson('/api/items');
+
+        $response->assertStatus(200)
+            ->assertJsonFragment(['id' => $todoItem->id])
+            ->assertJsonMissing(['id' => $doneItem->id])
+            ->assertJsonMissing(['id' => $wontdoItem->id]);
+    }
+
+    public function test_items_api_includes_completed_when_requested(): void
+    {
+        $owner = User::factory()->create();
+
+        $todoItem = Item::factory()->create([
+            'user_id' => $owner->id,
+            'status' => 'todo',
+        ]);
+        $doneItem = Item::factory()->create([
+            'user_id' => $owner->id,
+            'status' => 'done',
+        ]);
+
+        $response = $this->actingAs($owner)
+            ->getJson('/api/items?include_completed=true');
+
+        $response->assertStatus(200)
+            ->assertJsonFragment(['id' => $todoItem->id])
+            ->assertJsonFragment(['id' => $doneItem->id]);
+    }
+
+    public function test_assigned_to_me_excludes_completed_by_default(): void
+    {
+        $owner = User::factory()->create();
+        $assignee = User::factory()->create();
+        $this->createConnection($owner, $assignee);
+
+        $todoAssigned = Item::factory()->create([
+            'user_id' => $owner->id,
+            'assignee_id' => $assignee->id,
+            'status' => 'todo',
+        ]);
+        $doneAssigned = Item::factory()->create([
+            'user_id' => $owner->id,
+            'assignee_id' => $assignee->id,
+            'status' => 'done',
+        ]);
+
+        $response = $this->actingAs($assignee)
+            ->getJson('/api/items?assigned_to_me=true');
+
+        $response->assertStatus(200)
+            ->assertJsonFragment(['id' => $todoAssigned->id])
+            ->assertJsonMissing(['id' => $doneAssigned->id]);
+    }
+
+    public function test_delegated_excludes_completed_by_default(): void
+    {
+        $owner = User::factory()->create();
+        $assignee = User::factory()->create();
+        $this->createConnection($owner, $assignee);
+
+        $todoDelegated = Item::factory()->create([
+            'user_id' => $owner->id,
+            'assignee_id' => $assignee->id,
+            'status' => 'todo',
+        ]);
+        $doneDelegated = Item::factory()->create([
+            'user_id' => $owner->id,
+            'assignee_id' => $assignee->id,
+            'status' => 'done',
+        ]);
+
+        $response = $this->actingAs($owner)
+            ->getJson('/api/items?delegated=true');
+
+        $response->assertStatus(200)
+            ->assertJsonFragment(['id' => $todoDelegated->id])
+            ->assertJsonMissing(['id' => $doneDelegated->id]);
     }
 }
