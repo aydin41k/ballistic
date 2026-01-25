@@ -5,6 +5,112 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.0] - 2026-01-25
+
+### Added
+
+#### Mutual Connections (Security)
+- **Connections System**: Users must now connect with each other before task assignment is possible
+  - `POST /api/connections` - Send a connection request to another user
+  - `GET /api/connections` - List all connections (with optional `?status=` filter)
+  - `POST /api/connections/{connection}/accept` - Accept a pending connection request
+  - `POST /api/connections/{connection}/decline` - Decline a pending connection request
+  - `DELETE /api/connections/{connection}` - Remove an existing connection
+- **Connection Model**: New model with requester_id, addressee_id, and status (pending/accepted/declined)
+- **User Connection Methods**: Added `connections()`, `isConnectedWith()`, `sentConnectionRequests()`, `receivedConnectionRequests()` methods
+- **Auto-Accept**: If User A sends a request to User B who already has a pending request to User A, it auto-accepts
+
+#### User Discovery
+- **User Discovery API**: New endpoint `POST /api/users/discover` for finding users to connect with
+  - Search by exact email address or phone number (last 9 digits)
+  - Returns `{found: true/false}` with minimal user info if found
+  - Prevents browsing - requires exact match only
+  - Returns masked email for privacy
+
+#### Enhanced Notifications
+- **Connection Request Notification**: Users are notified when someone sends them a connection request
+- **Connection Accepted Notification**: Users are notified when their connection request is accepted
+- **Task Updated Notification**: Assignees are notified when the task owner changes the title or description
+- **Task Completed Notification**: Assignees are notified when the task owner marks a task as done or won't do
+- **Task Unassigned Notification**: Assignees are notified when they are removed from a task
+
+#### Assignee Notes
+- **Assignee Notes Field**: New `assignee_notes` field on items for assignees to add their own notes
+  - Assignees can update this field without affecting the task description
+  - Owner's description remains protected from assignee modifications
+
+### Changed
+- **User Lookup**: Now only returns users who are connected with the current user (for task assignment)
+- **Task Assignment Validation**: Assignment now requires the assignee to be connected with the task owner
+  - Attempting to assign to an unconnected user returns 403 Forbidden
+  - Pending connections do not allow assignment (must be accepted)
+- **Assignee Update Restrictions**: Assignees can now only update `status` and `assignee_notes` fields
+  - Attempting to update title, description, or other fields returns 403 Forbidden
+  - Owners retain full edit access to all fields
+
+### Security
+- Fixed privacy issue where users could search for and assign tasks to any user in the system
+- Task assignment now requires explicit mutual consent through the connection system
+- Connection requests provide notification to the recipient for awareness
+- Assignees are restricted from modifying task details (only status and notes)
+
+### Database
+- New migration: `create_connections_table` - creates connections table for mutual consent system
+  - Unique constraint on requester_id + addressee_id pairs
+  - Indexes for efficient status-based lookups
+- New migration: `add_assignee_notes_to_items_table` - adds assignee_notes field to items
+
+### Tests
+- Added ConnectionTest with 16 tests covering connection CRUD, notifications, and model methods
+- Added UserDiscoveryTest with 9 tests for user discovery functionality
+- Updated ItemAssignmentTest with 11 new tests for connection validation, field restrictions, and task change notifications
+- Updated UserLookupTest with 3 new tests for connection-based filtering
+- Updated NotificationTest to create connections before task assignment
+- Total: 155 tests passing
+
+## [0.6.0] - 2026-01-25
+
+### Added
+
+#### Task Assignment
+- **User Lookup API**: New endpoint `GET /api/users/lookup` for searching users by exact email or phone number suffix (last 9 digits)
+- **Task Assignment**: Items can now be assigned to other users via `assignee_id` field
+- **Assignee Permissions**: Assignees can view and update status of assigned items, but cannot delete or reassign
+
+#### Notifications (poll-based)
+- **Notifications Table**: Simple notifications table for task assignment notifications
+- **Notification API**: Poll-based notification endpoints
+  - `GET /api/notifications` - Fetch notifications (supports `?unread_only=true`)
+  - `POST /api/notifications/{notification}/read` - Mark notification as read
+  - `POST /api/notifications/read-all` - Mark all notifications as read
+- **NotificationService**: Service for creating and managing notifications
+- **Automatic Notifications**: Task assignment automatically creates notification for assignee
+
+#### User Profile
+- **Phone Number**: Users can now add an optional phone number to their profile
+- **UserLookupResource**: New API resource with masked email for privacy in search results
+
+#### Item Filtering
+- **Assigned to Me**: `GET /api/items?assigned_to_me=true` returns items assigned to current user
+- **Delegated**: `GET /api/items?delegated=true` returns items owned by current user that are assigned to others
+- **Default View**: Default item list now excludes delegated items (shows only unassigned items user owns)
+
+### Changed
+- **Item Model**: Added `assignee_id` foreign key, `isAssigned()` and `isDelegated()` helper methods
+- **Item Resource**: Now includes `assignee_id`, `assignee`, `owner`, `is_assigned`, `is_delegated` fields
+- **Item Policy**: Updated to allow assignees to view and update assigned items
+- **User Model**: Added `phone` field, `assignedItems()` and `taskNotifications()` relationships
+
+### Database
+- New migration: `add_phone_to_users_table` - adds phone field to users
+- New migration: `add_assignee_to_items_table` - adds assignee_id foreign key to items
+- New migration: `create_notifications_table` - creates notifications table for poll-based notifications
+
+### Tests
+- Added UserLookupTest with 8 tests for user search functionality
+- Added ItemAssignmentTest with 11 tests for task assignment and filtering
+- Added NotificationTest with 8 tests for notification functionality
+
 ## [0.5.3] - 2025-12-10
 
 ### Fixed

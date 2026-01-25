@@ -1,4 +1,10 @@
-import type { Item, Project, Status } from "@/types";
+import type {
+  Item,
+  Project,
+  Status,
+  UserLookup,
+  NotificationsResponse,
+} from "@/types";
 import { getAuthHeaders, clearToken } from "./auth";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "";
@@ -6,6 +12,8 @@ const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "";
 type ListParams = {
   project_id?: string;
   status?: Status | "all";
+  assigned_to_me?: boolean;
+  delegated?: boolean;
 };
 
 /**
@@ -75,11 +83,17 @@ function buildUrl(
 
 /**
  * Fetch all items for the authenticated user
+ *
+ * By default, returns items owned by the user that are NOT assigned to anyone else.
+ * Use assigned_to_me=true to get items assigned to you by other users.
+ * Use delegated=true to get items you own that are assigned to others.
  */
 export async function fetchItems(params?: ListParams): Promise<Item[]> {
   const url = buildUrl("/api/items", {
     project_id: params?.project_id,
     status: params?.status !== "all" ? params?.status : undefined,
+    assigned_to_me: params?.assigned_to_me ? "true" : undefined,
+    delegated: params?.delegated ? "true" : undefined,
   });
 
   const response = await fetch(url, {
@@ -92,10 +106,14 @@ export async function fetchItems(params?: ListParams): Promise<Item[]> {
   const items = extractData(payload);
   const list = Array.isArray(items) ? items : [];
 
-  // Filter out completed/cancelled tasks for the main view
-  return list.filter(
-    (item) => item.status !== "done" && item.status !== "wontdo",
-  );
+  // Filter out completed/cancelled tasks for the main view (unless fetching specific views)
+  if (!params?.assigned_to_me && !params?.delegated) {
+    return list.filter(
+      (item) => item.status !== "done" && item.status !== "wontdo",
+    );
+  }
+
+  return list;
 }
 
 /**
@@ -121,6 +139,7 @@ export async function createItem(payload: {
   status: Status;
   project_id?: string | null;
   position?: number;
+  assignee_id?: string | null;
 }): Promise<Item> {
   const response = await fetch(buildUrl("/api/items"), {
     method: "POST",
@@ -131,6 +150,7 @@ export async function createItem(payload: {
       status: payload.status,
       project_id: payload.project_id || null,
       position: payload.position ?? 0,
+      assignee_id: payload.assignee_id || null,
     }),
   });
 
@@ -217,7 +237,10 @@ export async function saveItemOrder(orderedItems: Item[]): Promise<Item[]> {
 export async function updateItem(
   id: string,
   fields: Partial<
-    Pick<Item, "title" | "description" | "project_id" | "position">
+    Pick<
+      Item,
+      "title" | "description" | "project_id" | "position" | "assignee_id"
+    >
   >,
 ): Promise<Item> {
   const response = await fetch(buildUrl(`/api/items/${id}`), {
@@ -282,4 +305,97 @@ export async function createProject(payload: {
 
   const data = await handleResponse<Project | { data?: Project }>(response);
   return extractData(data);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// User Lookup
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Search for users by email or phone number suffix (last 9 digits).
+ * Excludes the current authenticated user from results.
+ */
+export async function lookupUsers(query: string): Promise<UserLookup[]> {
+  if (!query || query.length < 3) {
+    return [];
+  }
+
+  const response = await fetch(buildUrl("/api/users/lookup", { q: query }), {
+    method: "GET",
+    headers: getAuthHeaders(),
+    cache: "no-store",
+  });
+
+  const payload = await handleResponse<UserLookup[] | { data?: UserLookup[] }>(
+    response,
+  );
+  const users = extractData(payload);
+  return Array.isArray(users) ? users : [];
+}
+
+/**
+ * Assign an item to a user
+ */
+export async function assignItem(
+  itemId: string,
+  userId: string | null,
+): Promise<Item> {
+  return updateItem(itemId, { assignee_id: userId });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Notifications (poll-based)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Fetch notifications for the authenticated user.
+ * Use unreadOnly=true to get only unread notifications.
+ */
+export async function fetchNotifications(
+  unreadOnly?: boolean,
+): Promise<NotificationsResponse> {
+  const response = await fetch(
+    buildUrl("/api/notifications", {
+      unread_only: unreadOnly ? "true" : undefined,
+    }),
+    {
+      method: "GET",
+      headers: getAuthHeaders(),
+      cache: "no-store",
+    },
+  );
+
+  return handleResponse<NotificationsResponse>(response);
+}
+
+/**
+ * Mark a specific notification as read.
+ */
+export async function markNotificationAsRead(
+  notificationId: string,
+): Promise<{ message: string; unread_count: number }> {
+  const response = await fetch(
+    buildUrl(`/api/notifications/${notificationId}/read`),
+    {
+      method: "POST",
+      headers: getAuthHeaders(),
+    },
+  );
+
+  return handleResponse<{ message: string; unread_count: number }>(response);
+}
+
+/**
+ * Mark all notifications as read for the authenticated user.
+ */
+export async function markAllNotificationsAsRead(): Promise<{
+  message: string;
+  marked_count: number;
+}> {
+  const response = await fetch(buildUrl("/api/notifications/read-all"), {
+    method: "POST",
+    headers: getAuthHeaders(),
+  });
+
+  return handleResponse<{ message: string; marked_count: number }>(response);
 }

@@ -40,7 +40,7 @@ final class Project extends Model
     {
         parent::boot();
 
-        static::creating(function ($model): void {
+        self::creating(function ($model): void {
             if (empty($model->id)) {
                 $model->id = Str::uuid();
             }

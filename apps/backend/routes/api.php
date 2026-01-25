@@ -6,9 +6,13 @@ use App\Http\Controllers\Admin\StatsController as AdminStatsController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\UserController;
+use App\Http\Controllers\ConnectionController;
 use App\Http\Controllers\ItemController;
+use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\TagController;
+use App\Http\Controllers\UserDiscoveryController;
+use App\Http\Controllers\UserLookupController;
 use Illuminate\Support\Facades\Route;
 
 // Public API routes (no authentication required)
@@ -23,6 +27,24 @@ Route::middleware(['auth:sanctum'])->group(function () {
     // User profile
     Route::get('/user', [UserController::class, 'show']);
     Route::patch('/user', [UserController::class, 'update']);
+
+    // User lookup (for task assignment - only shows connected users)
+    Route::get('/users/lookup', UserLookupController::class);
+
+    // User discovery (for finding users to connect with - exact email/phone match)
+    Route::post('/users/discover', UserDiscoveryController::class);
+
+    // Notifications (poll-based)
+    Route::get('/notifications', [NotificationController::class, 'index']);
+    Route::post('/notifications/{notification}/read', [NotificationController::class, 'markAsRead']);
+    Route::post('/notifications/read-all', [NotificationController::class, 'markAllAsRead']);
+
+    // Connections (mutual consent for task assignment)
+    Route::get('/connections', [ConnectionController::class, 'index']);
+    Route::post('/connections', [ConnectionController::class, 'store']);
+    Route::post('/connections/{connection}/accept', [ConnectionController::class, 'accept']);
+    Route::post('/connections/{connection}/decline', [ConnectionController::class, 'decline']);
+    Route::delete('/connections/{connection}', [ConnectionController::class, 'destroy']);
 
     // Projects
     Route::apiResource('projects', ProjectController::class);

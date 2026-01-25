@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Http\Requests;
 
-use App\Models\Project;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
@@ -41,6 +40,11 @@ final class StoreItemRequest extends FormRequest
             'scheduled_date' => ['nullable', 'date'],
             'due_date' => ['nullable', 'date'],
             'recurrence_rule' => ['nullable', 'string', 'max:255'],
+            'assignee_id' => [
+                'nullable',
+                'uuid',
+                Rule::exists('users', 'id'),
+            ],
             'tag_ids' => ['nullable', 'array'],
             'tag_ids.*' => [
                 'uuid',
@@ -61,6 +65,7 @@ final class StoreItemRequest extends FormRequest
         return [
             'project_id.exists' => 'The selected project does not exist or does not belong to you.',
             'tag_ids.*.exists' => 'One or more selected tags do not exist or do not belong to you.',
+            'assignee_id.exists' => 'The selected user does not exist.',
         ];
     }
 }

@@ -138,6 +138,7 @@ describe("Item Creation Response Handling", () => {
           status: "todo",
           project_id: null,
           position: 0,
+          assignee_id: null,
         });
       },
       { timeout: 200 },

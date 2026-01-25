@@ -69,10 +69,10 @@ final class AuthController extends Controller
 
         /** @var User $user */
         $user = Auth::user();
-        
+
         // Revoke existing tokens for this device/session
         $user->tokens()->delete();
-        
+
         $token = $user->createToken('api-token')->plainTextToken;
 
         return response()->json([
@@ -89,7 +89,7 @@ final class AuthController extends Controller
     {
         /** @var User $user */
         $user = $request->user();
-        
+
         // Revoke the current token
         /** @var \Laravel\Sanctum\PersonalAccessToken|null $currentToken */
         $currentToken = $user->currentAccessToken();

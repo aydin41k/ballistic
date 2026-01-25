@@ -1,3 +1,34 @@
+## 0.6.0 - 2026-01-25
+
+### Added
+
+#### Task Assignment
+
+- **Assign Modal**: New component for searching and selecting users to assign tasks to
+- **User Search**: Search users by email or last 9 digits of phone number
+- **Assignment in Forms**: ItemForm now includes "Assign to" field in "More settings" section
+- **Visual Indicators**: ItemRow shows badges for delegated tasks and tasks assigned from others
+
+#### View Modes
+
+- **My Tasks**: Default view showing unassigned items you own
+- **Assigned to Me**: View items others have assigned to you
+- **Delegated**: View items you've assigned to others
+- **View Selector**: Tab-style selector with item counts for each view
+
+#### Notifications (poll-based)
+
+- **Notification API Functions**: Added `fetchNotifications()`, `markNotificationAsRead()`, `markAllNotificationsAsRead()` functions
+- **Notification Types**: Added `Notification` and `NotificationsResponse` types
+
+### Changed
+
+- **Item Type**: Extended with `assignee_id`, `assignee`, `owner`, `is_assigned`, `is_delegated`, and scheduling fields
+- **User Type**: Added `phone` field
+- **API Client**: Added `lookupUsers()`, `assignItem()`, and notification functions
+- **fetchItems**: Now supports `assigned_to_me` and `delegated` filter parameters
+- **createItem/updateItem**: Now support `assignee_id` parameter
+
 ## 0.5.1 - 2026-01-17
 
 - **Deployment Fix**: Fixed Azure Web App deployment workflow - corrected package path from `./node-app` to `.` to match artifact extraction location.

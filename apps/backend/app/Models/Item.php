@@ -18,13 +18,16 @@ final class Item extends Model
     use HasFactory, SoftDeletes;
 
     protected $keyType = 'string';
+
     public $incrementing = false;
 
     protected $fillable = [
         'user_id',
+        'assignee_id',
         'project_id',
         'title',
         'description',
+        'assignee_notes',
         'status',
         'position',
         'scheduled_date',
@@ -41,21 +44,24 @@ final class Item extends Model
         'completed_at' => 'datetime',
     ];
 
+    #[\Override]
     public function getRouteKeyName(): string
     {
         return 'id';
     }
 
+    #[\Override]
     public function resolveRouteBinding($value, $field = null)
     {
         return $this->where($field ?? $this->getRouteKeyName(), $value)->first();
     }
 
+    #[\Override]
     protected static function boot()
     {
         parent::boot();
-        
-        static::creating(function ($model) {
+
+        self::creating(function ($model) {
             if (empty($model->id)) {
                 $model->id = Str::uuid();
             }
@@ -65,6 +71,14 @@ final class Item extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    /**
+     * Get the user this item is assigned to.
+     */
+    public function assignee(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'assignee_id');
     }
 
     public function project(): BelongsTo
@@ -107,5 +121,24 @@ final class Item extends Model
     public function isRecurringInstance(): bool
     {
         return $this->recurrence_parent_id !== null;
+    }
+
+    /**
+     * Check if this item is assigned to someone other than the owner.
+     */
+    public function isAssigned(): bool
+    {
+        return $this->assignee_id !== null;
+    }
+
+    /**
+     * Check if this item is delegated (has an assignee and user is the owner).
+     */
+    public function isDelegated(?User $user = null): bool
+    {
+        $userId = $user?->id ?? $this->user_id;
+
+        // Cast to string for reliable UUID comparison
+        return $this->assignee_id !== null && (string) $this->user_id === (string) $userId;
     }
 }

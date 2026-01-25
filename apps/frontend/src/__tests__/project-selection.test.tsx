@@ -269,6 +269,7 @@ describe("ItemForm with ProjectCombobox", () => {
       title: "My new task",
       description: undefined,
       project_id: "proj-1",
+      assignee_id: null,
     });
   });
 
@@ -297,6 +298,7 @@ describe("ItemForm with ProjectCombobox", () => {
       title: "Task without project",
       description: undefined,
       project_id: null,
+      assignee_id: null,
     });
   });
 });

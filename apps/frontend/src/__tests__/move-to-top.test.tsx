@@ -13,11 +13,21 @@ describe("Move to Top functionality", () => {
   const mockItem: Item = {
     id: "2",
     user_id: "user-1",
+    assignee_id: null,
     project_id: null,
     title: "Second Task",
     description: null,
     status: "todo",
     position: 1,
+    scheduled_date: null,
+    due_date: null,
+    completed_at: null,
+    recurrence_rule: null,
+    recurrence_parent_id: null,
+    is_recurring_template: false,
+    is_recurring_instance: false,
+    is_assigned: false,
+    is_delegated: false,
     created_at: "2025-01-01T00:00:00Z",
     updated_at: "2025-01-01T00:00:00Z",
     deleted_at: null,
@@ -134,42 +144,52 @@ describe("Move to Top functionality", () => {
 
 describe("Move to Top optimistic update", () => {
   it("should move item to the top of the list", () => {
+    const baseItem = {
+      assignee_id: null,
+      project_id: null,
+      description: null,
+      scheduled_date: null,
+      due_date: null,
+      completed_at: null,
+      recurrence_rule: null,
+      recurrence_parent_id: null,
+      is_recurring_template: false,
+      is_recurring_instance: false,
+      is_assigned: false,
+      is_delegated: false,
+      deleted_at: null,
+    };
+
     const items: Item[] = [
       {
+        ...baseItem,
         id: "1",
         user_id: "user-1",
-        project_id: null,
         title: "First Task",
-        description: null,
         status: "todo",
         position: 0,
         created_at: "2025-01-01T00:00:00Z",
         updated_at: "2025-01-01T00:00:00Z",
-        deleted_at: null,
       },
       {
+        ...baseItem,
         id: "2",
         user_id: "user-1",
-        project_id: null,
         title: "Second Task",
-        description: null,
         status: "todo",
         position: 1,
         created_at: "2025-01-02T00:00:00Z",
         updated_at: "2025-01-02T00:00:00Z",
-        deleted_at: null,
       },
       {
+        ...baseItem,
         id: "3",
         user_id: "user-1",
-        project_id: null,
         title: "Third Task",
-        description: null,
         status: "todo",
         position: 2,
         created_at: "2025-01-03T00:00:00Z",
         updated_at: "2025-01-03T00:00:00Z",
-        deleted_at: null,
       },
     ];
 
@@ -191,30 +211,42 @@ describe("Move to Top optimistic update", () => {
   });
 
   it("should not modify the list when item is already at the top", () => {
+    const baseItem = {
+      assignee_id: null,
+      project_id: null,
+      description: null,
+      scheduled_date: null,
+      due_date: null,
+      completed_at: null,
+      recurrence_rule: null,
+      recurrence_parent_id: null,
+      is_recurring_template: false,
+      is_recurring_instance: false,
+      is_assigned: false,
+      is_delegated: false,
+      deleted_at: null,
+    };
+
     const items: Item[] = [
       {
+        ...baseItem,
         id: "1",
         user_id: "user-1",
-        project_id: null,
         title: "First Task",
-        description: null,
         status: "todo",
         position: 0,
         created_at: "2025-01-01T00:00:00Z",
         updated_at: "2025-01-01T00:00:00Z",
-        deleted_at: null,
       },
       {
+        ...baseItem,
         id: "2",
         user_id: "user-1",
-        project_id: null,
         title: "Second Task",
-        description: null,
         status: "todo",
         position: 1,
         created_at: "2025-01-02T00:00:00Z",
         updated_at: "2025-01-02T00:00:00Z",
-        deleted_at: null,
       },
     ];
 

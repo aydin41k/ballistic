@@ -29,10 +29,14 @@ function normaliseItemResponse(payload: Item | { data?: Item }): Item {
   return payload as Item;
 }
 
+type ViewMode = "my-tasks" | "assigned-to-me" | "delegated";
+
 export default function Home() {
   const router = useRouter();
   const { isAuthenticated, isLoading: authLoading, logout, user } = useAuth();
   const [items, setItems] = useState<Item[]>([]);
+  const [assignedItems, setAssignedItems] = useState<Item[]>([]);
+  const [delegatedItems, setDelegatedItems] = useState<Item[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [editing, setEditing] = useState<Item | null>(null);
   const [showAdd, setShowAdd] = useState(false);
@@ -40,6 +44,7 @@ export default function Home() {
   const [scrollToItemId, setScrollToItemId] = useState<string | null>(null);
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [dragOverId, setDragOverId] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<ViewMode>("my-tasks");
   const dragSourceRef = useRef<string | null>(null);
   const dragOverRef = useRef<string | null>(null);
   const dropHandledRef = useRef(false);
@@ -55,9 +60,16 @@ export default function Home() {
   useEffect(() => {
     if (isAuthenticated) {
       setLoading(true);
-      Promise.all([fetchItems(), fetchProjects()])
-        .then(([itemsData, projectsData]) => {
+      Promise.all([
+        fetchItems(),
+        fetchItems({ assigned_to_me: true }),
+        fetchItems({ delegated: true }),
+        fetchProjects(),
+      ])
+        .then(([itemsData, assignedData, delegatedData, projectsData]) => {
           setItems(itemsData);
+          setAssignedItems(assignedData);
+          setDelegatedItems(delegatedData);
           setProjects(projectsData);
         })
         .catch((error) => {
@@ -84,7 +96,13 @@ export default function Home() {
     }
   }, [scrollToItemId]);
 
-  const filtered = items;
+  // Select items based on current view mode
+  const filtered =
+    viewMode === "my-tasks"
+      ? items
+      : viewMode === "assigned-to-me"
+        ? assignedItems
+        : delegatedItems;
 
   function onRowChange(updated: Item) {
     setItems((prev) => {
@@ -343,6 +361,56 @@ export default function Home() {
         </div>
       </header>
 
+      {/* View Mode Selector */}
+      <div className="flex gap-1 p-1 bg-slate-100 rounded-lg">
+        <button
+          type="button"
+          onClick={() => setViewMode("my-tasks")}
+          className={`flex-1 px-3 py-1.5 text-sm font-medium rounded-md transition-all duration-200 ${
+            viewMode === "my-tasks"
+              ? "bg-white text-[var(--navy)] shadow-sm"
+              : "text-slate-600 hover:text-slate-800"
+          }`}
+        >
+          My Tasks
+          {items.length > 0 && (
+            <span className="ml-1 text-xs opacity-70">({items.length})</span>
+          )}
+        </button>
+        <button
+          type="button"
+          onClick={() => setViewMode("assigned-to-me")}
+          className={`flex-1 px-3 py-1.5 text-sm font-medium rounded-md transition-all duration-200 ${
+            viewMode === "assigned-to-me"
+              ? "bg-white text-[var(--navy)] shadow-sm"
+              : "text-slate-600 hover:text-slate-800"
+          }`}
+        >
+          Assigned
+          {assignedItems.length > 0 && (
+            <span className="ml-1 text-xs opacity-70">
+              ({assignedItems.length})
+            </span>
+          )}
+        </button>
+        <button
+          type="button"
+          onClick={() => setViewMode("delegated")}
+          className={`flex-1 px-3 py-1.5 text-sm font-medium rounded-md transition-all duration-200 ${
+            viewMode === "delegated"
+              ? "bg-white text-[var(--navy)] shadow-sm"
+              : "text-slate-600 hover:text-slate-800"
+          }`}
+        >
+          Delegated
+          {delegatedItems.length > 0 && (
+            <span className="ml-1 text-xs opacity-70">
+              ({delegatedItems.length})
+            </span>
+          )}
+        </button>
+      </div>
+
       {/* List */}
       <div className="flex flex-col gap-2">
         {showAdd && (
@@ -362,11 +430,21 @@ export default function Home() {
                 const optimisticItem: Item = {
                   id: tempId, // Temporary ID
                   user_id: user?.id || "",
+                  assignee_id: v.assignee_id ?? null,
                   project_id: v.project_id ?? null,
                   title: v.title,
                   description: v.description || null,
                   status: "todo",
                   position: items.length,
+                  scheduled_date: null,
+                  due_date: null,
+                  completed_at: null,
+                  recurrence_rule: null,
+                  recurrence_parent_id: null,
+                  is_recurring_template: false,
+                  is_recurring_instance: false,
+                  is_assigned: !!v.assignee_id,
+                  is_delegated: !!v.assignee_id,
                   created_at: new Date().toISOString(),
                   updated_at: new Date().toISOString(),
                   deleted_at: null,
@@ -401,6 +479,7 @@ export default function Home() {
                   status: "todo",
                   project_id: v.project_id,
                   position: items.length,
+                  assignee_id: v.assignee_id,
                 })
                   .then((created) => {
                     const resolvedItem = normaliseItemResponse(created);

@@ -21,7 +21,7 @@ return new class extends Migration
             $table->integer('position')->default(0);
             $table->softDeletes();
             $table->timestamps();
-            
+
             // Index for efficient querying by project and status
             $table->index(['project_id', 'status', 'position']);
         });

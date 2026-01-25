@@ -6,9 +6,6 @@ namespace App\Services;
 
 use App\Models\Item;
 use Carbon\Carbon;
-use DateInterval;
-use DatePeriod;
-use DateTime;
 
 final class RecurrenceService
 {
@@ -113,7 +110,7 @@ final class RecurrenceService
                 }
             }
 
-            if (!$matchesDay) {
+            if (! $matchesDay) {
                 return false;
             }
         }
@@ -121,7 +118,7 @@ final class RecurrenceService
         // Check BYMONTHDAY constraint
         if (isset($rule['BYMONTHDAY'])) {
             $monthDays = is_array($rule['BYMONTHDAY']) ? $rule['BYMONTHDAY'] : [$rule['BYMONTHDAY']];
-            if (!in_array((string) $date->day, $monthDays)) {
+            if (! in_array((string) $date->day, $monthDays)) {
                 return false;
             }
         }
@@ -129,7 +126,7 @@ final class RecurrenceService
         // Check BYMONTH constraint
         if (isset($rule['BYMONTH'])) {
             $months = is_array($rule['BYMONTH']) ? $rule['BYMONTH'] : [$rule['BYMONTH']];
-            if (!in_array((string) $date->month, $months)) {
+            if (! in_array((string) $date->month, $months)) {
                 return false;
             }
         }
@@ -161,7 +158,7 @@ final class RecurrenceService
         Carbon $startDate,
         Carbon $endDate
     ): array {
-        if (!$templateItem->isRecurringTemplate()) {
+        if (! $templateItem->isRecurringTemplate()) {
             return [];
         }
 
@@ -181,6 +178,7 @@ final class RecurrenceService
 
             if ($existingInstance) {
                 $instances[] = $existingInstance;
+
                 continue;
             }
 
@@ -216,13 +214,13 @@ final class RecurrenceService
         $rule = $this->parseRule($rrule);
 
         // Must have FREQ
-        if (!isset($rule['FREQ'])) {
+        if (! isset($rule['FREQ'])) {
             return false;
         }
 
         // FREQ must be valid
         $validFreq = ['DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY'];
-        if (!in_array($rule['FREQ'], $validFreq)) {
+        if (! in_array($rule['FREQ'], $validFreq)) {
             return false;
         }
 
@@ -231,7 +229,7 @@ final class RecurrenceService
             $validDays = ['SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA'];
             $days = is_array($rule['BYDAY']) ? $rule['BYDAY'] : [$rule['BYDAY']];
             foreach ($days as $day) {
-                if (!in_array($day, $validDays)) {
+                if (! in_array($day, $validDays)) {
                     return false;
                 }
             }
@@ -240,6 +238,3 @@ final class RecurrenceService
         return true;
     }
 }
-
-
-

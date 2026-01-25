@@ -154,13 +154,32 @@ export function ItemRow({
         >
           {optimisticItem.title}
         </div>
-        {projectName && (
-          <div
-            className={`text-sm transition-colors duration-200 ${isCompleted || isCancelled ? "text-slate-300" : "text-[var(--blue-600)]"}`}
-          >
-            {projectName}
-          </div>
-        )}
+        {/* Project and assignment badges */}
+        <div className="flex flex-wrap gap-2 mt-1">
+          {projectName && (
+            <span
+              className={`text-xs px-2 py-0.5 rounded-full transition-colors duration-200 ${isCompleted || isCancelled ? "bg-slate-100 text-slate-300" : "bg-[var(--blue)]/10 text-[var(--blue-600)]"}`}
+            >
+              {projectName}
+            </span>
+          )}
+          {optimisticItem.is_delegated && optimisticItem.assignee && (
+            <span
+              className={`text-xs px-2 py-0.5 rounded-full transition-colors duration-200 ${isCompleted || isCancelled ? "bg-slate-100 text-slate-300" : "bg-amber-100 text-amber-700"}`}
+            >
+              Delegated to {optimisticItem.assignee.name}
+            </span>
+          )}
+          {optimisticItem.is_assigned &&
+            !optimisticItem.is_delegated &&
+            optimisticItem.owner && (
+              <span
+                className={`text-xs px-2 py-0.5 rounded-full transition-colors duration-200 ${isCompleted || isCancelled ? "bg-slate-100 text-slate-300" : "bg-emerald-100 text-emerald-700"}`}
+              >
+                From {optimisticItem.owner.name}
+              </span>
+            )}
+        </div>
         {optimisticItem.description && (
           <div
             className={`text-sm mt-1 transition-colors duration-200 ${isCompleted || isCancelled ? "text-slate-300" : "text-slate-500"}`}
