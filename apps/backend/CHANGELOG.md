@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.1] - 2026-01-25
+
+### Added
+
+#### Notification System Improvements
+- **NotificationServiceInterface**: Created interface for dependency injection and testability
+- **CreateNotificationJob**: Notifications now dispatch jobs instead of creating records directly
+  - Jobs have retry configuration (3 attempts, 5 second backoff)
+  - Improves performance by offloading notification creation to queue
+- **NotificationResource**: New API resource with structured notification response
+  - Includes human-readable relative timestamps (`created_at_human`)
+  - Formats: "Just now", "2 minutes ago", "1 hour ago", "Yesterday", "3 days ago", "2 weeks ago", "25 Jan", "25 Jan 2025"
+  - All timestamps in ISO 8601 format
+
+### Changed
+- **NotificationService**: Refactored to implement NotificationServiceInterface
+- **NotificationController**: Now uses interface injection and NotificationResource
+- **ItemController/ConnectionController**: Updated to use NotificationServiceInterface
+
+### Tests
+- Added NotificationServiceTest (10 tests) covering job dispatching for all notification types
+- Added CreateNotificationJobTest (7 tests) covering job execution and configuration
+- Added NotificationResourceTest (7 tests) covering resource structure and formatting
+- Total: 193 tests passing
+
 ## [0.9.0] - 2026-01-25
 
 ### Fixed

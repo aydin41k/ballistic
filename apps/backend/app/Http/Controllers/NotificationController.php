@@ -4,8 +4,9 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Contracts\NotificationServiceInterface;
+use App\Http\Resources\NotificationResource;
 use App\Models\Notification;
-use App\Services\NotificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -14,7 +15,7 @@ use Illuminate\Support\Facades\Auth;
 final class NotificationController extends Controller
 {
     public function __construct(
-        private readonly NotificationService $notificationService
+        private readonly NotificationServiceInterface $notificationService
     ) {}
 
     /**
@@ -33,7 +34,7 @@ final class NotificationController extends Controller
         $notifications = $query->limit(50)->get();
 
         return response()->json([
-            'data' => $notifications,
+            'data' => NotificationResource::collection($notifications),
             'unread_count' => $this->notificationService->getUnreadCount($user),
         ]);
     }

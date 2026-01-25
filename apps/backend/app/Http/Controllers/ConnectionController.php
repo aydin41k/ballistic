@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Contracts\NotificationServiceInterface;
 use App\Models\Connection;
 use App\Models\User;
-use App\Services\NotificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -15,7 +15,7 @@ use Illuminate\Support\Facades\Auth;
 final class ConnectionController extends Controller
 {
     public function __construct(
-        private readonly NotificationService $notificationService
+        private readonly NotificationServiceInterface $notificationService
     ) {}
 
     /**

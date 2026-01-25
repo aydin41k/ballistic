@@ -4,13 +4,13 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Contracts\NotificationServiceInterface;
 use App\Http\Requests\StoreItemRequest;
 use App\Http\Requests\UpdateItemRequest;
 use App\Http\Resources\ItemResource;
 use App\Models\Item;
 use App\Models\User;
 use App\Policies\ItemPolicy;
-use App\Services\NotificationService;
 use App\Services\RecurrenceService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
@@ -113,7 +113,7 @@ final class ItemController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(StoreItemRequest $request, NotificationService $notificationService): JsonResponse
+    public function store(StoreItemRequest $request, NotificationServiceInterface $notificationService): JsonResponse
     {
         $validated = $request->validated();
         $tagIds = $validated['tag_ids'] ?? [];
@@ -182,7 +182,7 @@ final class ItemController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(UpdateItemRequest $request, Item $item, NotificationService $notificationService): JsonResponse|ItemResource
+    public function update(UpdateItemRequest $request, Item $item, NotificationServiceInterface $notificationService): JsonResponse|ItemResource
     {
         $this->authorize('update', $item);
 
