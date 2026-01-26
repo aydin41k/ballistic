@@ -27,6 +27,7 @@ final class AuthController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'required|string|lowercase|email|max:255|unique:'.User::class,
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
+            'device_name' => 'nullable|string|max:255',
         ]);
 
         $user = User::create([
@@ -37,7 +38,8 @@ final class AuthController extends Controller
 
         event(new Registered($user));
 
-        $token = $user->createToken('api-token')->plainTextToken;
+        $deviceName = $validated['device_name'] ?? 'api-token';
+        $token = $user->createToken($deviceName)->plainTextToken;
 
         return response()->json([
             'message' => 'User registered successfully',
@@ -70,7 +72,8 @@ final class AuthController extends Controller
         /** @var User $user */
         $user = Auth::user();
 
-        $token = $user->createToken('api-token')->plainTextToken;
+        $deviceName = $request->input('device_name', 'api-token');
+        $token = $user->createToken($deviceName)->plainTextToken;
 
         return response()->json([
             'message' => 'Login successful',
@@ -107,6 +110,7 @@ final class AuthController extends Controller
         $request->validate([
             'email' => ['required', 'string', 'email'],
             'password' => ['required', 'string'],
+            'device_name' => ['nullable', 'string', 'max:255'],
         ]);
     }
 

@@ -6,6 +6,47 @@ const USER_KEY = "ballistic_user";
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "";
 
 /**
+ * Detect device name from user agent
+ */
+function getDeviceName(): string {
+  if (typeof window === "undefined") {
+    return "api-token";
+  }
+
+  const ua = navigator.userAgent;
+  let browser = "Unknown";
+  let os = "Unknown";
+
+  // Detect browser
+  if (ua.includes("Chrome") && !ua.includes("Edg")) {
+    browser = "Chrome";
+  } else if (ua.includes("Firefox")) {
+    browser = "Firefox";
+  } else if (ua.includes("Safari") && !ua.includes("Chrome")) {
+    browser = "Safari";
+  } else if (ua.includes("Edg")) {
+    browser = "Edge";
+  } else if (ua.includes("Opera") || ua.includes("OPR")) {
+    browser = "Opera";
+  }
+
+  // Detect OS
+  if (ua.includes("Win")) {
+    os = "Windows";
+  } else if (ua.includes("Mac")) {
+    os = "macOS";
+  } else if (ua.includes("Linux") && !ua.includes("Android")) {
+    os = "Linux";
+  } else if (ua.includes("Android")) {
+    os = "Android";
+  } else if (ua.includes("iOS") || (ua.includes("iPhone") || ua.includes("iPad"))) {
+    os = "iOS";
+  }
+
+  return `${browser} on ${os}`;
+}
+
+/**
  * Get the stored auth token from localStorage
  */
 export function getToken(): string | null {
@@ -66,13 +107,14 @@ export async function login(
   email: string,
   password: string,
 ): Promise<AuthResponse> {
+  const deviceName = getDeviceName();
   const response = await fetch(`${API_BASE}/api/login`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       Accept: "application/json",
     },
-    body: JSON.stringify({ email, password }),
+    body: JSON.stringify({ email, password, device_name: deviceName }),
   });
 
   if (!response.ok) {
@@ -95,13 +137,14 @@ export async function register(
   password: string,
   password_confirmation: string,
 ): Promise<AuthResponse> {
+  const deviceName = getDeviceName();
   const response = await fetch(`${API_BASE}/api/register`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       Accept: "application/json",
     },
-    body: JSON.stringify({ name, email, password, password_confirmation }),
+    body: JSON.stringify({ name, email, password, password_confirmation, device_name: deviceName }),
   });
 
   if (!response.ok) {
