@@ -37,12 +37,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: node-app
-          path: |
-            .
-            !node_modules
-            !.git
-            !.github
-            !.cursor
+          path: apps/frontend
 
   deploy:
     runs-on: ubuntu-latest
@@ -70,7 +65,7 @@ jobs:
         with:
           app-name: "ballist"
           slot-name: "Production"
-          package: .
+          package: apps/frontend
           # Azure will run 'npm install' and 'npm run build' automatically
           # using environment variables configured in the Azure portal
           startup-command: "npm start"
