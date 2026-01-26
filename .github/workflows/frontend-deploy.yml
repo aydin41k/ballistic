@@ -65,7 +65,7 @@ jobs:
         with:
           app-name: "ballist"
           slot-name: "Production"
-          package: apps/frontend
+          package: .
           # Azure will run 'npm install' and 'npm run build' automatically
           # using environment variables configured in the Azure portal
           startup-command: "npm start"
