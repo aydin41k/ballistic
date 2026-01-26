@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Http\Requests;
 
-use App\Models\Project;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
@@ -39,8 +38,9 @@ final class UpdateItemRequest extends FormRequest
             ],
             'position' => ['sometimes', 'integer', 'min:0'],
             'scheduled_date' => ['nullable', 'date'],
-            'due_date' => ['nullable', 'date'],
+            'due_date' => ['nullable', 'date', 'after_or_equal:scheduled_date'],
             'recurrence_rule' => ['nullable', 'string', 'max:255'],
+            'recurrence_strategy' => ['nullable', 'string', Rule::in(['expires', 'carry_over'])],
             'tag_ids' => ['nullable', 'array'],
             'tag_ids.*' => [
                 'uuid',
@@ -61,6 +61,7 @@ final class UpdateItemRequest extends FormRequest
         return [
             'project_id.exists' => 'The selected project does not exist or does not belong to you.',
             'tag_ids.*.exists' => 'One or more selected tags do not exist or do not belong to you.',
+            'due_date.after_or_equal' => 'The due date must not be before the scheduled date.',
         ];
     }
 }

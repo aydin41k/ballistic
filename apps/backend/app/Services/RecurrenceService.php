@@ -6,9 +6,7 @@ namespace App\Services;
 
 use App\Models\Item;
 use Carbon\Carbon;
-use DateInterval;
-use DatePeriod;
-use DateTime;
+use Illuminate\Support\Facades\DB;
 
 final class RecurrenceService
 {
@@ -85,7 +83,7 @@ final class RecurrenceService
                 $occurrenceCount++;
             }
 
-            $current = $this->advanceDate($current, $freq, $interval);
+            $current = $this->advanceDate($current, $freq, $interval, $rule);
         }
 
         return $occurrences;
@@ -113,7 +111,7 @@ final class RecurrenceService
                 }
             }
 
-            if (!$matchesDay) {
+            if (! $matchesDay) {
                 return false;
             }
         }
@@ -121,7 +119,7 @@ final class RecurrenceService
         // Check BYMONTHDAY constraint
         if (isset($rule['BYMONTHDAY'])) {
             $monthDays = is_array($rule['BYMONTHDAY']) ? $rule['BYMONTHDAY'] : [$rule['BYMONTHDAY']];
-            if (!in_array((string) $date->day, $monthDays)) {
+            if (! in_array((string) $date->day, $monthDays)) {
                 return false;
             }
         }
@@ -129,7 +127,7 @@ final class RecurrenceService
         // Check BYMONTH constraint
         if (isset($rule['BYMONTH'])) {
             $months = is_array($rule['BYMONTH']) ? $rule['BYMONTH'] : [$rule['BYMONTH']];
-            if (!in_array((string) $date->month, $months)) {
+            if (! in_array((string) $date->month, $months)) {
                 return false;
             }
         }
@@ -139,15 +137,30 @@ final class RecurrenceService
 
     /**
      * Advance a date based on frequency.
+     *
+     * @param  array<string, mixed>  $rule  Parsed RRULE components
      */
-    private function advanceDate(Carbon $date, string $freq, int $interval): Carbon
+    private function advanceDate(Carbon $date, string $freq, int $interval, array $rule = []): Carbon
     {
+        // When FREQ=WEEKLY with BYDAY, step day-by-day so every specified
+        // weekday within the week is visited. At the Monday week boundary,
+        // honour INTERVAL by skipping (interval - 1) additional weeks.
+        if ($freq === 'WEEKLY' && isset($rule['BYDAY'])) {
+            $next = $date->copy()->addDay();
+
+            if ($next->dayOfWeek === Carbon::MONDAY && $interval > 1) {
+                $next->addWeeks($interval - 1);
+            }
+
+            return $next;
+        }
+
         return match ($freq) {
-            'DAILY' => $date->addDays($interval),
-            'WEEKLY' => $date->addWeeks($interval),
-            'MONTHLY' => $date->addMonths($interval),
-            'YEARLY' => $date->addYears($interval),
-            default => $date->addDays($interval),
+            'DAILY' => $date->copy()->addDays($interval),
+            'WEEKLY' => $date->copy()->addWeeks($interval),
+            'MONTHLY' => $date->copy()->addMonths($interval),
+            'YEARLY' => $date->copy()->addYears($interval),
+            default => $date->copy()->addDays($interval),
         };
     }
 
@@ -161,7 +174,7 @@ final class RecurrenceService
         Carbon $startDate,
         Carbon $endDate
     ): array {
-        if (!$templateItem->isRecurringTemplate()) {
+        if (! $templateItem->isRecurringTemplate()) {
             return [];
         }
 
@@ -171,41 +184,45 @@ final class RecurrenceService
             $endDate
         );
 
-        $instances = [];
+        return DB::transaction(function () use ($templateItem, $occurrences): array {
+            $instances = [];
 
-        foreach ($occurrences as $date) {
-            // Check if an instance already exists for this date
-            $existingInstance = Item::where('recurrence_parent_id', $templateItem->id)
-                ->whereDate('scheduled_date', $date)
-                ->first();
+            foreach ($occurrences as $date) {
+                // Check if an instance already exists for this date
+                $existingInstance = Item::where('recurrence_parent_id', $templateItem->id)
+                    ->whereDate('scheduled_date', $date)
+                    ->first();
 
-            if ($existingInstance) {
-                $instances[] = $existingInstance;
-                continue;
+                if ($existingInstance) {
+                    $instances[] = $existingInstance;
+
+                    continue;
+                }
+
+                // Create a new instance
+                $instance = Item::create([
+                    'user_id' => $templateItem->user_id,
+                    'project_id' => $templateItem->project_id,
+                    'title' => $templateItem->title,
+                    'description' => $templateItem->description,
+                    'status' => 'todo',
+                    'position' => $templateItem->position,
+                    'scheduled_date' => $date,
+                    'due_date' => $templateItem->due_date ? $date : null,
+                    'recurrence_parent_id' => $templateItem->id,
+                    'recurrence_strategy' => $templateItem->recurrence_strategy,
+                ]);
+
+                // Copy tags from template
+                if ($templateItem->tags->isNotEmpty()) {
+                    $instance->tags()->sync($templateItem->tags->pluck('id'));
+                }
+
+                $instances[] = $instance;
             }
 
-            // Create a new instance
-            $instance = Item::create([
-                'user_id' => $templateItem->user_id,
-                'project_id' => $templateItem->project_id,
-                'title' => $templateItem->title,
-                'description' => $templateItem->description,
-                'status' => 'todo',
-                'position' => $templateItem->position,
-                'scheduled_date' => $date,
-                'due_date' => $templateItem->due_date ? $date : null,
-                'recurrence_parent_id' => $templateItem->id,
-            ]);
-
-            // Copy tags from template
-            if ($templateItem->tags->isNotEmpty()) {
-                $instance->tags()->sync($templateItem->tags->pluck('id'));
-            }
-
-            $instances[] = $instance;
-        }
-
-        return $instances;
+            return $instances;
+        });
     }
 
     /**
@@ -216,13 +233,13 @@ final class RecurrenceService
         $rule = $this->parseRule($rrule);
 
         // Must have FREQ
-        if (!isset($rule['FREQ'])) {
+        if (! isset($rule['FREQ'])) {
             return false;
         }
 
         // FREQ must be valid
         $validFreq = ['DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY'];
-        if (!in_array($rule['FREQ'], $validFreq)) {
+        if (! in_array($rule['FREQ'], $validFreq)) {
             return false;
         }
 
@@ -231,7 +248,7 @@ final class RecurrenceService
             $validDays = ['SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA'];
             $days = is_array($rule['BYDAY']) ? $rule['BYDAY'] : [$rule['BYDAY']];
             foreach ($days as $day) {
-                if (!in_array($day, $validDays)) {
+                if (! in_array($day, $validDays)) {
                     return false;
                 }
             }
@@ -240,6 +257,3 @@ final class RecurrenceService
         return true;
     }
 }
-
-
-

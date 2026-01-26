@@ -6,7 +6,6 @@ namespace Tests\Feature;
 
 use App\Models\Item;
 use App\Models\Project;
-use App\Models\Tag;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -138,15 +137,15 @@ final class AdminTest extends TestCase
     public function test_admin_stats_show_correct_counts(): void
     {
         $admin = User::factory()->admin()->create();
-        
+
         // Create users with specific projects
         $user1 = User::factory()->create();
         $user2 = User::factory()->create();
-        
+
         // Create projects for user1
         $project1 = Project::factory()->create(['user_id' => $user1->id]);
         $project2 = Project::factory()->create(['user_id' => $user2->id]);
-        
+
         // Create items with specific users/projects
         Item::factory()->count(5)->todo()->create(['user_id' => $user1->id, 'project_id' => $project1->id]);
         Item::factory()->count(3)->done()->create(['user_id' => $user2->id, 'project_id' => $project2->id]);

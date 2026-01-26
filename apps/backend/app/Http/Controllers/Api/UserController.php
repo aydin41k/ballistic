@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\UserResource;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
@@ -51,12 +52,14 @@ final class UserController extends Controller
             $validated['password'] = Hash::make($validated['password']);
         }
 
-        $user->update($validated);
+        DB::transaction(function () use ($user, $validated): void {
+            $user->update($validated);
 
-        if (isset($validated['email']) && $validated['email'] !== $user->getOriginal('email')) {
-            $user->email_verified_at = null;
-            $user->save();
-        }
+            if (isset($validated['email']) && $validated['email'] !== $user->getOriginal('email')) {
+                $user->email_verified_at = null;
+                $user->save();
+            }
+        });
 
         return new UserResource($user);
     }

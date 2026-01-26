@@ -10,7 +10,6 @@ use App\Models\Project;
 use App\Models\Tag;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\DB;
 
 final class StatsController extends Controller
 {

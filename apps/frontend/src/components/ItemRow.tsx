@@ -1,15 +1,14 @@
 "use client";
 
 import { cycleStatus } from "@/lib/status";
-import { updateStatus, moveItem } from "@/lib/api";
+import { updateStatus } from "@/lib/api";
 import type { Item } from "@/types";
 import { useOptimistic, startTransition } from "react";
 import { StatusCircle } from "./StatusCircle";
 
 type Props = {
   item: Item;
-  onChange: (item: Item) => void;
-  onReorder: (items: Item[]) => void;
+  onChange: (itemOrUpdater: Item | ((current: Item) => Item)) => void;
   onOptimisticReorder: (
     itemId: string,
     direction: "up" | "down" | "top",
@@ -23,12 +22,12 @@ type Props = {
   onDragEnd: () => void;
   draggingId: string | null;
   dragOverId: string | null;
+  onError: (message: string) => void;
 };
 
 export function ItemRow({
   item,
   onChange,
-  onReorder,
   onOptimisticReorder,
   index,
   onEdit,
@@ -39,66 +38,84 @@ export function ItemRow({
   onDragEnd,
   draggingId,
   dragOverId,
+  onError,
 }: Props) {
   const [optimisticItem, addOptimistic] = useOptimistic(
     item,
     (currentItem: Item, newStatus: Item["status"]) => ({
       ...currentItem,
       status: newStatus,
+      completed_at:
+        newStatus === "done"
+          ? new Date().toISOString()
+          : currentItem.status === "done"
+            ? null
+            : currentItem.completed_at,
     }),
   );
 
-  async function onToggle() {
+  function onToggle() {
     const nextStatus = cycleStatus(optimisticItem.status);
+
+    const completedAt =
+      nextStatus === "done"
+        ? new Date().toISOString()
+        : item.status === "done"
+          ? null
+          : item.completed_at;
 
     // Update UI immediately (optimistic update)
     startTransition(() => {
       addOptimistic(nextStatus);
     });
 
-    // Also update the parent state immediately for immediate UI feedback
+    // Update parent state with correct completed_at
     onChange({
       ...item,
       status: nextStatus,
+      completed_at: completedAt,
     });
 
-    // Send API request in background (fire and forget)
-    updateStatus(item.id, nextStatus).catch((error) => {
-      console.error("Failed to update status:", error);
-      // Optionally show a toast notification or rollback the UI
-      // For now, we'll just log the error since the UI is already updated
-    });
+    // Reconcile with server — merge authoritative timestamps
+    // without overwriting status (user may toggle again mid-flight)
+    updateStatus(item.id, nextStatus)
+      .then((serverItem) => {
+        onChange((current) => {
+          if (current.id !== item.id) return current;
+          if (current.status !== nextStatus) return current;
+          return {
+            ...current,
+            completed_at: serverItem.completed_at,
+            updated_at: serverItem.updated_at,
+          };
+        });
+      })
+      .catch((error) => {
+        console.error("Failed to update status:", error);
+        onChange(item);
+        onError("Failed to update status. Change reverted.");
+      });
   }
 
-  async function onMove(direction: "up" | "down" | "top") {
-    try {
-      // Update UI immediately for optimistic reordering
-      onOptimisticReorder(item.id, direction);
-
-      // Send API request in background
-      moveItem(item.id, direction)
-        .then((newList) => {
-          // Validate the response before updating the parent
-          if (Array.isArray(newList) && newList.length > 0) {
-            // Update the parent with the actual result from the server
-            onReorder(newList);
-          } else {
-            console.warn("moveItem returned invalid data:", newList);
-            // Don't update the parent with invalid data
-          }
-        })
-        .catch((error) => {
-          console.error("Failed to move item:", error);
-          // The parent should handle rollback if needed
-        });
-    } catch (error) {
-      console.error("Error during move operation:", error);
-      // Don't crash the UI, just log the error
-    }
+  function onMove(direction: "up" | "down" | "top") {
+    onOptimisticReorder(item.id, direction);
   }
 
   const isCompleted = optimisticItem.status === "done";
   const isCancelled = optimisticItem.status === "wontdo";
+
+  // Urgency calculation
+  const urgency = (() => {
+    if (!optimisticItem.due_date || isCompleted || isCancelled) return "none";
+    const today = new Date();
+    const todayStr = today.toISOString().split("T")[0];
+    const dueMs = new Date(optimisticItem.due_date + "T23:59:59").getTime();
+    const in72hMs = today.getTime() + 72 * 60 * 60 * 1000;
+
+    if (optimisticItem.due_date < todayStr) return "overdue";
+    if (dueMs <= in72hMs) return "due-soon";
+    return "upcoming";
+  })();
 
   // Get project name from nested project object if available
   const projectName = optimisticItem.project?.name || null;
@@ -108,7 +125,7 @@ export function ItemRow({
   return (
     <div
       data-item-id={item.id}
-      className={`flex items-center gap-3 rounded-md bg-white p-3 shadow-sm transition-all duration-300 ease-out hover:shadow-md hover:-translate-y-0.5 animate-slide-in-up cursor-pointer ${isDragging ? "opacity-70 ring-2 ring-[var(--blue)]/30" : ""} ${isDragOver ? "ring-2 ring-[var(--blue)]/50" : ""}`}
+      className={`flex items-center gap-3 rounded-md bg-white p-3 shadow-sm transition-all duration-300 ease-out hover:shadow-md hover:-translate-y-0.5 animate-slide-in-up cursor-pointer ${isDragging ? "opacity-70 ring-2 ring-[var(--blue)]/30" : ""} ${isDragOver ? "ring-2 ring-[var(--blue)]/50" : ""} ${urgency === "overdue" ? "border-l-4 border-l-red-500 bg-red-50/50" : ""} ${urgency === "due-soon" ? "border-l-4 border-l-amber-400 bg-amber-50/30" : ""}`}
       style={{
         animationDelay: `${index * 50}ms`,
       }}
@@ -150,9 +167,39 @@ export function ItemRow({
       {/* Task details */}
       <div className="flex-1 min-w-0">
         <div
-          className={`font-medium transition-colors duration-200 ${isCompleted || isCancelled ? "text-slate-400 line-through" : "text-[var(--navy)]"}`}
+          className={`flex items-center gap-1 font-medium transition-colors duration-200 ${isCompleted || isCancelled ? "text-slate-400 line-through" : "text-[var(--navy)]"}`}
         >
           {optimisticItem.title}
+          {(optimisticItem.is_recurring_template ||
+            optimisticItem.is_recurring_instance) && (
+            <svg
+              viewBox="0 0 24 24"
+              width="14"
+              height="14"
+              fill="none"
+              stroke="currentColor"
+              className={`shrink-0 ${isCompleted || isCancelled ? "text-slate-300" : "text-slate-400"}`}
+            >
+              <path
+                d="M17 1l4 4-4 4"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+              <path
+                d="M3 11V9a4 4 0 0 1 4-4h14M7 23l-4-4 4-4"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+              <path
+                d="M21 13v2a4 4 0 0 1-4 4H3"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          )}
         </div>
         {projectName && (
           <div
@@ -168,6 +215,40 @@ export function ItemRow({
             {optimisticItem.description.length > 50
               ? `${optimisticItem.description.slice(0, 50)}...`
               : optimisticItem.description}
+          </div>
+        )}
+        {optimisticItem.due_date && !isCompleted && !isCancelled && (
+          <div
+            className={`text-xs mt-1 flex items-center gap-1 ${
+              urgency === "overdue"
+                ? "text-red-600 font-medium"
+                : urgency === "due-soon"
+                  ? "text-amber-600"
+                  : "text-slate-400"
+            }`}
+          >
+            {urgency === "overdue" && (
+              <span className="inline-block w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+            )}
+            {urgency === "overdue" ? "Overdue" : "Due"}{" "}
+            {new Date(optimisticItem.due_date + "T00:00:00").toLocaleDateString(
+              "en-AU",
+              {
+                day: "numeric",
+                month: "short",
+              },
+            )}
+          </div>
+        )}
+        {optimisticItem.scheduled_date && !isCompleted && !isCancelled && (
+          <div className="text-xs mt-0.5 text-slate-400">
+            Scheduled{" "}
+            {new Date(
+              optimisticItem.scheduled_date + "T00:00:00",
+            ).toLocaleDateString("en-AU", {
+              day: "numeric",
+              month: "short",
+            })}
           </div>
         )}
       </div>

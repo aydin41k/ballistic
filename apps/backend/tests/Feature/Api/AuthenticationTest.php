@@ -256,17 +256,17 @@ class AuthenticationTest extends TestCase
         $this->assertStringContainsString('Too many login attempts', $errorMessage);
     }
 
-    public function test_login_revokes_existing_tokens(): void
+    public function test_login_preserves_existing_tokens(): void
     {
         $user = User::factory()->create([
             'email' => 'test@example.com',
             'password' => bcrypt('password123'),
         ]);
 
-        // Create an existing token
+        // Create an existing token (simulates another device session)
         $oldToken = $user->createToken('old-token')->plainTextToken;
 
-        // Login again
+        // Login again from a new device
         $response = $this->postJson('/api/login', [
             'email' => 'test@example.com',
             'password' => 'password123',
@@ -274,8 +274,13 @@ class AuthenticationTest extends TestCase
 
         $response->assertStatus(200);
 
-        // Verify old tokens were deleted
-        $this->assertEquals(1, $user->tokens()->count());
+        // Both old and new tokens should exist (multi-device support)
+        $this->assertEquals(2, $user->tokens()->count());
+
+        // Old token should still be valid
+        $this->withHeader('Authorization', 'Bearer '.$oldToken)
+            ->getJson('/api/items')
+            ->assertStatus(200);
     }
 
     public function test_registration_returns_valid_token(): void

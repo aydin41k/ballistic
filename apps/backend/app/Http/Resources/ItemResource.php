@@ -28,6 +28,7 @@ final class ItemResource extends JsonResource
             'due_date' => $this->due_date?->toDateString(),
             'completed_at' => $this->completed_at?->toIso8601String(),
             'recurrence_rule' => $this->recurrence_rule,
+            'recurrence_strategy' => $this->recurrence_strategy,
             'recurrence_parent_id' => $this->recurrence_parent_id,
             'is_recurring_template' => $this->isRecurringTemplate(),
             'is_recurring_instance' => $this->isRecurringInstance(),

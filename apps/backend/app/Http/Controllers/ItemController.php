@@ -15,6 +15,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 final class ItemController extends Controller
 {
@@ -23,9 +24,34 @@ final class ItemController extends Controller
      */
     public function index(Request $request): AnonymousResourceCollection
     {
+        // Auto-expire recurring instances whose scheduled_date has passed
+        // and whose strategy is 'expires'. Only instances (not templates).
+        Item::where('user_id', Auth::id())
+            ->where('recurrence_strategy', 'expires')
+            ->whereNotNull('recurrence_parent_id')
+            ->whereNotNull('scheduled_date')
+            ->whereDate('scheduled_date', '<', now()->toDateString())
+            ->whereIn('status', ['todo', 'doing'])
+            ->update(['status' => 'wontdo', 'updated_at' => now()]);
+
         $query = Item::where('user_id', Auth::id())
             ->with(['project', 'tags'])
             ->orderBy('position');
+
+        // Apply scheduling scope: hide future-scheduled items by default
+        $scope = $request->input('scope', 'active');
+        if (! in_array($scope, ['active', 'planned', 'all'], true)) {
+            $scope = 'active';
+        }
+
+        if ($scope === 'planned') {
+            $query->planned();
+        } elseif ($scope === 'all') {
+            // No scope filter — return everything
+        } else {
+            // Default: only show active items (no future scheduled_date)
+            $query->active();
+        }
 
         if ($request->has('project_id')) {
             $query->where('project_id', $request->project_id);
@@ -87,15 +113,19 @@ final class ItemController extends Controller
             $validated['completed_at'] = now();
         }
 
-        $item = Item::create([
-            ...$validated,
-            'user_id' => Auth::id(),
-            'position' => $validated['position'] ?? 0,
-        ]);
+        $item = DB::transaction(function () use ($validated, $tagIds): Item {
+            $item = Item::create([
+                ...$validated,
+                'user_id' => Auth::id(),
+                'position' => $validated['position'] ?? 0,
+            ]);
 
-        if (!empty($tagIds)) {
-            $item->tags()->sync($tagIds);
-        }
+            if (! empty($tagIds)) {
+                $item->tags()->sync($tagIds);
+            }
+
+            return $item;
+        });
 
         $item->load(['project', 'tags']);
 
@@ -136,11 +166,13 @@ final class ItemController extends Controller
             }
         }
 
-        $item->update($validated);
+        DB::transaction(function () use ($item, $validated, $tagIds): void {
+            $item->update($validated);
 
-        if ($tagIds !== null) {
-            $item->tags()->sync($tagIds);
-        }
+            if ($tagIds !== null) {
+                $item->tags()->sync($tagIds);
+            }
+        });
 
         $item->load(['project', 'tags']);
 
@@ -165,20 +197,48 @@ final class ItemController extends Controller
     public function reorder(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'items' => ['required', 'array'],
-            'items.*.id' => ['required', 'uuid', 'exists:items,id'],
-            'items.*.position' => ['required', 'integer', 'min:0'],
+            'items' => ['required', 'array', 'max:100'],
+            'items.*.id' => ['required', 'uuid'],
+            'items.*.position' => ['required', 'integer', 'min:0', 'max:9999'],
         ]);
 
-        foreach ($validated['items'] as $itemData) {
-            $item = Item::where('id', $itemData['id'])
-                ->where('user_id', Auth::id())
-                ->first();
+        DB::transaction(function () use ($validated): void {
+            $submittedIds = array_column($validated['items'], 'id');
 
-            if ($item) {
-                $item->update(['position' => $itemData['position']]);
+            // Collect only items owned by this user in a single query
+            $ownedIds = Item::where('user_id', Auth::id())
+                ->whereIn('id', $submittedIds)
+                ->pluck('id')
+                ->flip();
+
+            $maxPosition = -1;
+
+            foreach ($validated['items'] as $itemData) {
+                if ($ownedIds->has($itemData['id'])) {
+                    Item::where('id', $itemData['id'])
+                        ->update(['position' => $itemData['position']]);
+
+                    if ($itemData['position'] > $maxPosition) {
+                        $maxPosition = $itemData['position'];
+                    }
+                }
             }
-        }
+
+            // Renumber non-submitted items to positions after the submitted range.
+            // This prevents position double-ups with completed/cancelled items
+            // that the client filters out before reordering.
+            $otherItemIds = Item::where('user_id', Auth::id())
+                ->whereNotIn('id', $submittedIds)
+                ->orderBy('position')
+                ->pluck('id');
+
+            $nextPosition = $maxPosition + 1;
+
+            foreach ($otherItemIds as $otherId) {
+                Item::where('id', $otherId)
+                    ->update(['position' => $nextPosition++]);
+            }
+        });
 
         return response()->json(['message' => 'Items reordered successfully']);
     }
@@ -190,7 +250,7 @@ final class ItemController extends Controller
     {
         $this->authorize('update', $item);
 
-        if (!$item->isRecurringTemplate()) {
+        if (! $item->isRecurringTemplate()) {
             abort(Response::HTTP_BAD_REQUEST, 'This item is not a recurring template.');
         }
 

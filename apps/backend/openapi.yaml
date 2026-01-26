@@ -22,7 +22,7 @@ info:
     Authorization: Bearer {your-token}
     ```
     
-  version: 0.1.0
+  version: 0.7.0
   contact:
     name: Ballistic Backend
   license:
@@ -753,7 +753,7 @@ paths:
       summary: List all items
       description: |
         Retrieve a list of items belonging to the authenticated user.
-        Can be filtered by project_id and status.
+        Can be filtered by project_id, status, scheduling scope, and date ranges.
       operationId: getItems
       security:
         - bearerAuth: []
@@ -773,6 +773,66 @@ paths:
             type: string
             enum: [todo, doing, done, wontdo]
           description: Filter items by status
+        - name: scope
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [active, planned, all]
+            default: active
+          description: |
+            Controls which items are returned based on scheduling.
+            active (default): Items with no scheduled_date or scheduled_date <= today.
+            planned: Items with scheduled_date > today.
+            all: All items regardless of scheduling.
+        - name: tag_id
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+          description: Filter items by tag ID
+        - name: scheduled_date
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+          description: Filter items for an exact scheduled date
+        - name: scheduled_from
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+          description: Filter items with scheduled_date >= this date
+        - name: scheduled_to
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+          description: Filter items with scheduled_date <= this date
+        - name: due_from
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+          description: Filter items with due_date >= this date
+        - name: due_to
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+          description: Filter items with due_date <= this date
+        - name: overdue
+          in: query
+          required: false
+          schema:
+            type: boolean
+          description: If true, only return items whose due_date has passed and are not done/wontdo
       responses:
         '200':
           description: List of items retrieved successfully
@@ -826,6 +886,36 @@ paths:
                   type: integer
                   minimum: 0
                   example: 0
+                scheduled_date:
+                  type: string
+                  format: date
+                  nullable: true
+                  description: When this item becomes active (YYYY-MM-DD)
+                  example: "2026-02-01"
+                due_date:
+                  type: string
+                  format: date
+                  nullable: true
+                  description: Deadline for this item (YYYY-MM-DD). Must not be before scheduled_date.
+                  example: "2026-02-15"
+                recurrence_rule:
+                  type: string
+                  nullable: true
+                  description: RRULE pattern for recurring items
+                  example: "FREQ=DAILY"
+                recurrence_strategy:
+                  type: string
+                  nullable: true
+                  enum: [expires, carry_over]
+                  description: How missed recurring instances are handled
+                  example: carry_over
+                tag_ids:
+                  type: array
+                  nullable: true
+                  items:
+                    type: string
+                    format: uuid
+                  description: Array of tag UUIDs to assign
       responses:
         '201':
           description: Item created successfully
@@ -920,6 +1010,36 @@ paths:
                   type: integer
                   minimum: 0
                   example: 1
+                scheduled_date:
+                  type: string
+                  format: date
+                  nullable: true
+                  description: When this item becomes active (YYYY-MM-DD)
+                  example: "2026-02-01"
+                due_date:
+                  type: string
+                  format: date
+                  nullable: true
+                  description: Deadline for this item (YYYY-MM-DD). Must not be before scheduled_date.
+                  example: "2026-02-15"
+                recurrence_rule:
+                  type: string
+                  nullable: true
+                  description: RRULE pattern for recurring items
+                  example: "FREQ=DAILY"
+                recurrence_strategy:
+                  type: string
+                  nullable: true
+                  enum: [expires, carry_over]
+                  description: How missed recurring instances are handled
+                  example: carry_over
+                tag_ids:
+                  type: array
+                  nullable: true
+                  items:
+                    type: string
+                    format: uuid
+                  description: Array of tag UUIDs to assign
       responses:
         '200':
           description: Item updated successfully
@@ -986,6 +1106,36 @@ paths:
                   type: integer
                   minimum: 0
                   example: 1
+                scheduled_date:
+                  type: string
+                  format: date
+                  nullable: true
+                  description: When this item becomes active (YYYY-MM-DD)
+                  example: "2026-02-01"
+                due_date:
+                  type: string
+                  format: date
+                  nullable: true
+                  description: Deadline for this item (YYYY-MM-DD). Must not be before scheduled_date.
+                  example: "2026-02-15"
+                recurrence_rule:
+                  type: string
+                  nullable: true
+                  description: RRULE pattern for recurring items
+                  example: "FREQ=DAILY"
+                recurrence_strategy:
+                  type: string
+                  nullable: true
+                  enum: [expires, carry_over]
+                  description: How missed recurring instances are handled
+                  example: carry_over
+                tag_ids:
+                  type: array
+                  nullable: true
+                  items:
+                    type: string
+                    format: uuid
+                  description: Array of tag UUIDs to assign
       responses:
         '200':
           description: Item updated successfully
@@ -1032,6 +1182,153 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+
+  /api/items/reorder:
+    post:
+      tags:
+        - Items
+      summary: Bulk reorder items
+      description: |
+        Update the position of multiple items in a single request.
+        Only items owned by the authenticated user will be updated; unowned IDs are silently skipped.
+        Non-submitted items are automatically renumbered to positions after the submitted range to prevent position conflicts.
+      operationId: reorderItems
+      security:
+        - bearerAuth: []
+        - sessionAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - items
+              properties:
+                items:
+                  type: array
+                  maxItems: 100
+                  description: Array of item ID / position pairs. Maximum 100 items.
+                  items:
+                    type: object
+                    required:
+                      - id
+                      - position
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                        description: Item UUID
+                        example: 123e4567-e89b-12d3-a456-426614174000
+                      position:
+                        type: integer
+                        minimum: 0
+                        maximum: 9999
+                        description: New zero-based position for this item
+                        example: 0
+            example:
+              items:
+                - id: 123e4567-e89b-12d3-a456-426614174000
+                  position: 0
+                - id: 123e4567-e89b-12d3-a456-426614174001
+                  position: 1
+                - id: 123e4567-e89b-12d3-a456-426614174002
+                  position: 2
+      responses:
+        '200':
+          description: Items reordered successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Items reordered successfully
+        '401':
+          $ref: '#/components/responses/Unauthorised'
+        '422':
+          description: Validation error (e.g. array exceeds 100 items, position exceeds 9999)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /api/items/{id}/generate-recurrences:
+    post:
+      tags:
+        - Items
+      summary: Generate recurring instances
+      description: |
+        Generate item instances from a recurring template within the given date range.
+        The item must have a `recurrence_rule` set (i.e. be a recurring template).
+        Existing instances for a given date are returned as-is; new instances are created for dates without one.
+        Tags from the template are copied to each new instance.
+      operationId: generateRecurrences
+      security:
+        - bearerAuth: []
+        - sessionAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: UUID of the recurring template item
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - start_date
+                - end_date
+              properties:
+                start_date:
+                  type: string
+                  format: date
+                  description: Start of the date range (YYYY-MM-DD)
+                  example: "2026-02-01"
+                end_date:
+                  type: string
+                  format: date
+                  description: End of the date range (YYYY-MM-DD). Must be on or after start_date.
+                  example: "2026-02-28"
+      responses:
+        '200':
+          description: Generated recurring instances
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Item'
+        '400':
+          description: Item is not a recurring template
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                message: This item is not a recurring template.
+        '401':
+          $ref: '#/components/responses/Unauthorised'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
 
 components:
   securitySchemes:
@@ -1150,6 +1447,52 @@ components:
         position:
           type: integer
           example: 0
+        scheduled_date:
+          type: string
+          format: date
+          nullable: true
+          description: The date this item is scheduled to become active (YYYY-MM-DD)
+          example: "2026-02-01"
+        due_date:
+          type: string
+          format: date
+          nullable: true
+          description: The deadline for this item (YYYY-MM-DD)
+          example: "2026-02-15"
+        completed_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: When the item was marked as done (ISO 8601)
+          example: null
+        recurrence_rule:
+          type: string
+          nullable: true
+          description: RRULE string for recurring items
+          example: null
+        recurrence_strategy:
+          type: string
+          nullable: true
+          enum: [expires, carry_over]
+          description: |
+            How missed recurring instances are handled.
+            expires: Past instances are automatically marked wontdo.
+            carry_over: Past instances stay overdue until manually completed.
+          example: null
+        recurrence_parent_id:
+          type: string
+          format: uuid
+          nullable: true
+          description: UUID of the parent recurring template
+          example: null
+        is_recurring_template:
+          type: boolean
+          description: Whether this item is a recurring template
+          example: false
+        is_recurring_instance:
+          type: boolean
+          description: Whether this item was generated from a recurring template
+          example: false
         created_at:
           type: string
           format: date-time
