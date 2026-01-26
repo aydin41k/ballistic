@@ -55,12 +55,18 @@ export interface ValidationError {
   errors: Record<string, string[]>;
 }
 
-export type RecurrencePreset = "none" | "daily" | "weekdays" | "weekly" | "monthly";
+export type RecurrencePreset =
+  | "none"
+  | "daily"
+  | "weekdays"
+  | "weekly"
+  | "monthly";
 
-export const RECURRENCE_PRESET_RULES: Record<RecurrencePreset, string | null> = {
-  none: null,
-  daily: "FREQ=DAILY",
-  weekdays: "FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR",
-  weekly: "FREQ=WEEKLY",
-  monthly: "FREQ=MONTHLY",
-};
+export const RECURRENCE_PRESET_RULES: Record<RecurrencePreset, string | null> =
+  {
+    none: null,
+    daily: "FREQ=DAILY",
+    weekdays: "FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR",
+    weekly: "FREQ=WEEKLY",
+    monthly: "FREQ=MONTHLY",
+  };

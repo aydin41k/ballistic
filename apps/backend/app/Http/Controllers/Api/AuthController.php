@@ -89,7 +89,7 @@ final class AuthController extends Controller
     {
         /** @var User $user */
         $user = $request->user();
-        
+
         // Revoke the current token
         /** @var \Laravel\Sanctum\PersonalAccessToken|null $currentToken */
         $currentToken = $user->currentAccessToken();

@@ -29,11 +29,7 @@ function normaliseItemResponse(payload: Item | { data?: Item }): Item {
   return payload as Item;
 }
 
-function getUrgencyRank(
-  item: Item,
-  todayStr: string,
-  in72hMs: number,
-): number {
+function getUrgencyRank(item: Item, todayStr: string, in72hMs: number): number {
   if (!item.due_date) return 4; // No deadline = lowest priority
 
   const dueMs = new Date(item.due_date + "T23:59:59").getTime();
@@ -140,9 +136,7 @@ export default function Home() {
       if (typeof itemOrUpdater === "function") {
         return prev.map(itemOrUpdater);
       }
-      return prev.map((i) =>
-        i.id === itemOrUpdater.id ? itemOrUpdater : i,
-      );
+      return prev.map((i) => (i.id === itemOrUpdater.id ? itemOrUpdater : i));
     });
   }
 
@@ -181,12 +175,13 @@ export default function Home() {
       }));
 
       // Persist via single bulk reorder call
-      reorderItems(ordered.map((item, i) => ({ id: item.id, position: i })))
-        .catch((error) => {
-          console.error("Failed to persist reorder:", error);
-          setItems(prev);
-          showError("Failed to reorder. Changes reverted.");
-        });
+      reorderItems(
+        ordered.map((item, i) => ({ id: item.id, position: i })),
+      ).catch((error) => {
+        console.error("Failed to persist reorder:", error);
+        setItems(prev);
+        showError("Failed to reorder. Changes reverted.");
+      });
 
       return ordered;
     });
@@ -284,12 +279,13 @@ export default function Home() {
           : prev.map((entry, position) => ({ ...entry, position }));
 
       // Persist via single bulk reorder call
-      reorderItems(ordered.map((item, i) => ({ id: item.id, position: i })))
-        .catch((error) => {
-          console.error("Failed to persist reorder:", error);
-          setItems(prev);
-          showError("Failed to reorder. Changes reverted.");
-        });
+      reorderItems(
+        ordered.map((item, i) => ({ id: item.id, position: i })),
+      ).catch((error) => {
+        console.error("Failed to persist reorder:", error);
+        setItems(prev);
+        showError("Failed to reorder. Changes reverted.");
+      });
 
       return ordered;
     });
@@ -351,8 +347,19 @@ export default function Home() {
               className="shrink-0 text-red-400 hover:text-red-600 transition-colors"
               aria-label="Dismiss"
             >
-              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor">
-                <path d="M18 6 6 18M6 6l12 12" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              <svg
+                viewBox="0 0 24 24"
+                width="16"
+                height="16"
+                fill="none"
+                stroke="currentColor"
+              >
+                <path
+                  d="M18 6 6 18M6 6l12 12"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
               </svg>
             </button>
           </div>
@@ -441,7 +448,9 @@ export default function Home() {
                   completed_at: null,
                   recurrence_rule: v.recurrence_rule ?? null,
                   recurrence_parent_id: null,
-                  recurrence_strategy: (v.recurrence_strategy as Item["recurrence_strategy"]) ?? null,
+                  recurrence_strategy:
+                    (v.recurrence_strategy as Item["recurrence_strategy"]) ??
+                    null,
                   is_recurring_template: !!v.recurrence_rule,
                   is_recurring_instance: false,
                   created_at: new Date().toISOString(),
@@ -531,7 +540,9 @@ export default function Home() {
                       scheduled_date: v.scheduled_date ?? null,
                       due_date: v.due_date ?? null,
                       recurrence_rule: v.recurrence_rule ?? null,
-                      recurrence_strategy: (v.recurrence_strategy as Item["recurrence_strategy"]) ?? null,
+                      recurrence_strategy:
+                        (v.recurrence_strategy as Item["recurrence_strategy"]) ??
+                        null,
                       is_recurring_template: !!v.recurrence_rule,
                     };
 
@@ -551,7 +562,9 @@ export default function Home() {
                       scheduled_date: v.scheduled_date,
                       due_date: v.due_date,
                       recurrence_rule: v.recurrence_rule,
-                      recurrence_strategy: (v.recurrence_strategy as Item["recurrence_strategy"]) ?? null,
+                      recurrence_strategy:
+                        (v.recurrence_strategy as Item["recurrence_strategy"]) ??
+                        null,
                     }).catch((error) => {
                       console.error("Failed to update item:", error);
                       setItems((prev) =>

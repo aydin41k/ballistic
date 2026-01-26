@@ -40,7 +40,7 @@ final class ItemController extends Controller
 
         // Apply scheduling scope: hide future-scheduled items by default
         $scope = $request->input('scope', 'active');
-        if (!in_array($scope, ['active', 'planned', 'all'], true)) {
+        if (! in_array($scope, ['active', 'planned', 'all'], true)) {
             $scope = 'active';
         }
 
@@ -120,7 +120,7 @@ final class ItemController extends Controller
                 'position' => $validated['position'] ?? 0,
             ]);
 
-            if (!empty($tagIds)) {
+            if (! empty($tagIds)) {
                 $item->tags()->sync($tagIds);
             }
 
@@ -250,7 +250,7 @@ final class ItemController extends Controller
     {
         $this->authorize('update', $item);
 
-        if (!$item->isRecurringTemplate()) {
+        if (! $item->isRecurringTemplate()) {
             abort(Response::HTTP_BAD_REQUEST, 'This item is not a recurring template.');
         }
 

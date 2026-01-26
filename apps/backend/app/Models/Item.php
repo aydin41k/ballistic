@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -19,6 +19,7 @@ final class Item extends Model
     use HasFactory, SoftDeletes;
 
     protected $keyType = 'string';
+
     public $incrementing = false;
 
     protected $fillable = [
@@ -56,8 +57,8 @@ final class Item extends Model
     protected static function boot()
     {
         parent::boot();
-        
-        static::creating(function ($model) {
+
+        self::creating(function ($model) {
             if (empty($model->id)) {
                 $model->id = Str::uuid();
             }

@@ -278,7 +278,7 @@ class AuthenticationTest extends TestCase
         $this->assertEquals(2, $user->tokens()->count());
 
         // Old token should still be valid
-        $this->withHeader('Authorization', 'Bearer ' . $oldToken)
+        $this->withHeader('Authorization', 'Bearer '.$oldToken)
             ->getJson('/api/items')
             ->assertStatus(200);
     }

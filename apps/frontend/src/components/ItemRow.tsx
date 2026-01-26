@@ -231,12 +231,13 @@ export function ItemRow({
               <span className="inline-block w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
             )}
             {urgency === "overdue" ? "Overdue" : "Due"}{" "}
-            {new Date(
-              optimisticItem.due_date + "T00:00:00",
-            ).toLocaleDateString("en-AU", {
-              day: "numeric",
-              month: "short",
-            })}
+            {new Date(optimisticItem.due_date + "T00:00:00").toLocaleDateString(
+              "en-AU",
+              {
+                day: "numeric",
+                month: "short",
+              },
+            )}
           </div>
         )}
         {optimisticItem.scheduled_date && !isCompleted && !isCancelled && (

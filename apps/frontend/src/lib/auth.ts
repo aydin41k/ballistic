@@ -39,7 +39,11 @@ function getDeviceName(): string {
     os = "Linux";
   } else if (ua.includes("Android")) {
     os = "Android";
-  } else if (ua.includes("iOS") || (ua.includes("iPhone") || ua.includes("iPad"))) {
+  } else if (
+    ua.includes("iOS") ||
+    ua.includes("iPhone") ||
+    ua.includes("iPad")
+  ) {
     os = "iOS";
   }
 
@@ -144,7 +148,13 @@ export async function register(
       "Content-Type": "application/json",
       Accept: "application/json",
     },
-    body: JSON.stringify({ name, email, password, password_confirmation, device_name: deviceName }),
+    body: JSON.stringify({
+      name,
+      email,
+      password,
+      password_confirmation,
+      device_name: deviceName,
+    }),
   });
 
   if (!response.ok) {

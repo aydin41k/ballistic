@@ -14,11 +14,18 @@ jest.mock("@/lib/api", () => ({
       description: null,
       status: _status,
       position: 0,
+      scheduled_date: null,
+      due_date: null,
+      completed_at: null,
+      recurrence_rule: null,
+      recurrence_parent_id: null,
+      recurrence_strategy: null,
+      is_recurring_template: false,
+      is_recurring_instance: false,
       created_at: "2025-01-01T00:00:00Z",
       updated_at: "2025-01-01T00:00:00Z",
       deleted_at: null,
     })),
-  moveItem: jest.fn().mockResolvedValue([]),
 }));
 
 describe("ItemRow", () => {
@@ -30,6 +37,14 @@ describe("ItemRow", () => {
     description: null,
     status: "todo",
     position: 0,
+    scheduled_date: null,
+    due_date: null,
+    completed_at: null,
+    recurrence_rule: null,
+    recurrence_parent_id: null,
+    recurrence_strategy: null,
+    is_recurring_template: false,
+    is_recurring_instance: false,
     created_at: "2025-01-01T00:00:00Z",
     updated_at: "2025-01-01T00:00:00Z",
     deleted_at: null,
@@ -37,7 +52,6 @@ describe("ItemRow", () => {
 
   test("clicking status circle advances status", async () => {
     const onChange = jest.fn();
-    const onReorder = jest.fn();
     const onOptimisticReorder = jest.fn();
     const onEdit = jest.fn();
     const onDragStart = jest.fn();
@@ -49,7 +63,6 @@ describe("ItemRow", () => {
       <ItemRow
         item={base}
         onChange={onChange}
-        onReorder={onReorder}
         onOptimisticReorder={onOptimisticReorder}
         index={0}
         onEdit={onEdit}
@@ -71,7 +84,6 @@ describe("ItemRow", () => {
 
   test("drag interactions trigger callbacks", () => {
     const onChange = jest.fn();
-    const onReorder = jest.fn();
     const onOptimisticReorder = jest.fn();
     const onEdit = jest.fn();
     const onDragStart = jest.fn();
@@ -83,7 +95,6 @@ describe("ItemRow", () => {
       <ItemRow
         item={base}
         onChange={onChange}
-        onReorder={onReorder}
         onOptimisticReorder={onOptimisticReorder}
         index={0}
         onEdit={onEdit}

@@ -621,11 +621,11 @@ final class ItemTest extends TestCase
 
     public function test_weekly_byday_generates_multiple_days_per_week(): void
     {
-        $service = new RecurrenceService();
+        $service = new RecurrenceService;
 
         // FREQ=WEEKLY;BYDAY=MO,WE,FR starting on a Monday
         $startDate = \Carbon\Carbon::parse('2026-01-05'); // Monday
-        $endDate   = \Carbon\Carbon::parse('2026-01-11'); // Sunday (same week)
+        $endDate = \Carbon\Carbon::parse('2026-01-11'); // Sunday (same week)
 
         $occurrences = $service->getOccurrences(
             'FREQ=WEEKLY;BYDAY=MO,WE,FR',
@@ -642,10 +642,10 @@ final class ItemTest extends TestCase
 
     public function test_weekly_byday_spans_multiple_weeks(): void
     {
-        $service = new RecurrenceService();
+        $service = new RecurrenceService;
 
         $startDate = \Carbon\Carbon::parse('2026-01-05'); // Monday
-        $endDate   = \Carbon\Carbon::parse('2026-01-18'); // Sunday of week 3
+        $endDate = \Carbon\Carbon::parse('2026-01-18'); // Sunday of week 3
 
         $occurrences = $service->getOccurrences(
             'FREQ=WEEKLY;BYDAY=MO,WE,FR',
@@ -659,10 +659,10 @@ final class ItemTest extends TestCase
 
     public function test_weekly_without_byday_still_advances_by_week(): void
     {
-        $service = new RecurrenceService();
+        $service = new RecurrenceService;
 
         $startDate = \Carbon\Carbon::parse('2026-01-05'); // Monday
-        $endDate   = \Carbon\Carbon::parse('2026-01-26'); // 3 weeks later
+        $endDate = \Carbon\Carbon::parse('2026-01-26'); // 3 weeks later
 
         $occurrences = $service->getOccurrences(
             'FREQ=WEEKLY',

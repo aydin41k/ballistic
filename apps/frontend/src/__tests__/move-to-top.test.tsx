@@ -1,12 +1,10 @@
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { ItemRow } from "@/components/ItemRow";
 import type { Item } from "@/types";
-import { moveItem } from "@/lib/api";
 
 // Mock the API functions
 jest.mock("@/lib/api", () => ({
   updateStatus: jest.fn(),
-  moveItem: jest.fn(),
 }));
 
 describe("Move to Top functionality", () => {
@@ -18,13 +16,20 @@ describe("Move to Top functionality", () => {
     description: null,
     status: "todo",
     position: 1,
+    scheduled_date: null,
+    due_date: null,
+    completed_at: null,
+    recurrence_rule: null,
+    recurrence_parent_id: null,
+    recurrence_strategy: null,
+    is_recurring_template: false,
+    is_recurring_instance: false,
     created_at: "2025-01-01T00:00:00Z",
     updated_at: "2025-01-01T00:00:00Z",
     deleted_at: null,
   };
 
   const mockOnChange = jest.fn();
-  const mockOnReorder = jest.fn();
   const mockOnOptimisticReorder = jest.fn();
   const mockOnEdit = jest.fn();
 
@@ -37,7 +42,6 @@ describe("Move to Top functionality", () => {
       <ItemRow
         item={mockItem}
         onChange={mockOnChange}
-        onReorder={mockOnReorder}
         onOptimisticReorder={mockOnOptimisticReorder}
         index={1}
         onEdit={mockOnEdit}
@@ -62,7 +66,6 @@ describe("Move to Top functionality", () => {
       <ItemRow
         item={mockItem}
         onChange={mockOnChange}
-        onReorder={mockOnReorder}
         onOptimisticReorder={mockOnOptimisticReorder}
         index={0}
         onEdit={mockOnEdit}
@@ -82,13 +85,10 @@ describe("Move to Top functionality", () => {
   });
 
   it('should call onOptimisticReorder with "top" direction when clicked', async () => {
-    (moveItem as jest.Mock).mockResolvedValue([mockItem]);
-
     render(
       <ItemRow
         item={mockItem}
         onChange={mockOnChange}
-        onReorder={mockOnReorder}
         onOptimisticReorder={mockOnOptimisticReorder}
         index={2}
         onEdit={mockOnEdit}
@@ -116,7 +116,6 @@ describe("Move to Top functionality", () => {
       <ItemRow
         item={mockItem}
         onChange={mockOnChange}
-        onReorder={mockOnReorder}
         onOptimisticReorder={mockOnOptimisticReorder}
         index={0}
         onEdit={mockOnEdit}
@@ -147,6 +146,14 @@ describe("Move to Top optimistic update", () => {
         description: null,
         status: "todo",
         position: 0,
+        scheduled_date: null,
+        due_date: null,
+        completed_at: null,
+        recurrence_rule: null,
+        recurrence_parent_id: null,
+        recurrence_strategy: null,
+        is_recurring_template: false,
+        is_recurring_instance: false,
         created_at: "2025-01-01T00:00:00Z",
         updated_at: "2025-01-01T00:00:00Z",
         deleted_at: null,
@@ -159,6 +166,14 @@ describe("Move to Top optimistic update", () => {
         description: null,
         status: "todo",
         position: 1,
+        scheduled_date: null,
+        due_date: null,
+        completed_at: null,
+        recurrence_rule: null,
+        recurrence_parent_id: null,
+        recurrence_strategy: null,
+        is_recurring_template: false,
+        is_recurring_instance: false,
         created_at: "2025-01-02T00:00:00Z",
         updated_at: "2025-01-02T00:00:00Z",
         deleted_at: null,
@@ -171,6 +186,14 @@ describe("Move to Top optimistic update", () => {
         description: null,
         status: "todo",
         position: 2,
+        scheduled_date: null,
+        due_date: null,
+        completed_at: null,
+        recurrence_rule: null,
+        recurrence_parent_id: null,
+        recurrence_strategy: null,
+        is_recurring_template: false,
+        is_recurring_instance: false,
         created_at: "2025-01-03T00:00:00Z",
         updated_at: "2025-01-03T00:00:00Z",
         deleted_at: null,
@@ -204,6 +227,14 @@ describe("Move to Top optimistic update", () => {
         description: null,
         status: "todo",
         position: 0,
+        scheduled_date: null,
+        due_date: null,
+        completed_at: null,
+        recurrence_rule: null,
+        recurrence_parent_id: null,
+        recurrence_strategy: null,
+        is_recurring_template: false,
+        is_recurring_instance: false,
         created_at: "2025-01-01T00:00:00Z",
         updated_at: "2025-01-01T00:00:00Z",
         deleted_at: null,
@@ -216,6 +247,14 @@ describe("Move to Top optimistic update", () => {
         description: null,
         status: "todo",
         position: 1,
+        scheduled_date: null,
+        due_date: null,
+        completed_at: null,
+        recurrence_rule: null,
+        recurrence_parent_id: null,
+        recurrence_strategy: null,
+        is_recurring_template: false,
+        is_recurring_instance: false,
         created_at: "2025-01-02T00:00:00Z",
         updated_at: "2025-01-02T00:00:00Z",
         deleted_at: null,
