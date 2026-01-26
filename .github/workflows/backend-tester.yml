@@ -35,15 +35,18 @@ jobs:
           tools: composer:v2
           coverage: xdebug
 
+      - name: Run composer install if composer.json exists
+        run: composer validate --no-check-publish && composer install --prefer-dist --no-progress
+
+      - name: Publish Wayfinder
+        run: php artisan wayfinder:generate
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: "22"
           cache: npm
           cache-dependency-path: apps/backend/package-lock.json
-
-      - name: Publish Wayfinder
-        run: php artisan wayfinder:generate
 
       - name: Install Node dependencies
         run: npm ci
