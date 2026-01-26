@@ -4,10 +4,13 @@
 name: Lint, Test, and Deploy Node.js app to Azure Web App - ballist
 
 on:
-  push:
-    branches:
-      - main
-  workflow_dispatch:
+  workflow_run:
+    workflows: ["Frontend Linter Tester"]
+    types: [completed]
+
+concurrency:
+  group: frontend-tester-${{ github.event.workflow_run.head_sha }}
+  cancel-in-progress: true
 
 jobs:
   test:
