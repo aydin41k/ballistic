@@ -4,9 +4,10 @@
 name: Build and deploy PHP app to Azure Web App - ballisticserver
 
 on:
-  push:
-    branches:
-      - master
+  # Disabled: automatic trigger on push to master
+  # push:
+  #   branches:
+  #     - master
   workflow_dispatch:
 
 jobs:

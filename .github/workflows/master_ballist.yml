@@ -4,9 +4,10 @@
 name: Build and deploy Node.js app to Azure Web App - ballist
 
 on:
-  push:
-    branches:
-      - master
+  # Disabled: automatic trigger on push to master
+  # push:
+  #   branches:
+  #     - master
   workflow_dispatch:
 
 jobs:
