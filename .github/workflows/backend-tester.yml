@@ -38,6 +38,9 @@ jobs:
       - name: Run composer install if composer.json exists
         run: composer validate --no-check-publish && composer install --prefer-dist --no-progress
 
+      - name: Create SQLite database file
+        run: touch database/database.sqlite
+
       - name: Publish Wayfinder
         run: php artisan wayfinder:generate
 
