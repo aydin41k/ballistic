@@ -14,7 +14,7 @@ use Minishlink\WebPush\WebPush;
 /**
  * Service for sending Web Push notifications using VAPID keys.
  */
-final class WebPushService
+final class WebPushService implements WebPushServiceInterface
 {
     private ?WebPush $webPush = null;
 
@@ -154,7 +154,8 @@ final class WebPushService
         $payloadJson = json_encode($payload, JSON_THROW_ON_ERROR);
 
         // Queue all notifications
-        foreach ($subscriptions as $subscription) {
+        $indexedSubscriptions = $subscriptions->values();
+        foreach ($indexedSubscriptions as $subscription) {
             try {
                 $webPushSubscription = Subscription::create($subscription->toWebPushFormat());
                 $webPush->queueNotification($webPushSubscription, $payloadJson);
@@ -166,13 +167,14 @@ final class WebPushService
             }
         }
 
-        // Flush and process results
-        $successful = 0;
+        // Flush and process results - collect IDs for batch operations
+        $successfulIds = [];
+        $expiredIds = [];
         $subscriptionIndex = 0;
 
         foreach ($webPush->flush() as $report) {
-            /** @var PushSubscription $subscription */
-            $subscription = $subscriptions->values()->get($subscriptionIndex);
+            /** @var PushSubscription|null $subscription */
+            $subscription = $indexedSubscriptions->get($subscriptionIndex);
             $subscriptionIndex++;
 
             if ($subscription === null) {
@@ -180,8 +182,7 @@ final class WebPushService
             }
 
             if ($report->isSuccess()) {
-                $subscription->markAsUsed();
-                $successful++;
+                $successfulIds[] = $subscription->id;
 
                 continue;
             }
@@ -190,7 +191,7 @@ final class WebPushService
                 Log::info('WebPush: Removing expired subscription', [
                     'subscription_id' => $subscription->id,
                 ]);
-                $subscription->delete();
+                $expiredIds[] = $subscription->id;
 
                 continue;
             }
@@ -201,6 +202,16 @@ final class WebPushService
             ]);
         }
 
-        return $successful;
+        // Batch database operations to avoid N+1 queries
+        if (! empty($successfulIds)) {
+            PushSubscription::whereIn('id', $successfulIds)
+                ->update(['last_used_at' => now()]);
+        }
+
+        if (! empty($expiredIds)) {
+            PushSubscription::whereIn('id', $expiredIds)->delete();
+        }
+
+        return count($successfulIds);
     }
 }

@@ -4,8 +4,9 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\SubscribePushRequest;
 use App\Models\PushSubscription;
-use App\Services\WebPushService;
+use App\Services\WebPushServiceInterface;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -16,7 +17,7 @@ use Illuminate\Support\Facades\Auth;
 final class PushSubscriptionController extends Controller
 {
     public function __construct(
-        private readonly WebPushService $webPushService
+        private readonly WebPushServiceInterface $webPushService
     ) {}
 
     /**
@@ -40,14 +41,9 @@ final class PushSubscriptionController extends Controller
     /**
      * Subscribe to push notifications.
      */
-    public function subscribe(Request $request): JsonResponse
+    public function subscribe(SubscribePushRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'endpoint' => ['required', 'string', 'url', 'max:500'],
-            'keys.p256dh' => ['required', 'string', 'max:100'],
-            'keys.auth' => ['required', 'string', 'max:50'],
-        ]);
-
+        $validated = $request->validated();
         $user = Auth::user();
 
         // Check if subscription already exists for this endpoint

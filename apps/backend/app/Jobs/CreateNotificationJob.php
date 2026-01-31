@@ -6,7 +6,7 @@ namespace App\Jobs;
 
 use App\Models\Notification;
 use App\Models\User;
-use App\Services\WebPushService;
+use App\Services\WebPushServiceInterface;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 
@@ -40,7 +40,7 @@ final class CreateNotificationJob implements ShouldQueue
     /**
      * Execute the job.
      */
-    public function handle(WebPushService $webPushService): void
+    public function handle(WebPushServiceInterface $webPushService): void
     {
         // Create database notification
         $notification = Notification::create([

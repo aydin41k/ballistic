@@ -6,6 +6,8 @@ namespace App\Providers;
 
 use App\Contracts\NotificationServiceInterface;
 use App\Services\NotificationService;
+use App\Services\WebPushService;
+use App\Services\WebPushServiceInterface;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
@@ -19,6 +21,7 @@ final class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->bind(NotificationServiceInterface::class, NotificationService::class);
+        $this->app->bind(WebPushServiceInterface::class, WebPushService::class);
     }
 
     /**
