@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.0] - 2026-01-31
+
+### Added
+
+#### Activity Stats
+- **DailyStat model**: Tracks per-user, per-day created and completed item counts in a `daily_stats` table with a unique constraint on `(user_id, date)`
+- **ItemObserver**: Automatically maintains daily stats on item lifecycle events — increments `created_count` on creation, adjusts `completed_count` on status transitions into/out of `done`
+- **DailyStatService**: Service layer for incrementing/decrementing stat counters with tag-based cache invalidation
+- **Backfill migration**: Idempotent two-pass migration populates `daily_stats` from existing items (created_count from `created_at`, completed_count from `completed_at`)
+- **`GET /api/stats`**: Returns `heatmap` (daily completion counts) and `category_distribution` (completed items grouped by project with colour) for the authenticated user, with optional `from`/`to` date range filtering (defaults to the last 365 days). Responses are cached for 60 seconds with tag-based invalidation
+
+### Tests
+- Added 8 feature tests covering observer increments/decrements, endpoint responses, authentication, date-range filtering, and category distribution
+- Backend: 123 tests (399 assertions); Frontend: 40 tests
+
 ## [0.7.1] - 2026-01-26
 
 ### Fixed
