@@ -11,6 +11,7 @@ use App\Http\Controllers\ItemController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\PushSubscriptionController;
+use App\Http\Controllers\StatsController;
 use App\Http\Controllers\TagController;
 use App\Http\Controllers\UserDiscoveryController;
 use App\Http\Controllers\UserLookupController;
@@ -72,6 +73,9 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
 
     // Tags
     Route::apiResource('tags', TagController::class);
+
+    // Activity stats
+    Route::get('stats', [StatsController::class, 'index']);
 
     // Admin routes
     Route::prefix('admin')->middleware(['admin'])->group(function () {

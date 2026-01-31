@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { PushNotificationToggle } from "./PushNotificationToggle";
 
 interface SettingsModalProps {
@@ -12,6 +13,7 @@ interface SettingsModalProps {
  * Modal for app settings including push notification preferences.
  */
 export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
+  const router = useRouter();
   const modalRef = useRef<HTMLDivElement>(null);
 
   // Close on escape key
@@ -75,6 +77,40 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
 
         {/* Settings Content */}
         <div className="space-y-6">
+          {/* Insights */}
+          <section>
+            <button
+              type="button"
+              onClick={() => {
+                onClose();
+                router.push("/insights");
+              }}
+              className="w-full flex items-center gap-3 rounded-lg bg-gray-50 p-4 hover:bg-gray-100 transition-colors text-left"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                width="20"
+                height="20"
+                fill="none"
+                stroke="currentColor"
+                className="text-[var(--navy)] shrink-0"
+              >
+                <path
+                  d="M18 20V10M12 20V4M6 20v-6"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+              <div>
+                <p className="text-sm font-medium text-gray-900">Insights</p>
+                <p className="text-xs text-gray-500">
+                  Activity heatmap &amp; project breakdown
+                </p>
+              </div>
+            </button>
+          </section>
+
           {/* Notifications Section */}
           <section>
             <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wider mb-3">

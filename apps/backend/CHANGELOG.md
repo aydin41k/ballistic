@@ -127,6 +127,20 @@ With the existing master features:
 - Added RateLimitingTest with 8 tests covering all throttled endpoints
 - Updated AuthenticationTest to accept both route-level (429) and controller-level (422) rate limiting responses
 
+## [0.8.0] - 2026-01-31
+
+### Added
+
+#### Activity Stats
+- **DailyStat model**: Tracks per-user, per-day created and completed item counts in a `daily_stats` table with a unique constraint on `(user_id, date)`
+- **ItemObserver**: Automatically maintains daily stats on item lifecycle events — increments `created_count` on creation, adjusts `completed_count` on status transitions into/out of `done`
+- **DailyStatService**: Service layer for incrementing/decrementing stat counters with tag-based cache invalidation
+- **Backfill migration**: Idempotent two-pass migration populates `daily_stats` from existing items (created_count from `created_at`, completed_count from `completed_at`)
+- **`GET /api/stats`**: Returns `heatmap` (daily completion counts) and `category_distribution` (completed items grouped by project with colour) for the authenticated user, with optional `from`/`to` date range filtering (defaults to the last 365 days). Responses are cached for 60 seconds with tag-based invalidation
+
+### Tests
+- Added 8 feature tests covering observer increments/decrements, endpoint responses, authentication, date-range filtering, and category distribution
+
 ## [0.7.1] - 2026-01-26
 
 ### Fixed
