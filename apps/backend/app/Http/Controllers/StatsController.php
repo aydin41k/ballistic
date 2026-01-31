@@ -27,11 +27,11 @@ final class StatsController extends Controller
 
         $validated = $request->validate([
             'from' => ['sometimes', 'date'],
-            'to'   => ['sometimes', 'date', 'after_or_equal:from'],
+            'to' => ['sometimes', 'date', 'after_or_equal:from'],
         ]);
 
         $from = isset($validated['from']) ? Carbon::parse($validated['from']) : Carbon::now()->subDays(364)->startOfDay();
-        $to   = isset($validated['to'])   ? Carbon::parse($validated['to'])->endOfDay() : Carbon::now()->endOfDay();
+        $to = isset($validated['to']) ? Carbon::parse($validated['to'])->endOfDay() : Carbon::now()->endOfDay();
 
         $cacheKey = "stats:{$userId}:{$from->toDateString()}:{$to->toDateString()}";
 
@@ -42,7 +42,7 @@ final class StatsController extends Controller
                 ->orderBy('date')
                 ->get(['date', 'completed_count'])
                 ->map(fn (DailyStat $s): array => [
-                    'date'           => $s->date,
+                    'date' => $s->date,
                     'completed_count' => $s->completed_count,
                 ]);
 
@@ -64,15 +64,15 @@ final class StatsController extends Controller
                 ->orderByDesc('completed_count')
                 ->get()
                 ->map(fn (object $row): array => [
-                    'project_id'      => $row->project_id,
-                    'project_name'    => $row->project_name ?? 'Inbox',
-                    'project_color'   => $row->project_color,
+                    'project_id' => $row->project_id,
+                    'project_name' => $row->project_name ?? 'Inbox',
+                    'project_color' => $row->project_color,
                     'completed_count' => (int) $row->completed_count,
                 ]);
 
             return [
-                'heatmap'                => $heatmap,
-                'category_distribution'  => $categoryDistribution,
+                'heatmap' => $heatmap,
+                'category_distribution' => $categoryDistribution,
             ];
         });
 

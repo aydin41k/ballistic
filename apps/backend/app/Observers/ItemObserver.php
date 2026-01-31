@@ -40,9 +40,9 @@ final class ItemObserver
             return;
         }
 
-        $userId    = (string) $item->user_id;
-        $oldStatus  = $item->getOriginal('status');
-        $newStatus  = $item->status;
+        $userId = (string) $item->user_id;
+        $oldStatus = $item->getOriginal('status');
+        $newStatus = $item->status;
 
         if ($oldStatus !== 'done' && $newStatus === 'done') {
             // Transitioning TO done – completed_at will be set to now() by the controller

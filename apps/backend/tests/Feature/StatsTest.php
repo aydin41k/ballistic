@@ -21,8 +21,8 @@ class StatsTest extends TestCase
         $token = $user->createToken('test')->plainTextToken;
 
         $this->postJson('/api/items', [
-            'title'    => 'Test item',
-            'status'   => 'todo',
+            'title' => 'Test item',
+            'status' => 'todo',
             'position' => 0,
         ], ['Authorization' => "Bearer {$token}"])->assertStatus(201);
 
@@ -40,8 +40,8 @@ class StatsTest extends TestCase
         $token = $user->createToken('test')->plainTextToken;
 
         $this->postJson('/api/items', [
-            'title'    => 'Already done',
-            'status'   => 'done',
+            'title' => 'Already done',
+            'status' => 'done',
             'position' => 0,
         ], ['Authorization' => "Bearer {$token}"])->assertStatus(201);
 
@@ -55,12 +55,12 @@ class StatsTest extends TestCase
 
     public function test_marking_an_item_as_done_increments_completed_count(): void
     {
-        $user    = User::factory()->create();
+        $user = User::factory()->create();
         $project = Project::factory()->create(['user_id' => $user->id]);
-        $item    = Item::factory()->create([
-            'user_id'    => $user->id,
+        $item = Item::factory()->create([
+            'user_id' => $user->id,
             'project_id' => $project->id,
-            'status'     => 'todo',
+            'status' => 'todo',
         ]);
         $token = $user->createToken('test')->plainTextToken;
 
@@ -81,10 +81,10 @@ class StatsTest extends TestCase
 
     public function test_reverting_from_done_decrements_completed_count(): void
     {
-        $user    = User::factory()->create();
+        $user = User::factory()->create();
         $project = Project::factory()->create(['user_id' => $user->id]);
-        $item    = Item::factory()->done()->create([
-            'user_id'    => $user->id,
+        $item = Item::factory()->done()->create([
+            'user_id' => $user->id,
             'project_id' => $project->id,
         ]);
         $token = $user->createToken('test')->plainTextToken;
@@ -109,15 +109,15 @@ class StatsTest extends TestCase
 
     public function test_stats_endpoint_returns_heatmap_data(): void
     {
-        $user  = User::factory()->create();
+        $user = User::factory()->create();
         $token = $user->createToken('test')->plainTextToken;
 
         // Seed a daily_stats row
         DailyStat::create([
-            'user_id'        => $user->id,
-            'date'           => now()->toDateString(),
+            'user_id' => $user->id,
+            'date' => now()->toDateString(),
             'completed_count' => 5,
-            'created_count'  => 8,
+            'created_count' => 8,
         ]);
 
         $response = $this->getJson('/api/stats', [
@@ -135,13 +135,13 @@ class StatsTest extends TestCase
 
     public function test_stats_endpoint_returns_category_distribution(): void
     {
-        $user    = User::factory()->create();
+        $user = User::factory()->create();
         $project = Project::factory()->create(['user_id' => $user->id, 'name' => 'Work', 'color' => '#3B82F6']);
-        $token   = $user->createToken('test')->plainTextToken;
+        $token = $user->createToken('test')->plainTextToken;
 
         // Create a done item in the project
         Item::factory()->done()->create([
-            'user_id'    => $user->id,
+            'user_id' => $user->id,
             'project_id' => $project->id,
         ]);
 
@@ -166,26 +166,26 @@ class StatsTest extends TestCase
 
     public function test_stats_endpoint_respects_date_range(): void
     {
-        $user  = User::factory()->create();
+        $user = User::factory()->create();
         $token = $user->createToken('test')->plainTextToken;
 
         // Seed two rows: one inside the range, one outside
         DailyStat::create([
-            'user_id'        => $user->id,
-            'date'           => now()->subDays(5)->toDateString(),
+            'user_id' => $user->id,
+            'date' => now()->subDays(5)->toDateString(),
             'completed_count' => 3,
-            'created_count'  => 4,
+            'created_count' => 4,
         ]);
         DailyStat::create([
-            'user_id'        => $user->id,
-            'date'           => now()->subDays(400)->toDateString(),
+            'user_id' => $user->id,
+            'date' => now()->subDays(400)->toDateString(),
             'completed_count' => 99,
-            'created_count'  => 99,
+            'created_count' => 99,
         ]);
 
-        $response = $this->getJson('/api/stats?' . http_build_query([
+        $response = $this->getJson('/api/stats?'.http_build_query([
             'from' => now()->subDays(30)->toDateString(),
-            'to'   => now()->toDateString(),
+            'to' => now()->toDateString(),
         ]), [
             'Authorization' => "Bearer {$token}",
         ])->assertStatus(200);

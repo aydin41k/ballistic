@@ -13,17 +13,12 @@ export function CategoryChart({ categories }: CategoryChartProps) {
         <div className="text-sm font-medium text-[var(--navy)] mb-2">
           By project
         </div>
-        <p className="text-sm text-slate-400 italic">
-          No completed tasks yet.
-        </p>
+        <p className="text-sm text-slate-400 italic">No completed tasks yet.</p>
       </div>
     );
   }
 
-  const max = Math.max(
-    ...categories.map((c) => c.completed_count),
-    1,
-  );
+  const max = Math.max(...categories.map((c) => c.completed_count), 1);
 
   return (
     <div>

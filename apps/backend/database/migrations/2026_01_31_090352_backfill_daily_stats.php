@@ -21,11 +21,11 @@ return new class extends Migration
         $createdRows = DB::table('items')
             ->select(
                 'user_id',
-                DB::raw("DATE(created_at) as stat_date"),
+                DB::raw('DATE(created_at) as stat_date'),
                 DB::raw('COUNT(*) as cnt'),
             )
             ->whereNull('deleted_at')
-            ->groupBy('user_id', DB::raw("DATE(created_at)"))
+            ->groupBy('user_id', DB::raw('DATE(created_at)'))
             ->get();
 
         foreach ($createdRows as $row) {
@@ -40,13 +40,13 @@ return new class extends Migration
         $completedRows = DB::table('items')
             ->select(
                 'user_id',
-                DB::raw("DATE(completed_at) as stat_date"),
+                DB::raw('DATE(completed_at) as stat_date'),
                 DB::raw('COUNT(*) as cnt'),
             )
             ->where('status', 'done')
             ->whereNotNull('completed_at')
             ->whereNull('deleted_at')
-            ->groupBy('user_id', DB::raw("DATE(completed_at)"))
+            ->groupBy('user_id', DB::raw('DATE(completed_at)'))
             ->get();
 
         foreach ($completedRows as $row) {
