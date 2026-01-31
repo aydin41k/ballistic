@@ -15,6 +15,7 @@ import { ItemRow } from "@/components/ItemRow";
 import { EmptyState } from "@/components/EmptyState";
 import { ItemForm } from "@/components/ItemForm";
 import { SplashScreen } from "@/components/SplashScreen";
+import { SettingsModal } from "@/components/SettingsModal";
 import { useAuth } from "@/contexts/AuthContext";
 
 function normaliseItemResponse(payload: Item | { data?: Item }): Item {
@@ -83,6 +84,7 @@ export default function Home() {
   const [viewScope, setViewScope] = useState<ItemScope>("active");
   const [toast, setToast] = useState<string | null>(null);
   const toastTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [showSettings, setShowSettings] = useState(false);
 
   const showError = useCallback((message: string) => {
     if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
@@ -582,7 +584,7 @@ export default function Home() {
           <button
             type="button"
             aria-label="Settings"
-            onClick={() => alert("Settings coming soon")}
+            onClick={() => setShowSettings(true)}
             className="tap-target grid h-10 w-10 place-items-center rounded-md hover:bg-slate-100 active:scale-95 transition-all duration-200"
           >
             {/* gear icon */}
@@ -637,6 +639,12 @@ export default function Home() {
           </button>
         </div>
       </div>
+
+      {/* Settings Modal */}
+      <SettingsModal
+        isOpen={showSettings}
+        onClose={() => setShowSettings(false)}
+      />
     </div>
   );
 }

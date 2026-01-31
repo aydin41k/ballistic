@@ -1,3 +1,21 @@
+## 0.7.0 - 2026-01-31
+
+### Added
+
+#### Web Push Notifications (Phase 2 & 3)
+
+- **Service Worker Push Handler**: SW now listens for push events and displays native notifications
+- **Notification Click Handler**: Clicking notifications navigates to the relevant URL
+- **Push Subscription Hook**: `usePushNotifications()` hook for managing browser push subscriptions
+- **Settings Modal**: New settings modal accessible from the bottom bar
+- **Push Toggle Component**: Toggle to enable/disable push notifications per device
+- **API Functions**: Added `getVapidPublicKey()`, `subscribeToPush()`, `unsubscribeFromPush()`, `listPushSubscriptions()`, `deletePushSubscription()`
+
+### Changed
+
+- **Bottom Bar**: Settings button now opens the settings modal instead of alert
+- **Service Worker**: Extended with push and notificationclick event handlers
+
 ## 0.6.0 - 2026-01-25
 
 ### Added

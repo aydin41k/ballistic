@@ -358,3 +358,126 @@ export async function markAllNotificationsAsRead(): Promise<{
 
   return handleResponse<{ message: string; marked_count: number }>(response);
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Push Notifications (Web Push)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface PushSubscriptionInfo {
+  id: string;
+  endpoint_domain: string;
+  user_agent: string | null;
+  last_used_at: string | null;
+  created_at: string;
+}
+
+export interface PushSubscriptionsResponse {
+  subscriptions: PushSubscriptionInfo[];
+  count: number;
+}
+
+/**
+ * Get the VAPID public key for subscribing to push notifications.
+ * Returns null if push notifications are not configured on the server.
+ */
+export async function getVapidPublicKey(): Promise<string | null> {
+  try {
+    const response = await fetch(buildUrl("/api/push/vapid-key"), {
+      method: "GET",
+      headers: getAuthHeaders(),
+    });
+
+    if (response.status === 503) {
+      // Push notifications not configured
+      return null;
+    }
+
+    const data = await handleResponse<{ public_key: string }>(response);
+    return data.public_key;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Subscribe to push notifications.
+ * Sends the browser's push subscription to the server.
+ */
+export async function subscribeToPush(subscription: PushSubscription): Promise<{
+  message: string;
+  subscription_id: string;
+}> {
+  const response = await fetch(buildUrl("/api/push/subscribe"), {
+    method: "POST",
+    headers: getAuthHeaders(),
+    body: JSON.stringify({
+      endpoint: subscription.endpoint,
+      keys: {
+        p256dh: arrayBufferToBase64(subscription.getKey("p256dh")),
+        auth: arrayBufferToBase64(subscription.getKey("auth")),
+      },
+    }),
+  });
+
+  return handleResponse<{ message: string; subscription_id: string }>(response);
+}
+
+/**
+ * Unsubscribe from push notifications by endpoint.
+ */
+export async function unsubscribeFromPush(
+  endpoint: string,
+): Promise<{ message: string }> {
+  const response = await fetch(buildUrl("/api/push/unsubscribe"), {
+    method: "POST",
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ endpoint }),
+  });
+
+  return handleResponse<{ message: string }>(response);
+}
+
+/**
+ * List all push subscriptions for the current user.
+ */
+export async function listPushSubscriptions(): Promise<PushSubscriptionsResponse> {
+  const response = await fetch(buildUrl("/api/push/subscriptions"), {
+    method: "GET",
+    headers: getAuthHeaders(),
+  });
+
+  return handleResponse<PushSubscriptionsResponse>(response);
+}
+
+/**
+ * Delete a specific push subscription by ID.
+ */
+export async function deletePushSubscription(
+  subscriptionId: string,
+): Promise<{ message: string }> {
+  const response = await fetch(
+    buildUrl(`/api/push/subscriptions/${subscriptionId}`),
+    {
+      method: "DELETE",
+      headers: getAuthHeaders(),
+    },
+  );
+
+  return handleResponse<{ message: string }>(response);
+}
+
+/**
+ * Convert ArrayBuffer to base64 string for push subscription keys.
+ */
+function arrayBufferToBase64(buffer: ArrayBuffer | null): string {
+  if (!buffer) return "";
+  const bytes = new Uint8Array(buffer);
+  let binary = "";
+  for (let i = 0; i < bytes.byteLength; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary)
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
+}
