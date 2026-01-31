@@ -4,10 +4,13 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Contracts\NotificationServiceInterface;
 use App\Http\Requests\StoreItemRequest;
 use App\Http\Requests\UpdateItemRequest;
 use App\Http\Resources\ItemResource;
 use App\Models\Item;
+use App\Models\User;
+use App\Policies\ItemPolicy;
 use App\Services\RecurrenceService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
@@ -21,12 +24,21 @@ final class ItemController extends Controller
 {
     /**
      * Display a listing of the resource.
+     *
+     * Filter modes:
+     * - assigned_to_me: Items where current user is the assignee (excludes self-owned)
+     * - delegated: Items owned by current user that have been assigned to someone else
+     * - (default): Items owned by current user that are NOT assigned to anyone
+     *
+     * By default, completed/cancelled items are excluded. Use include_completed=true to include them.
      */
     public function index(Request $request): AnonymousResourceCollection
     {
+        $userId = Auth::id();
+
         // Auto-expire recurring instances whose scheduled_date has passed
         // and whose strategy is 'expires'. Only instances (not templates).
-        Item::where('user_id', Auth::id())
+        Item::where('user_id', $userId)
             ->where('recurrence_strategy', 'expires')
             ->whereNotNull('recurrence_parent_id')
             ->whereNotNull('scheduled_date')
@@ -34,9 +46,32 @@ final class ItemController extends Controller
             ->whereIn('status', ['todo', 'doing'])
             ->update(['status' => 'wontdo', 'updated_at' => now()]);
 
-        $query = Item::where('user_id', Auth::id())
-            ->with(['project', 'tags'])
-            ->orderBy('position');
+        // Determine query mode based on filter parameter
+        if ($request->boolean('assigned_to_me')) {
+            // Items assigned to the current user by others (not self-owned)
+            $query = Item::where('assignee_id', $userId)
+                ->where('user_id', '!=', $userId) // Exclude self-assigned items
+                ->with(['project', 'tags', 'user', 'assignee'])
+                ->orderBy('position');
+        } elseif ($request->boolean('delegated')) {
+            // Items owned by current user that are assigned to others (not self)
+            $query = Item::where('user_id', $userId)
+                ->whereNotNull('assignee_id')
+                ->where('assignee_id', '!=', $userId) // Exclude self-assigned items
+                ->with(['project', 'tags', 'assignee'])
+                ->orderBy('position');
+        } else {
+            // Default: Items owned by current user that are not assigned
+            $query = Item::where('user_id', $userId)
+                ->whereNull('assignee_id')
+                ->with(['project', 'tags'])
+                ->orderBy('position');
+        }
+
+        // Exclude completed/cancelled items by default
+        if (! $request->boolean('include_completed')) {
+            $query->whereNotIn('status', ['done', 'wontdo']);
+        }
 
         // Apply scheduling scope: hide future-scheduled items by default
         $scope = $request->input('scope', 'active');
@@ -57,7 +92,9 @@ final class ItemController extends Controller
             $query->where('project_id', $request->project_id);
         }
 
+        // Allow specific status filter (overrides the default exclusion)
         if ($request->has('status')) {
+            // Remove the previous whereNotIn if a specific status is requested
             $query->where('status', $request->status);
         }
 
@@ -102,11 +139,24 @@ final class ItemController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(StoreItemRequest $request): JsonResponse
+    public function store(StoreItemRequest $request, NotificationServiceInterface $notificationService): JsonResponse
     {
         $validated = $request->validated();
         $tagIds = $validated['tag_ids'] ?? [];
         unset($validated['tag_ids']);
+
+        /** @var User $owner */
+        $owner = Auth::user();
+
+        // Validate assignee is connected with the owner
+        if (! empty($validated['assignee_id'])) {
+            if (! $owner->isConnectedWith($validated['assignee_id'])) {
+                return response()->json(
+                    ['message' => 'You can only assign tasks to users you are connected with.'],
+                    Response::HTTP_FORBIDDEN
+                );
+            }
+        }
 
         // Auto-set completed_at if status is 'done'
         if (($validated['status'] ?? null) === 'done') {
@@ -127,7 +177,20 @@ final class ItemController extends Controller
             return $item;
         });
 
-        $item->load(['project', 'tags']);
+        // Create notification if item was created with an assignee
+        if (! empty($validated['assignee_id'])) {
+            $assignee = User::find($validated['assignee_id']);
+            if ($assignee !== null) {
+                $notificationService->notifyTaskAssignment(
+                    $assignee,
+                    (string) $item->id,
+                    $item->title,
+                    $owner->name
+                );
+            }
+        }
+
+        $item->load(['project', 'tags', 'assignee']);
 
         return (new ItemResource($item))
             ->response()
@@ -141,7 +204,7 @@ final class ItemController extends Controller
     {
         $this->authorize('view', $item);
 
-        $item->load(['project', 'tags']);
+        $item->load(['project', 'tags', 'assignee']);
 
         return new ItemResource($item);
     }
@@ -149,13 +212,50 @@ final class ItemController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(UpdateItemRequest $request, Item $item): ItemResource
+    public function update(UpdateItemRequest $request, Item $item, NotificationServiceInterface $notificationService): JsonResponse|ItemResource
     {
         $this->authorize('update', $item);
 
         $validated = $request->validated();
         $tagIds = $validated['tag_ids'] ?? null;
         unset($validated['tag_ids']);
+
+        /** @var User $currentUser */
+        $currentUser = Auth::user();
+        $isOwner = (string) $item->user_id === (string) $currentUser->id;
+
+        // Enforce field restrictions for assignees (they can only update status and assignee_notes)
+        if (! $isOwner) {
+            $fieldsBeingUpdated = array_keys($validated);
+            $policy = new ItemPolicy;
+            if (! $policy->canAssigneeUpdateFields($currentUser, $item, $fieldsBeingUpdated)) {
+                return response()->json(
+                    ['message' => 'Assignees can only update status and notes.'],
+                    Response::HTTP_FORBIDDEN
+                );
+            }
+        }
+
+        // Track changes for notifications
+        $previousAssigneeId = $item->assignee_id;
+        $newAssigneeId = array_key_exists('assignee_id', $validated)
+            ? $validated['assignee_id']
+            : $previousAssigneeId;
+        $previousStatus = $item->status;
+        $newStatus = $validated['status'] ?? $previousStatus;
+        $previousTitle = $item->title;
+        $previousDescription = $item->description;
+
+        // Validate new assignee is connected with the owner (only owner can assign)
+        if ($isOwner && $newAssigneeId !== null && (string) $newAssigneeId !== (string) $previousAssigneeId) {
+            $owner = User::find($item->user_id);
+            if (! $owner->isConnectedWith($newAssigneeId)) {
+                return response()->json(
+                    ['message' => 'You can only assign tasks to users you are connected with.'],
+                    Response::HTTP_FORBIDDEN
+                );
+            }
+        }
 
         // Auto-manage completed_at based on status changes
         if (isset($validated['status'])) {
@@ -174,7 +274,75 @@ final class ItemController extends Controller
             }
         });
 
-        $item->load(['project', 'tags']);
+        // Get owner for notifications
+        $owner = User::find($item->user_id);
+
+        // Notification: Task unassigned
+        if ($isOwner && $previousAssigneeId !== null && $newAssigneeId === null) {
+            $previousAssignee = User::find($previousAssigneeId);
+            if ($previousAssignee !== null) {
+                $notificationService->notifyTaskUnassigned(
+                    $previousAssignee,
+                    (string) $item->id,
+                    $item->title,
+                    $owner->name
+                );
+            }
+        }
+
+        // Notification: Task newly assigned
+        if ($newAssigneeId !== null && (string) $newAssigneeId !== (string) $previousAssigneeId) {
+            $assignee = User::find($newAssigneeId);
+            if ($assignee !== null) {
+                $notificationService->notifyTaskAssignment(
+                    $assignee,
+                    (string) $item->id,
+                    $item->title,
+                    $owner->name
+                );
+            }
+        }
+
+        // Notification: Task completed/cancelled by owner (notify assignee)
+        if ($isOwner && $item->assignee_id !== null) {
+            $assignee = User::find($item->assignee_id);
+            if ($assignee !== null) {
+                // Check if status changed to done/wontdo
+                if (in_array($newStatus, ['done', 'wontdo']) && ! in_array($previousStatus, ['done', 'wontdo'])) {
+                    $notificationService->notifyTaskCompleted(
+                        $assignee,
+                        (string) $item->id,
+                        $item->title,
+                        $owner->name,
+                        $newStatus
+                    );
+                }
+
+                // Check if title or description changed (and status didn't complete)
+                $titleChanged = isset($validated['title']) && $validated['title'] !== $previousTitle;
+                $descriptionChanged = isset($validated['description']) && $validated['description'] !== $previousDescription;
+
+                if (($titleChanged || $descriptionChanged) && ! in_array($newStatus, ['done', 'wontdo'])) {
+                    $changes = [];
+                    if ($titleChanged) {
+                        $changes['title'] = ['from' => $previousTitle, 'to' => $item->title];
+                    }
+                    if ($descriptionChanged) {
+                        $changes['description'] = true;
+                    }
+
+                    $notificationService->notifyTaskUpdated(
+                        $assignee,
+                        (string) $item->id,
+                        $item->title,
+                        $owner->name,
+                        $changes
+                    );
+                }
+            }
+        }
+
+        $item->load(['project', 'tags', 'assignee']);
 
         return new ItemResource($item);
     }
@@ -193,6 +361,10 @@ final class ItemController extends Controller
 
     /**
      * Reorder items by updating their positions.
+     *
+     * Only the owner can reorder items (not assignees).
+     * This endpoint renumbers all non-submitted items to positions after the submitted
+     * range, preventing position conflicts with completed/cancelled items.
      */
     public function reorder(Request $request): JsonResponse
     {
@@ -202,9 +374,19 @@ final class ItemController extends Controller
             'items.*.position' => ['required', 'integer', 'min:0', 'max:9999'],
         ]);
 
-        DB::transaction(function () use ($validated): void {
-            $submittedIds = array_column($validated['items'], 'id');
+        $submittedIds = array_column($validated['items'], 'id');
 
+        // Check if user is trying to reorder items they're assigned to but don't own
+        $assignedNotOwned = Item::whereIn('id', $submittedIds)
+            ->where('assignee_id', Auth::id())
+            ->where('user_id', '!=', Auth::id())
+            ->exists();
+
+        if ($assignedNotOwned) {
+            abort(403, 'Assignees cannot reorder items.');
+        }
+
+        DB::transaction(function () use ($validated, $submittedIds): void {
             // Collect only items owned by this user in a single query
             $ownedIds = Item::where('user_id', Auth::id())
                 ->whereIn('id', $submittedIds)

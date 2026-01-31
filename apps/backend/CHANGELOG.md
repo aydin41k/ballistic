@@ -5,6 +5,142 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.0] - 2026-01-31
+
+### Added
+
+#### Web Push Notifications Backend (Phase 1)
+
+- **VAPID Key Authentication**: Zero-cost push notifications using Web Push Protocol with VAPID keys
+  - No external services required (FCM, OneSignal, etc.)
+  - Generate keys with `php artisan webpush:generate-vapid`
+- **Push Subscription Management**: Full CRUD for browser push subscriptions
+  - `GET /api/push/vapid-key` - Get VAPID public key for client subscription
+  - `POST /api/push/subscribe` - Register push subscription (endpoint, p256dh, auth keys)
+  - `POST /api/push/unsubscribe` - Remove subscription by endpoint
+  - `GET /api/push/subscriptions` - List user's push subscriptions
+  - `DELETE /api/push/subscriptions/{id}` - Remove subscription by ID
+- **Multi-Device Support**: Users can register multiple devices, notifications sent to all active subscriptions
+- **WebPushService**: Service for sending push notifications using minishlink/web-push library
+  - Automatic cleanup of expired/invalid subscriptions
+  - Graceful handling when VAPID keys not configured
+- **Integrated Notifications**: CreateNotificationJob now sends Web Push alongside database notifications
+- **User Agent Tracking**: Subscriptions track browser/device info for user reference
+
+### Tests
+
+- Added PushSubscriptionTest (14 tests) covering:
+  - VAPID key retrieval and not-configured handling
+  - Subscription create, update, list, delete operations
+  - User isolation (cannot see/delete other users' subscriptions)
+  - Validation and authentication requirements
+
+## [0.9.2] - 2026-01-31
+
+### Merged Features from task_3888
+
+This release merges the task_3888 feature branch into master, combining:
+- Notification system with job-based dispatch
+- Connection system for secure task assignment
+- Tags display in frontend
+- Rate limiting enhancements
+With the existing master features:
+- Recurring items with expiry strategy
+- Urgency sorting and indicators
+- Multi-device login support
+- Optimistic UI error recovery
+
+## [0.9.1] - 2026-01-25
+
+### Added
+
+#### Notification System Improvements
+- **NotificationServiceInterface**: Created interface for dependency injection and testability
+- **CreateNotificationJob**: Notifications now dispatch jobs instead of creating records directly
+  - Jobs have retry configuration (3 attempts, 5 second backoff)
+  - Improves performance by offloading notification creation to queue
+- **NotificationResource**: New API resource with structured notification response
+  - Includes human-readable relative timestamps (`created_at_human`)
+  - Formats: "Just now", "2 minutes ago", "1 hour ago", "Yesterday", "3 days ago", "2 weeks ago", "25 Jan", "25 Jan 2025"
+  - All timestamps in ISO 8601 format
+
+### Changed
+- **NotificationService**: Refactored to implement NotificationServiceInterface
+- **NotificationController**: Now uses interface injection and NotificationResource
+- **ItemController/ConnectionController**: Updated to use NotificationServiceInterface
+
+### Tests
+- Added NotificationServiceTest (10 tests) covering job dispatching for all notification types
+- Added CreateNotificationJobTest (7 tests) covering job execution and configuration
+- Added NotificationResourceTest (7 tests) covering resource structure and formatting
+
+## [0.9.0] - 2026-01-25
+
+### Fixed
+
+#### Items API Filtering
+- **Completed Items Excluded by Default**: All item endpoints now exclude completed (`done`) and cancelled (`wontdo`) items by default
+  - Use `?include_completed=true` to include completed/cancelled items
+- **Self-Assignment Exclusion**: `assigned_to_me` and `delegated` filters now properly exclude self-assigned items
+- **Correct Filter Behaviour**: Fixed potential issues where `assigned_to_me` and `delegated` might return incorrect items
+
+### Added
+
+#### Tags Display (Frontend)
+- **Tags in Item Row**: Items now display their tags as coloured badges next to the project name
+- **Tag Type Definition**: Added `Tag` interface to frontend types
+- **Custom Tag Colours**: Tags with custom colours display with tinted backgrounds
+
+### Changed
+
+#### API Behaviour
+- **Server-Side Filtering**: Moved completed/cancelled filtering from client-side to server-side for consistency
+- **Frontend API**: Removed client-side filtering of completed items, added `include_completed` parameter
+
+### Tests
+- Added 4 new tests for completed items filtering
+
+## [0.8.0] - 2026-01-25
+
+### Security
+
+#### API Rate Limiting
+- **Route-Level Throttling**: Added comprehensive rate limiting middleware to prevent API abuse
+  - `auth` limiter (5 requests/minute per IP) - Applied to `/api/register` and `/api/login`
+  - `user-search` limiter (30 requests/minute per user) - Applied to `/api/users/lookup` and `/api/users/discover`
+  - `connections` limiter (10 requests/minute per user) - Applied to `POST /api/connections`
+  - `api` limiter (60 requests/minute per user) - Applied to all authenticated endpoints as general protection
+- **Defence in Depth**: Route-level throttling works alongside existing controller-level rate limiting on login
+- **Retry-After Header**: Rate limited responses include standard `Retry-After` header
+
+#### Protected Attack Vectors
+- **Brute Force Prevention**: Login and registration endpoints limited to 5 requests/minute per IP
+- **Enumeration Attack Prevention**: User discovery and lookup endpoints throttled to prevent harvesting user information
+- **Spam Prevention**: Connection request endpoint throttled to prevent spam connection requests
+- **General API Abuse**: All authenticated endpoints have baseline rate limiting
+
+### Changed
+- **AppServiceProvider**: Now configures all custom rate limiters in `boot()` method
+- **routes/api.php**: All routes now have appropriate throttle middleware applied
+
+### Tests
+- Added RateLimitingTest with 8 tests covering all throttled endpoints
+- Updated AuthenticationTest to accept both route-level (429) and controller-level (422) rate limiting responses
+
+## [0.8.0] - 2026-01-31
+
+### Added
+
+#### Activity Stats
+- **DailyStat model**: Tracks per-user, per-day created and completed item counts in a `daily_stats` table with a unique constraint on `(user_id, date)`
+- **ItemObserver**: Automatically maintains daily stats on item lifecycle events — increments `created_count` on creation, adjusts `completed_count` on status transitions into/out of `done`
+- **DailyStatService**: Service layer for incrementing/decrementing stat counters with tag-based cache invalidation
+- **Backfill migration**: Idempotent two-pass migration populates `daily_stats` from existing items (created_count from `created_at`, completed_count from `completed_at`)
+- **`GET /api/stats`**: Returns `heatmap` (daily completion counts) and `category_distribution` (completed items grouped by project with colour) for the authenticated user, with optional `from`/`to` date range filtering (defaults to the last 365 days). Responses are cached for 60 seconds with tag-based invalidation
+
+### Tests
+- Added 8 feature tests covering observer increments/decrements, endpoint responses, authentication, date-range filtering, and category distribution
+
 ## [0.7.1] - 2026-01-26
 
 ### Fixed
@@ -40,6 +176,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Auto-Expiry**: `GET /api/items` now automatically marks past recurring instances with `expires` strategy as `wontdo` (items scheduled for today are not affected; templates are never expired)
 - **Strategy Inheritance**: Recurring instances generated via `RecurrenceService::generateInstances()` inherit `recurrence_strategy` from their template
 
+#### Mutual Connections (Security)
+- **Connections System**: Users must now connect with each other before task assignment is possible
+  - `POST /api/connections` - Send a connection request to another user
+  - `GET /api/connections` - List all connections (with optional `?status=` filter)
+  - `POST /api/connections/{connection}/accept` - Accept a pending connection request
+  - `POST /api/connections/{connection}/decline` - Decline a pending connection request
+  - `DELETE /api/connections/{connection}` - Remove an existing connection
+- **Connection Model**: New model with requester_id, addressee_id, and status (pending/accepted/declined)
+- **User Connection Methods**: Added `connections()`, `isConnectedWith()`, `sentConnectionRequests()`, `receivedConnectionRequests()` methods
+- **Auto-Accept**: If User A sends a request to User B who already has a pending request to User A, it auto-accepts
+
+#### User Discovery
+- **User Discovery API**: New endpoint `POST /api/users/discover` for finding users to connect with
+  - Search by exact email address or phone number (last 9 digits)
+  - Returns `{found: true/false}` with minimal user info if found
+  - Prevents browsing - requires exact match only
+  - Returns masked email for privacy
+
+#### Enhanced Notifications
+- **Connection Request Notification**: Users are notified when someone sends them a connection request
+- **Connection Accepted Notification**: Users are notified when their connection request is accepted
+- **Task Updated Notification**: Assignees are notified when the task owner changes the title or description
+- **Task Completed Notification**: Assignees are notified when the task owner marks a task as done or won't do
+- **Task Unassigned Notification**: Assignees are notified when they are removed from a task
+
+#### Assignee Notes
+- **Assignee Notes Field**: New `assignee_notes` field on items for assignees to add their own notes
+  - Assignees can update this field without affecting the task description
+  - Owner's description remains protected from assignee modifications
+
 ### Fixed
 
 #### WEEKLY BYDAY Recurrence Bug
@@ -53,16 +219,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Backend `StoreItemRequest` and `UpdateItemRequest` validate `recurrence_strategy` (nullable, must be `expires` or `carry_over`)
 - Backend `ItemResource` now includes `recurrence_strategy` in the JSON response
 - Backend `Item` model `$fillable` includes `recurrence_strategy`
+- **User Lookup**: Now only returns users who are connected with the current user (for task assignment)
+- **Task Assignment Validation**: Assignment now requires the assignee to be connected with the task owner
+- **Assignee Update Restrictions**: Assignees can now only update `status` and `assignee_notes` fields
+
+### Security
+- Fixed privacy issue where users could search for and assign tasks to any user in the system
+- Task assignment now requires explicit mutual consent through the connection system
+- Connection requests provide notification to the recipient for awareness
+- Assignees are restricted from modifying task details (only status and notes)
+
+### Database
+- New migration: `create_connections_table` - creates connections table for mutual consent system
+- New migration: `add_assignee_notes_to_items_table` - adds assignee_notes field to items
 
 ### Documentation
 - Updated OpenAPI spec to v0.7.0 with `recurrence_strategy` on Item schema and all create/update request bodies
 
 ### Tests
-- Added 9 new backend tests:
-  - 3 BYDAY recurrence tests (single week, multi-week, without BYDAY regression)
-  - 3 strategy validation tests (valid create, invalid create, update)
-  - 3 auto-expiry tests (expires past instances, does not expire today, does not expire templates)
-- Total: 115 tests passing (367 assertions)
+- Added 9 new backend tests for BYDAY recurrence, strategy validation, and auto-expiry
+- Added ConnectionTest with 16 tests covering connection CRUD, notifications, and model methods
+- Added UserDiscoveryTest with 9 tests for user discovery functionality
 
 ## [0.6.2] - 2026-01-26
 
@@ -95,11 +272,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
-#### API Rate Limiting
-- **Global API Throttle**: All API routes now enforce 60 requests per minute per authenticated user (falls back to IP for unauthenticated requests) via `throttle:api` middleware
-- Added `RateLimiter::for('api')` definition in `AppServiceProvider`
-- Added `$middleware->throttleApi()` in `bootstrap/app.php`
-
 #### Input Hardening
 - **Reorder Payload Limits**: `POST /api/items/reorder` now rejects arrays exceeding 100 items and positions exceeding 9999
 - **Removed `exists` Validation on Reorder IDs**: Replaced N per-ID `exists:items,id` database queries with a single ownership-check query using `whereIn`, preventing enumeration of item IDs across users
@@ -120,14 +292,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `onRowChange` now accepts a functional updater `(current: Item) => Item` for safe concurrent reconciliation
 
 ### Tests
-- Added 6 new tests for the reorder endpoint:
-  - Bulk reorder updates positions correctly
-  - Reorder silently skips items not owned by the requesting user
-  - Oversized payload (>100 items) is rejected with 422
-  - Excessive position value (>9999) is rejected with 422
-  - Unauthenticated requests receive 401
-  - Reorder renumbers non-submitted items to avoid position conflicts
-- Total: 106 tests passing (344 assertions)
+- Added 6 new tests for the reorder endpoint
 
 ## [0.6.0] - 2026-01-26
 
@@ -148,22 +313,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Frontend Urgency Indicators**: Visual cues on items — red left border + "Overdue" label for past-due items, amber border for items due within 72 hours
 - **Frontend Planned View**: Filter button toggles between active and planned views, fetching future-scheduled items via `?scope=planned`
 
+#### Task Assignment
+- **User Lookup API**: New endpoint `GET /api/users/lookup` for searching users by exact email or phone number suffix (last 9 digits)
+- **Task Assignment**: Items can now be assigned to other users via `assignee_id` field
+- **Assignee Permissions**: Assignees can view and update status of assigned items, but cannot delete or reassign
+
+#### Notifications (poll-based)
+- **Notifications Table**: Simple notifications table for task assignment notifications
+- **Notification API**: Poll-based notification endpoints
+  - `GET /api/notifications` - Fetch notifications (supports `?unread_only=true`)
+  - `POST /api/notifications/{notification}/read` - Mark notification as read
+  - `POST /api/notifications/read-all` - Mark all notifications as read
+- **NotificationService**: Service for creating and managing notifications
+- **Automatic Notifications**: Task assignment automatically creates notification for assignee
+
+#### User Profile
+- **Phone Number**: Users can now add an optional phone number to their profile
+- **UserLookupResource**: New API resource with masked email for privacy in search results
+
+#### Item Filtering
+- **Assigned to Me**: `GET /api/items?assigned_to_me=true` returns items assigned to current user
+- **Delegated**: `GET /api/items?delegated=true` returns items owned by current user that are assigned to others
+- **Default View**: Default item list now excludes delegated items (shows only unassigned items user owns)
+
 ### Changed
 - Updated OpenAPI specification with `scheduled_date`, `due_date`, `completed_at`, recurrence fields, and new query parameters
 - Updated frontend TypeScript `Item` interface with all scheduling and recurrence fields
 - Updated frontend API client (`createItem`, `updateItem`, `fetchItems`) to support date fields and scope parameter
+- **Item Model**: Added `assignee_id` foreign key, `isAssigned()` and `isDelegated()` helper methods
+- **Item Resource**: Now includes `assignee_id`, `assignee`, `owner`, `is_assigned`, `is_delegated` fields
+- **Item Policy**: Updated to allow assignees to view and update assigned items
+- **User Model**: Added `phone` field, `assignedItems()` and `taskNotifications()` relationships
+
+### Database
+- New migration: `add_phone_to_users_table` - adds phone field to users
+- New migration: `add_assignee_to_items_table` - adds assignee_id foreign key to items
+- New migration: `create_notifications_table` - creates notifications table for poll-based notifications
 
 ### Tests
-- Added 11 new feature tests covering:
-  - Creating items with scheduled/due dates
-  - Validation: due_date cannot precede scheduled_date
-  - Validation: due_date can equal scheduled_date
-  - Update validation for date ordering
-  - Default index excludes future-scheduled items
-  - `?scope=planned` returns only future items
-  - `?scope=all` returns everything
-  - Overdue filter functionality
-  - Today-scheduled items are visible by default
+- Added 11 new feature tests covering scheduling and date validation
+- Added UserLookupTest with 8 tests for user search functionality
+- Added ItemAssignmentTest with 11 tests for task assignment and filtering
+- Added NotificationTest with 8 tests for notification functionality
 
 ## [0.5.3] - 2025-12-10
 

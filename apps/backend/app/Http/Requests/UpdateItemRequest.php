@@ -28,6 +28,7 @@ final class UpdateItemRequest extends FormRequest
         return [
             'title' => ['sometimes', 'required', 'string', 'max:65535'],
             'description' => ['nullable', 'string', 'max:65535'],
+            'assignee_notes' => ['nullable', 'string', 'max:65535'],
             'status' => ['sometimes', 'required', Rule::in(['todo', 'doing', 'done', 'wontdo'])],
             'project_id' => [
                 'nullable',
@@ -41,6 +42,11 @@ final class UpdateItemRequest extends FormRequest
             'due_date' => ['nullable', 'date', 'after_or_equal:scheduled_date'],
             'recurrence_rule' => ['nullable', 'string', 'max:255'],
             'recurrence_strategy' => ['nullable', 'string', Rule::in(['expires', 'carry_over'])],
+            'assignee_id' => [
+                'nullable',
+                'uuid',
+                Rule::exists('users', 'id'),
+            ],
             'tag_ids' => ['nullable', 'array'],
             'tag_ids.*' => [
                 'uuid',
@@ -62,6 +68,7 @@ final class UpdateItemRequest extends FormRequest
             'project_id.exists' => 'The selected project does not exist or does not belong to you.',
             'tag_ids.*.exists' => 'One or more selected tags do not exist or do not belong to you.',
             'due_date.after_or_equal' => 'The due date must not be before the scheduled date.',
+            'assignee_id.exists' => 'The selected user does not exist.',
         ];
     }
 }

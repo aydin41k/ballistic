@@ -58,16 +58,31 @@ jest.mock("../lib/api", () => ({
       deleted_at: null,
     }),
   ),
-  fetchItems: jest.fn(() =>
-    Promise.resolve([
+  fetchItems: jest.fn().mockImplementation((params) => {
+    // Return empty array for assigned_to_me and delegated calls
+    if (params?.assigned_to_me || params?.delegated) {
+      return Promise.resolve([]);
+    }
+    return Promise.resolve([
       {
         id: "1",
         user_id: "user-1",
+        assignee_id: null,
         project_id: null,
         title: "First Task",
         description: null,
         status: "todo",
         position: 0,
+        scheduled_date: null,
+        due_date: null,
+        completed_at: null,
+        recurrence_rule: null,
+        recurrence_parent_id: null,
+        recurrence_strategy: null,
+        is_recurring_template: false,
+        is_recurring_instance: false,
+        is_assigned: false,
+        is_delegated: false,
         created_at: "2025-10-24T00:00:00Z",
         updated_at: "2025-10-24T00:00:00Z",
         deleted_at: null,
@@ -75,17 +90,28 @@ jest.mock("../lib/api", () => ({
       {
         id: "2",
         user_id: "user-1",
+        assignee_id: null,
         project_id: null,
         title: "Second Task",
         description: null,
         status: "todo",
         position: 1,
+        scheduled_date: null,
+        due_date: null,
+        completed_at: null,
+        recurrence_rule: null,
+        recurrence_parent_id: null,
+        recurrence_strategy: null,
+        is_recurring_template: false,
+        is_recurring_instance: false,
+        is_assigned: false,
+        is_delegated: false,
         created_at: "2025-10-24T00:00:00Z",
         updated_at: "2025-10-24T00:00:00Z",
         deleted_at: null,
       },
-    ]),
-  ),
+    ]);
+  }),
   createItem: jest.fn(),
 }));
 
@@ -121,11 +147,22 @@ describe("Item Addition Order and Scrolling", () => {
       Promise.resolve({
         id: "new-123",
         user_id: "user-1",
+        assignee_id: null,
         project_id: null,
         title: "New Task",
         description: "New description",
         status: "todo",
         position: 2,
+        scheduled_date: null,
+        due_date: null,
+        completed_at: null,
+        recurrence_rule: null,
+        recurrence_parent_id: null,
+        recurrence_strategy: null,
+        is_recurring_template: false,
+        is_recurring_instance: false,
+        is_assigned: false,
+        is_delegated: false,
         created_at: "2025-10-24T00:00:00Z",
         updated_at: "2025-10-24T00:00:00Z",
         deleted_at: null,
@@ -134,14 +171,11 @@ describe("Item Addition Order and Scrolling", () => {
 
     renderWithAuth(<Home />);
 
-    // Wait for initial load
+    // Wait for items to load (splash screen disappears and items appear)
     await waitFor(() => {
-      expect(screen.queryByText("Loading")).not.toBeInTheDocument();
+      expect(screen.getByText("First Task")).toBeInTheDocument();
+      expect(screen.getByText("Second Task")).toBeInTheDocument();
     });
-
-    // Verify initial items are present
-    expect(screen.getByText("First Task")).toBeInTheDocument();
-    expect(screen.getByText("Second Task")).toBeInTheDocument();
 
     // Click the add button
     const addButton = await screen.findByText("Add new task...");
@@ -192,11 +226,22 @@ describe("Item Addition Order and Scrolling", () => {
       Promise.resolve({
         id: "scroll-test-123",
         user_id: "user-1",
+        assignee_id: null,
         project_id: null,
         title: "Scroll Test Task",
         description: null,
         status: "todo",
         position: 2,
+        scheduled_date: null,
+        due_date: null,
+        completed_at: null,
+        recurrence_rule: null,
+        recurrence_parent_id: null,
+        recurrence_strategy: null,
+        is_recurring_template: false,
+        is_recurring_instance: false,
+        is_assigned: false,
+        is_delegated: false,
         created_at: "2025-10-24T00:00:00Z",
         updated_at: "2025-10-24T00:00:00Z",
         deleted_at: null,
@@ -216,9 +261,9 @@ describe("Item Addition Order and Scrolling", () => {
 
     renderWithAuth(<Home />);
 
-    // Wait for initial load
+    // Wait for items to load (splash screen disappears and items appear)
     await waitFor(() => {
-      expect(screen.queryByText("Loading")).not.toBeInTheDocument();
+      expect(screen.getByText("First Task")).toBeInTheDocument();
     });
 
     // Click the add button

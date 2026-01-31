@@ -82,6 +82,7 @@ final class ItemTest extends TestCase
         $item = Item::factory()->create([
             'user_id' => $user->id,
             'project_id' => $project->id,
+            'status' => 'todo', // Ensure item is not completed (completed items are excluded by default)
         ]);
 
         $response = $this->actingAs($user)

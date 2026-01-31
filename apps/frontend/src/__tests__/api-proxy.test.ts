@@ -85,7 +85,9 @@ describe("API Functionality", () => {
     expect(callArgs[1].headers["Content-Type"]).toBe("application/json");
   });
 
-  test("should filter out done and wontdo tasks when fetching items", async () => {
+  test("should return items from server response (server-side filtering)", async () => {
+    // Server now filters out completed/cancelled items by default
+    // The frontend just returns what the server sends
     const mockResponse = [
       {
         id: "1",
@@ -100,37 +102,13 @@ describe("API Functionality", () => {
         deleted_at: null,
       },
       {
-        id: "2",
-        user_id: "user-1",
-        project_id: null,
-        title: "Completed Task",
-        description: null,
-        status: "done",
-        position: 1,
-        created_at: "2025-01-01T00:00:00Z",
-        updated_at: "2025-01-01T00:00:00Z",
-        deleted_at: null,
-      },
-      {
-        id: "3",
-        user_id: "user-1",
-        project_id: null,
-        title: "Cancelled Task",
-        description: null,
-        status: "wontdo",
-        position: 2,
-        created_at: "2025-01-01T00:00:00Z",
-        updated_at: "2025-01-01T00:00:00Z",
-        deleted_at: null,
-      },
-      {
         id: "4",
         user_id: "user-1",
         project_id: null,
         title: "Active Task 2",
         description: null,
         status: "doing",
-        position: 3,
+        position: 1,
         created_at: "2025-01-01T00:00:00Z",
         updated_at: "2025-01-01T00:00:00Z",
         deleted_at: null,
@@ -145,16 +123,12 @@ describe("API Functionality", () => {
 
     const result = await fetchItems();
 
-    // Should only return active tasks (todo and doing)
+    // Should return exactly what the server sends
     expect(result).toHaveLength(2);
     expect(result[0].title).toBe("Active Task 1");
     expect(result[0].status).toBe("todo");
     expect(result[1].title).toBe("Active Task 2");
     expect(result[1].status).toBe("doing");
-
-    // Should not include done or wontdo tasks
-    expect(result.find((item) => item.status === "done")).toBeUndefined();
-    expect(result.find((item) => item.status === "wontdo")).toBeUndefined();
   });
 
   test("should handle paginated API shape with data property", async () => {

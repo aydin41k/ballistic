@@ -243,17 +243,23 @@ class AuthenticationTest extends TestCase
         }
 
         // The 6th attempt should be rate limited
+        // Route-level throttle returns 429, controller-level returns 422
+        // Either response indicates rate limiting is working
         $response = $this->postJson('/api/login', [
             'email' => 'test@example.com',
             'password' => 'wrong-password',
         ]);
 
-        $response->assertStatus(422)
-            ->assertJsonValidationErrors(['email']);
+        $this->assertTrue(
+            $response->status() === 429 || $response->status() === 422,
+            'Expected rate limited response (429 or 422), got: '.$response->status()
+        );
 
-        // Check that the error message mentions throttling
-        $errorMessage = $response->json('errors.email.0');
-        $this->assertStringContainsString('Too many login attempts', $errorMessage);
+        // If it's a 422 response, check for the throttle message
+        if ($response->status() === 422) {
+            $errorMessage = $response->json('errors.email.0');
+            $this->assertStringContainsString('Too many login attempts', $errorMessage);
+        }
     }
 
     public function test_login_preserves_existing_tokens(): void

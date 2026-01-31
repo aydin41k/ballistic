@@ -273,6 +273,7 @@ describe("ItemForm with ProjectCombobox", () => {
       due_date: null,
       recurrence_rule: null,
       recurrence_strategy: null,
+      assignee_id: null,
     });
   });
 
@@ -305,6 +306,7 @@ describe("ItemForm with ProjectCombobox", () => {
       due_date: null,
       recurrence_rule: null,
       recurrence_strategy: null,
+      assignee_id: null,
     });
   });
 });

@@ -142,6 +142,7 @@ describe("Item Creation Response Handling", () => {
           due_date: null,
           recurrence_rule: null,
           recurrence_strategy: null,
+          assignee_id: null,
         });
       },
       { timeout: 200 },

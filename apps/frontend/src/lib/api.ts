@@ -1,4 +1,12 @@
-import type { Item, ItemScope, Project, Status } from "@/types";
+import type {
+  Item,
+  ItemScope,
+  Project,
+  Status,
+  StatsResponse,
+  UserLookup,
+  NotificationsResponse,
+} from "@/types";
 import { getAuthHeaders, clearToken } from "./auth";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "";
@@ -7,6 +15,9 @@ type ListParams = {
   project_id?: string;
   status?: Status | "all";
   scope?: ItemScope;
+  assigned_to_me?: boolean;
+  delegated?: boolean;
+  include_completed?: boolean;
 };
 
 /**
@@ -76,12 +87,21 @@ function buildUrl(
 
 /**
  * Fetch all items for the authenticated user
+ *
+ * By default, returns items owned by the user that are NOT assigned to anyone else.
+ * Completed/cancelled items are excluded by default (use include_completed=true to include).
+ * Use assigned_to_me=true to get items assigned to you by other users.
+ * Use delegated=true to get items you own that are assigned to others.
+ * Use scope to filter by scheduled date (active/planned/all).
  */
 export async function fetchItems(params?: ListParams): Promise<Item[]> {
   const url = buildUrl("/api/items", {
     project_id: params?.project_id,
     status: params?.status !== "all" ? params?.status : undefined,
     scope: params?.scope,
+    assigned_to_me: params?.assigned_to_me ? "true" : undefined,
+    delegated: params?.delegated ? "true" : undefined,
+    include_completed: params?.include_completed ? "true" : undefined,
   });
 
   const response = await fetch(url, {
@@ -92,12 +112,7 @@ export async function fetchItems(params?: ListParams): Promise<Item[]> {
 
   const payload = await handleResponse<Item[] | { data?: Item[] }>(response);
   const items = extractData(payload);
-  const list = Array.isArray(items) ? items : [];
-
-  // Filter out completed/cancelled tasks for the main view
-  return list.filter(
-    (item) => item.status !== "done" && item.status !== "wontdo",
-  );
+  return Array.isArray(items) ? items : [];
 }
 
 /**
@@ -127,6 +142,7 @@ export async function createItem(payload: {
   due_date?: string | null;
   recurrence_rule?: string | null;
   recurrence_strategy?: string | null;
+  assignee_id?: string | null;
 }): Promise<Item> {
   const response = await fetch(buildUrl("/api/items"), {
     method: "POST",
@@ -141,6 +157,7 @@ export async function createItem(payload: {
       due_date: payload.due_date || null,
       recurrence_rule: payload.recurrence_rule || null,
       recurrence_strategy: payload.recurrence_strategy || null,
+      assignee_id: payload.assignee_id || null,
     }),
   });
 
@@ -182,6 +199,7 @@ export async function updateItem(
       | "due_date"
       | "recurrence_rule"
       | "recurrence_strategy"
+      | "assignee_id"
     >
   >,
 ): Promise<Item> {
@@ -206,6 +224,31 @@ export async function deleteItem(id: string): Promise<{ ok: true }> {
 
   await handleResponse<void>(response);
   return { ok: true };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Stats
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Fetch activity stats (heatmap + category distribution)
+ */
+export async function fetchStats(params?: {
+  from?: string;
+  to?: string;
+}): Promise<StatsResponse> {
+  const url = buildUrl("/api/stats", {
+    from: params?.from,
+    to: params?.to,
+  });
+
+  const response = await fetch(url, {
+    method: "GET",
+    headers: getAuthHeaders(),
+    cache: "no-store",
+  });
+
+  return handleResponse<StatsResponse>(response);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -247,4 +290,220 @@ export async function createProject(payload: {
 
   const data = await handleResponse<Project | { data?: Project }>(response);
   return extractData(data);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// User Lookup
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Search for users by email or phone number suffix (last 9 digits).
+ * Excludes the current authenticated user from results.
+ */
+export async function lookupUsers(query: string): Promise<UserLookup[]> {
+  if (!query || query.length < 3) {
+    return [];
+  }
+
+  const response = await fetch(buildUrl("/api/users/lookup", { q: query }), {
+    method: "GET",
+    headers: getAuthHeaders(),
+    cache: "no-store",
+  });
+
+  const payload = await handleResponse<UserLookup[] | { data?: UserLookup[] }>(
+    response,
+  );
+  const users = extractData(payload);
+  return Array.isArray(users) ? users : [];
+}
+
+/**
+ * Assign an item to a user
+ */
+export async function assignItem(
+  itemId: string,
+  userId: string | null,
+): Promise<Item> {
+  return updateItem(itemId, { assignee_id: userId });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Notifications (poll-based)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Fetch notifications for the authenticated user.
+ * Use unreadOnly=true to get only unread notifications.
+ */
+export async function fetchNotifications(
+  unreadOnly?: boolean,
+): Promise<NotificationsResponse> {
+  const response = await fetch(
+    buildUrl("/api/notifications", {
+      unread_only: unreadOnly ? "true" : undefined,
+    }),
+    {
+      method: "GET",
+      headers: getAuthHeaders(),
+      cache: "no-store",
+    },
+  );
+
+  return handleResponse<NotificationsResponse>(response);
+}
+
+/**
+ * Mark a specific notification as read.
+ */
+export async function markNotificationAsRead(
+  notificationId: string,
+): Promise<{ message: string; unread_count: number }> {
+  const response = await fetch(
+    buildUrl(`/api/notifications/${notificationId}/read`),
+    {
+      method: "POST",
+      headers: getAuthHeaders(),
+    },
+  );
+
+  return handleResponse<{ message: string; unread_count: number }>(response);
+}
+
+/**
+ * Mark all notifications as read for the authenticated user.
+ */
+export async function markAllNotificationsAsRead(): Promise<{
+  message: string;
+  marked_count: number;
+}> {
+  const response = await fetch(buildUrl("/api/notifications/read-all"), {
+    method: "POST",
+    headers: getAuthHeaders(),
+  });
+
+  return handleResponse<{ message: string; marked_count: number }>(response);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Push Notifications (Web Push)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface PushSubscriptionInfo {
+  id: string;
+  endpoint_domain: string;
+  user_agent: string | null;
+  last_used_at: string | null;
+  created_at: string;
+}
+
+export interface PushSubscriptionsResponse {
+  subscriptions: PushSubscriptionInfo[];
+  count: number;
+}
+
+/**
+ * Get the VAPID public key for subscribing to push notifications.
+ * Returns null if push notifications are not configured on the server.
+ */
+export async function getVapidPublicKey(): Promise<string | null> {
+  try {
+    const response = await fetch(buildUrl("/api/push/vapid-key"), {
+      method: "GET",
+      headers: getAuthHeaders(),
+    });
+
+    if (response.status === 503) {
+      // Push notifications not configured
+      return null;
+    }
+
+    const data = await handleResponse<{ public_key: string }>(response);
+    return data.public_key;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Subscribe to push notifications.
+ * Sends the browser's push subscription to the server.
+ */
+export async function subscribeToPush(subscription: PushSubscription): Promise<{
+  message: string;
+  subscription_id: string;
+}> {
+  const response = await fetch(buildUrl("/api/push/subscribe"), {
+    method: "POST",
+    headers: getAuthHeaders(),
+    body: JSON.stringify({
+      endpoint: subscription.endpoint,
+      keys: {
+        p256dh: arrayBufferToBase64(subscription.getKey("p256dh")),
+        auth: arrayBufferToBase64(subscription.getKey("auth")),
+      },
+    }),
+  });
+
+  return handleResponse<{ message: string; subscription_id: string }>(response);
+}
+
+/**
+ * Unsubscribe from push notifications by endpoint.
+ */
+export async function unsubscribeFromPush(
+  endpoint: string,
+): Promise<{ message: string }> {
+  const response = await fetch(buildUrl("/api/push/unsubscribe"), {
+    method: "POST",
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ endpoint }),
+  });
+
+  return handleResponse<{ message: string }>(response);
+}
+
+/**
+ * List all push subscriptions for the current user.
+ */
+export async function listPushSubscriptions(): Promise<PushSubscriptionsResponse> {
+  const response = await fetch(buildUrl("/api/push/subscriptions"), {
+    method: "GET",
+    headers: getAuthHeaders(),
+  });
+
+  return handleResponse<PushSubscriptionsResponse>(response);
+}
+
+/**
+ * Delete a specific push subscription by ID.
+ */
+export async function deletePushSubscription(
+  subscriptionId: string,
+): Promise<{ message: string }> {
+  const response = await fetch(
+    buildUrl(`/api/push/subscriptions/${subscriptionId}`),
+    {
+      method: "DELETE",
+      headers: getAuthHeaders(),
+    },
+  );
+
+  return handleResponse<{ message: string }>(response);
+}
+
+/**
+ * Convert ArrayBuffer to base64 string for push subscription keys.
+ */
+function arrayBufferToBase64(buffer: ArrayBuffer | null): string {
+  if (!buffer) return "";
+  const bytes = new Uint8Array(buffer);
+  let binary = "";
+  for (let i = 0; i < bytes.byteLength; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary)
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
 }

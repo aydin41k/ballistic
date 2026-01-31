@@ -1,3 +1,61 @@
+## 0.7.0 - 2026-01-31
+
+### Added
+
+#### Web Push Notifications (Phase 2 & 3)
+
+- **Service Worker Push Handler**: SW now listens for push events and displays native notifications
+- **Notification Click Handler**: Clicking notifications navigates to the relevant URL
+- **Push Subscription Hook**: `usePushNotifications()` hook for managing browser push subscriptions
+- **Settings Modal**: New settings modal accessible from the bottom bar
+- **Push Toggle Component**: Toggle to enable/disable push notifications per device
+- **API Functions**: Added `getVapidPublicKey()`, `subscribeToPush()`, `unsubscribeFromPush()`, `listPushSubscriptions()`, `deletePushSubscription()`
+
+### Changed
+
+- **Bottom Bar**: Settings button now opens the settings modal instead of alert
+- **Service Worker**: Extended with push and notificationclick event handlers
+
+## 0.6.0 - 2026-01-25
+
+### Added
+
+#### Task Assignment
+
+- **Assign Modal**: New component for searching and selecting users to assign tasks to
+- **User Search**: Search users by email or last 9 digits of phone number
+- **Assignment in Forms**: ItemForm now includes "Assign to" field in "More settings" section
+- **Visual Indicators**: ItemRow shows badges for delegated tasks and tasks assigned from others
+
+#### View Modes
+
+- **My Tasks**: Default view showing unassigned items you own
+- **Assigned to Me**: View items others have assigned to you
+- **Delegated**: View items you've assigned to others
+- **View Selector**: Tab-style selector with item counts for each view
+
+#### Notifications (poll-based)
+
+- **Notification API Functions**: Added `fetchNotifications()`, `markNotificationAsRead()`, `markAllNotificationsAsRead()` functions
+- **Notification Types**: Added `Notification` and `NotificationsResponse` types
+
+### Changed
+
+- **Item Type**: Extended with `assignee_id`, `assignee`, `owner`, `is_assigned`, `is_delegated`, and scheduling fields
+- **User Type**: Added `phone` field
+- **API Client**: Added `lookupUsers()`, `assignItem()`, and notification functions
+- **fetchItems**: Now supports `assigned_to_me` and `delegated` filter parameters
+- **createItem/updateItem**: Now support `assignee_id` parameter
+
+#### Insights (merged from parallel branch)
+
+- **Insights Page**: New `/insights` route displaying a GitHub-style activity heatmap and a horizontal bar chart of completed items grouped by project.
+- **Heatmap Component**: Scrollable week-column grid coloured by daily completion intensity (4-level sky-blue scale). Shows month labels, day-of-week labels, a legend, and a total-completed summary.
+- **CategoryChart Component**: Horizontal progress bars per project, coloured with each project's assigned colour, sorted by count descending.
+- **API Integration**: Added `fetchStats` to the API client, fetching heatmap and category-distribution data from `GET /api/stats` with optional date-range parameters.
+- **Nav Wiring**: Insights page accessible via the Settings modal.
+- **Types**: Added `HeatmapEntry`, `CategoryDistribution`, and `StatsResponse` interfaces.
+
 ## 0.5.1 - 2026-01-17
 
 - **Deployment Fix**: Fixed Azure Web App deployment workflow - corrected package path from `./node-app` to `.` to match artifact extraction location.

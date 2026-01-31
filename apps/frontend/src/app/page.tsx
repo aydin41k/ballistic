@@ -7,7 +7,6 @@ import {
   fetchItems,
   createItem,
   updateItem,
-  deleteItem,
   reorderItems,
   fetchProjects,
   createProject,
@@ -15,6 +14,8 @@ import {
 import { ItemRow } from "@/components/ItemRow";
 import { EmptyState } from "@/components/EmptyState";
 import { ItemForm } from "@/components/ItemForm";
+import { SplashScreen } from "@/components/SplashScreen";
+import { SettingsModal } from "@/components/SettingsModal";
 import { useAuth } from "@/contexts/AuthContext";
 
 function normaliseItemResponse(payload: Item | { data?: Item }): Item {
@@ -68,6 +69,8 @@ export default function Home() {
   const router = useRouter();
   const { isAuthenticated, isLoading: authLoading, logout, user } = useAuth();
   const [items, setItems] = useState<Item[]>([]);
+  const [assignedItems, setAssignedItems] = useState<Item[]>([]);
+  const [delegatedItems, setDelegatedItems] = useState<Item[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [editing, setEditing] = useState<Item | null>(null);
   const [showAdd, setShowAdd] = useState(false);
@@ -81,6 +84,7 @@ export default function Home() {
   const [viewScope, setViewScope] = useState<ItemScope>("active");
   const [toast, setToast] = useState<string | null>(null);
   const toastTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [showSettings, setShowSettings] = useState(false);
 
   const showError = useCallback((message: string) => {
     if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
@@ -99,9 +103,16 @@ export default function Home() {
   useEffect(() => {
     if (isAuthenticated) {
       setLoading(true);
-      Promise.all([fetchItems({ scope: viewScope }), fetchProjects()])
-        .then(([itemsData, projectsData]) => {
+      Promise.all([
+        fetchItems({ scope: viewScope }),
+        fetchItems({ assigned_to_me: true, scope: viewScope }),
+        fetchItems({ delegated: true, scope: viewScope }),
+        fetchProjects(),
+      ])
+        .then(([itemsData, assignedData, delegatedData, projectsData]) => {
           setItems(itemsData);
+          setAssignedItems(assignedData);
+          setDelegatedItems(delegatedData);
           setProjects(projectsData);
         })
         .catch((error) => {
@@ -128,7 +139,13 @@ export default function Home() {
     }
   }, [scrollToItemId]);
 
-  const filtered = sortByUrgency(items);
+  // Combine all items: my tasks sorted by urgency, assigned to me, and delegated
+  const sortedItems = sortByUrgency(items);
+  const allItems = [
+    ...assignedItems, // Tasks assigned to me (from others)
+    ...sortedItems, // My own tasks (not delegated)
+    ...delegatedItems, // Tasks I delegated to others
+  ];
 
   function onRowChange(itemOrUpdater: Item | ((current: Item) => Item)) {
     setItems((prev) => {
@@ -190,26 +207,6 @@ export default function Home() {
   async function handleLogout() {
     await logout();
     router.push("/login");
-  }
-
-  async function handleDelete(id: string) {
-    const deletedItem = items.find((item) => item.id === id);
-
-    // Optimistic delete
-    setItems((prev) => prev.filter((item) => item.id !== id));
-    setEditing(null);
-
-    try {
-      await deleteItem(id);
-    } catch (error) {
-      console.error("Failed to delete item:", error);
-      if (deletedItem) {
-        setItems((prev) =>
-          [...prev, deletedItem].sort((a, b) => a.position - b.position),
-        );
-      }
-      showError("Failed to delete task. It has been restored.");
-    }
   }
 
   async function handleCreateProject(name: string): Promise<Project> {
@@ -296,42 +293,9 @@ export default function Home() {
     dragOverRef.current = null;
   }
 
-  // Show loading while checking auth
-  if (authLoading || (!isAuthenticated && !authLoading)) {
-    return (
-      <div className="flex flex-col gap-3">
-        <header className="sticky top-0 z-10 -mx-4 bg-[var(--page-bg)]/95 px-4 pb-2 pt-3 backdrop-blur">
-          <div className="flex items-center justify-between">
-            <h1 className="text-lg font-semibold text-[var(--navy)]">
-              Ballistic
-              <br />
-              <small>The Simplest Bullet Journal</small>
-            </h1>
-            <div className="w-16 h-9 bg-slate-200 rounded-md animate-pulse"></div>
-          </div>
-        </header>
-        <EmptyState type="loading" />
-      </div>
-    );
-  }
-
-  if (loading) {
-    return (
-      <div className="flex flex-col gap-3">
-        <header className="sticky top-0 z-10 -mx-4 bg-[var(--page-bg)]/95 px-4 pb-2 pt-3 backdrop-blur">
-          <div className="flex items-center justify-between">
-            <h1 className="text-lg font-semibold text-[var(--navy)]">
-              Ballistic
-              <br />
-              <small>The Simplest Bullet Journal</small>
-            </h1>
-
-            <div className="w-16 h-9 bg-slate-200 rounded-md animate-pulse"></div>
-          </div>
-        </header>
-        <EmptyState type="loading" />
-      </div>
-    );
+  // Show splash screen while checking auth or loading data
+  if (authLoading || (!isAuthenticated && !authLoading) || loading) {
+    return <SplashScreen />;
   }
 
   return (
@@ -438,6 +402,7 @@ export default function Home() {
                 const optimisticItem: Item = {
                   id: tempId, // Temporary ID
                   user_id: user?.id || "",
+                  assignee_id: v.assignee_id ?? null,
                   project_id: v.project_id ?? null,
                   title: v.title,
                   description: v.description || null,
@@ -453,6 +418,8 @@ export default function Home() {
                     null,
                   is_recurring_template: !!v.recurrence_rule,
                   is_recurring_instance: false,
+                  is_assigned: !!v.assignee_id,
+                  is_delegated: !!v.assignee_id,
                   created_at: new Date().toISOString(),
                   updated_at: new Date().toISOString(),
                   deleted_at: null,
@@ -491,6 +458,7 @@ export default function Home() {
                   due_date: v.due_date,
                   recurrence_rule: v.recurrence_rule,
                   recurrence_strategy: v.recurrence_strategy,
+                  assignee_id: v.assignee_id,
                 })
                   .then((created) => {
                     const resolvedItem = normaliseItemResponse(created);
@@ -517,7 +485,7 @@ export default function Home() {
         )}
 
         {/* Task Items */}
-        {filtered.map((item, index) => (
+        {allItems.map((item, index) => (
           <div key={item.id || `item-${index}`} className="flex flex-col gap-2">
             {editing?.id === item.id ? (
               <div className="rounded-md bg-white p-3 shadow-sm animate-scale-in">
@@ -544,6 +512,7 @@ export default function Home() {
                         (v.recurrence_strategy as Item["recurrence_strategy"]) ??
                         null,
                       is_recurring_template: !!v.recurrence_rule,
+                      assignee_id: v.assignee_id ?? null,
                     };
 
                     // Update UI immediately and close edit form
@@ -565,6 +534,7 @@ export default function Home() {
                       recurrence_strategy:
                         (v.recurrence_strategy as Item["recurrence_strategy"]) ??
                         null,
+                      assignee_id: v.assignee_id,
                     }).catch((error) => {
                       console.error("Failed to update item:", error);
                       setItems((prev) =>
@@ -574,13 +544,6 @@ export default function Home() {
                     });
                   }}
                 />
-                <button
-                  type="button"
-                  onClick={() => handleDelete(item.id)}
-                  className="mt-2 w-full rounded-md bg-red-50 px-3 py-2 text-sm text-red-600 hover:bg-red-100 transition-colors"
-                >
-                  Delete task
-                </button>
               </div>
             ) : (
               <ItemRow
@@ -602,14 +565,10 @@ export default function Home() {
           </div>
         ))}
 
-        {filtered.length === 0 && !loading && (
+        {allItems.length === 0 && !loading && (
           <EmptyState
-            type={items.length === 0 ? "no-items" : "no-results"}
-            message={
-              items.length === 0
-                ? "Start your bullet journal journey by adding your first task!"
-                : undefined
-            }
+            type="no-items"
+            message="Start your bullet journal journey by adding your first task!"
           />
         )}
       </div>
@@ -619,20 +578,20 @@ export default function Home() {
         Psycode Pty. Ltd. © {new Date().getFullYear()}
       </footer>
 
-      {/* Bottom Bar */}
-      <div className="fixed inset-x-0 bottom-0 z-20 px-4 pb-4">
-        <div className="mx-auto flex max-w-md items-center justify-between rounded-2xl bg-white/90 p-3 shadow-lg backdrop-blur h-12">
+      {/* Bottom Bar - Glassy style matching top bar */}
+      <div className="fixed inset-x-0 bottom-0 z-20 bg-[var(--page-bg)]/95 backdrop-blur border-t border-slate-200/50">
+        <div className="mx-auto flex max-w-sm items-center justify-between px-4 py-3">
           <button
             type="button"
             aria-label="Settings"
-            onClick={() => alert("Settings coming soon")}
-            className="tap-target grid h-11 w-11 place-items-center rounded-full bg-white shadow-sm hover:shadow-md active:scale-95"
+            onClick={() => setShowSettings(true)}
+            className="tap-target grid h-10 w-10 place-items-center rounded-md hover:bg-slate-100 active:scale-95 transition-all duration-200"
           >
             {/* gear icon */}
             <svg
               viewBox="0 0 24 24"
-              width="18"
-              height="18"
+              width="20"
+              height="20"
               fill="none"
               stroke="currentColor"
               className="text-[var(--navy)]"
@@ -647,10 +606,10 @@ export default function Home() {
             type="button"
             aria-label="Add a new task"
             onClick={() => setShowAdd(true)}
-            className="tap-target grid h-14 w-14 place-items-center rounded-full bg-gradient-to-b from-sky-600 to-gray-600 text-white shadow-xl hover:shadow-2xl active:scale-95"
+            className="tap-target grid h-12 w-12 place-items-center rounded-full bg-[var(--blue)] text-white shadow-md hover:shadow-lg hover:bg-[var(--blue-600)] active:scale-95 transition-all duration-200"
           >
             <span className="sr-only">Add new task...</span>
-            <span className="text-3xl leading-none">+</span>
+            <span className="text-2xl leading-none font-light">+</span>
           </button>
           <button
             type="button"
@@ -667,8 +626,8 @@ export default function Home() {
             {/* funnel icon */}
             <svg
               viewBox="0 0 24 24"
-              width="18"
-              height="18"
+              width="20"
+              height="20"
               fill="none"
               stroke="currentColor"
               className={
@@ -680,6 +639,12 @@ export default function Home() {
           </button>
         </div>
       </div>
+
+      {/* Settings Modal */}
+      <SettingsModal
+        isOpen={showSettings}
+        onClose={() => setShowSettings(false)}
+      />
     </div>
   );
 }

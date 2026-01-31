@@ -4,9 +4,16 @@ export interface User {
   id: string;
   name: string;
   email: string;
+  phone: string | null;
   email_verified_at: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface UserLookup {
+  id: string;
+  name: string;
+  email_masked: string;
 }
 
 export interface Project {
@@ -20,9 +27,19 @@ export interface Project {
   deleted_at: string | null;
 }
 
+export interface Tag {
+  id: string;
+  user_id: string;
+  name: string;
+  color: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Item {
   id: string;
   user_id: string;
+  assignee_id: string | null;
   project_id: string | null;
   title: string;
   description: string | null;
@@ -36,10 +53,32 @@ export interface Item {
   recurrence_strategy: "expires" | "carry_over" | null;
   is_recurring_template: boolean;
   is_recurring_instance: boolean;
+  is_assigned: boolean;
+  is_delegated: boolean;
   created_at: string;
   updated_at: string;
   deleted_at: string | null;
   project?: Project | null;
+  tags?: Tag[];
+  assignee?: UserLookup | null;
+  owner?: UserLookup | null;
+}
+
+export interface Notification {
+  id: string;
+  user_id: string;
+  type: string;
+  title: string;
+  message: string;
+  data: Record<string, unknown> | null;
+  read_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface NotificationsResponse {
+  data: Notification[];
+  unread_count: number;
 }
 
 export type ItemScope = "active" | "planned" | "all";
@@ -53,6 +92,23 @@ export interface AuthResponse {
 export interface ValidationError {
   message: string;
   errors: Record<string, string[]>;
+}
+
+export interface HeatmapEntry {
+  date: string;
+  completed_count: number;
+}
+
+export interface CategoryDistribution {
+  project_id: string | null;
+  project_name: string;
+  project_color: string | null;
+  completed_count: number;
+}
+
+export interface StatsResponse {
+  heatmap: HeatmapEntry[];
+  category_distribution: CategoryDistribution[];
 }
 
 export type RecurrencePreset =
