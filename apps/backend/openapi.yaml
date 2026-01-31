@@ -22,7 +22,7 @@ info:
     Authorization: Bearer {your-token}
     ```
     
-  version: 0.7.0
+  version: 0.8.0
   contact:
     name: Ballistic Backend
   license:
@@ -47,6 +47,8 @@ tags:
     description: Password management and reset
   - name: Email Verification
     description: Email verification endpoints
+  - name: Stats
+    description: User activity and productivity stats
 
 paths:
   # API Authentication Routes
@@ -1330,6 +1332,52 @@ paths:
         '429':
           $ref: '#/components/responses/TooManyRequests'
 
+  /api/stats:
+    get:
+      tags:
+        - Stats
+      summary: Get activity stats
+      description: |
+        Return productivity stats for the authenticated user including a daily
+        completion heatmap and a breakdown of completed items by project.
+        Both datasets honour the requested date range.
+      operationId: getStats
+      security:
+        - bearerAuth: []
+        - sessionAuth: []
+      parameters:
+        - name: from
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+          description: Start date (YYYY-MM-DD). Defaults to 364 days ago.
+        - name: to
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+          description: End date (YYYY-MM-DD). Must be on or after `from`. Defaults to today.
+      responses:
+        '200':
+          description: Stats retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatsResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorised'
+        '422':
+          description: Validation error (e.g. `to` is before `from`)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
 components:
   securitySchemes:
     bearerAuth:
@@ -1516,6 +1564,68 @@ components:
         - title
         - status
         - position
+
+    HeatmapEntry:
+      type: object
+      properties:
+        date:
+          type: string
+          format: date
+          description: The calendar date (YYYY-MM-DD)
+          example: "2026-01-31"
+        completed_count:
+          type: integer
+          minimum: 0
+          description: Number of items completed on this date
+          example: 3
+      required:
+        - date
+        - completed_count
+
+    CategoryDistribution:
+      type: object
+      properties:
+        project_id:
+          type: string
+          format: uuid
+          nullable: true
+          description: Project UUID, or null for Inbox items
+          example: "123e4567-e89b-12d3-a456-426614174000"
+        project_name:
+          type: string
+          description: Project name, or "Inbox" when project_id is null
+          example: Work
+        project_color:
+          type: string
+          nullable: true
+          description: Hex colour code for the project
+          example: "#3B82F6"
+        completed_count:
+          type: integer
+          minimum: 1
+          description: Number of items completed in this project within the date range
+          example: 7
+      required:
+        - project_id
+        - project_name
+        - completed_count
+
+    StatsResponse:
+      type: object
+      properties:
+        heatmap:
+          type: array
+          description: Daily completion counts within the requested date range, ordered by date ascending
+          items:
+            $ref: '#/components/schemas/HeatmapEntry'
+        category_distribution:
+          type: array
+          description: Completed items grouped by project, ordered by count descending
+          items:
+            $ref: '#/components/schemas/CategoryDistribution'
+      required:
+        - heatmap
+        - category_distribution
 
     ValidationError:
       type: object

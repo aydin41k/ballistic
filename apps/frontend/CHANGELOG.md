@@ -1,3 +1,12 @@
+## 0.6.0 - 2026-01-31
+
+- **Insights Page**: New `/insights` route displaying a GitHub-style activity heatmap and a horizontal bar chart of completed items grouped by project.
+- **Heatmap Component**: Scrollable week-column grid coloured by daily completion intensity (4-level sky-blue scale). Shows month labels, day-of-week labels, a legend, and a total-completed summary.
+- **CategoryChart Component**: Horizontal progress bars per project, coloured with each project's assigned colour, sorted by count descending.
+- **API Integration**: Added `fetchStats` to the API client, fetching heatmap and category-distribution data from `GET /api/stats` with optional date-range parameters.
+- **Nav Wiring**: Bottom-bar left button now navigates to Insights (bar-chart icon) instead of showing a placeholder alert.
+- **Types**: Added `HeatmapEntry`, `CategoryDistribution`, and `StatsResponse` interfaces.
+
 ## 0.5.1 - 2026-01-17
 
 - **Deployment Fix**: Fixed Azure Web App deployment workflow - corrected package path from `./node-app` to `.` to match artifact extraction location.

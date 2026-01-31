@@ -624,11 +624,11 @@ export default function Home() {
         <div className="mx-auto flex max-w-md items-center justify-between rounded-2xl bg-white/90 p-3 shadow-lg backdrop-blur h-12">
           <button
             type="button"
-            aria-label="Settings"
-            onClick={() => alert("Settings coming soon")}
+            aria-label="Insights"
+            onClick={() => router.push("/insights")}
             className="tap-target grid h-11 w-11 place-items-center rounded-full bg-white shadow-sm hover:shadow-md active:scale-95"
           >
-            {/* gear icon */}
+            {/* bar chart icon */}
             <svg
               viewBox="0 0 24 24"
               width="18"
@@ -638,8 +638,10 @@ export default function Home() {
               className="text-[var(--navy)]"
             >
               <path
-                d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Zm7.4-3.5a7.4 7.4 0 0 0-.1-1l2.1-1.6-2-3.4-2.5 1a7.6 7.6 0 0 0-1.7-1l-.4-2.6H9.2L8.8 6a7.6 7.6 0 0 0-1.7 1l-2.5-1-2 3.4 2.1 1.6a7.4 7.4 0 0 0 0 2L2.6 14l2 3.4 2.5-1a7.6 7.6 0 0 0 1.7 1l.4 2.6h5.6l.4-2.6a7.6 7.6 0 0 0 1.7-1l2.5 1 2-3.4-2.1-1.6c.1-.3.1-.7.1-1Z"
-                strokeWidth="1.4"
+                d="M18 20V10M12 20V4M6 20v-6"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
               />
             </svg>
           </button>

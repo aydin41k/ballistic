@@ -1,4 +1,4 @@
-import type { Item, ItemScope, Project, Status } from "@/types";
+import type { Item, ItemScope, Project, Status, StatsResponse } from "@/types";
 import { getAuthHeaders, clearToken } from "./auth";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "";
@@ -206,6 +206,31 @@ export async function deleteItem(id: string): Promise<{ ok: true }> {
 
   await handleResponse<void>(response);
   return { ok: true };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Stats
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Fetch activity stats (heatmap + category distribution)
+ */
+export async function fetchStats(params?: {
+  from?: string;
+  to?: string;
+}): Promise<StatsResponse> {
+  const url = buildUrl("/api/stats", {
+    from: params?.from,
+    to: params?.to,
+  });
+
+  const response = await fetch(url, {
+    method: "GET",
+    headers: getAuthHeaders(),
+    cache: "no-store",
+  });
+
+  return handleResponse<StatsResponse>(response);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
