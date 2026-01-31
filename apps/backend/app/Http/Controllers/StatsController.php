@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Models\DailyStat;
+use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -29,8 +30,8 @@ final class StatsController extends Controller
             'to'   => ['sometimes', 'date', 'after_or_equal:from'],
         ]);
 
-        $from = isset($validated['from']) ? \Carbon\Carbon::parse($validated['from']) : \Carbon\Carbon::now()->subDays(364)->startOfDay();
-        $to   = isset($validated['to'])   ? \Carbon\Carbon::parse($validated['to'])->endOfDay() : \Carbon\Carbon::now()->endOfDay();
+        $from = isset($validated['from']) ? Carbon::parse($validated['from']) : Carbon::now()->subDays(364)->startOfDay();
+        $to   = isset($validated['to'])   ? Carbon::parse($validated['to'])->endOfDay() : Carbon::now()->endOfDay();
 
         $cacheKey = "stats:{$userId}:{$from->toDateString()}:{$to->toDateString()}";
 
