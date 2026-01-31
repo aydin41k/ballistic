@@ -41,6 +41,10 @@ tags:
     description: API token-based authentication endpoints
   - name: Items
     description: Item management endpoints (API)
+  - name: Users
+    description: User lookup and management endpoints
+  - name: Push Notifications
+    description: Push notification subscription management
   - name: Profile
     description: User profile and settings management
   - name: Password
@@ -179,6 +183,148 @@ paths:
                   message:
                     type: string
                     example: Logged out successfully
+        '401':
+          $ref: '#/components/responses/Unauthorised'
+
+  # User Lookup
+  /api/users/lookup:
+    get:
+      tags:
+        - Users
+      summary: Search for users
+      description: |
+        Search for users by exact email or phone number suffix (last 9 digits).
+        Excludes the current authenticated user from results.
+        Used for task assignment.
+      operationId: lookupUsers
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+            minLength: 3
+            maxLength: 255
+          description: Search query (email or phone number)
+          example: "john@example.com"
+      responses:
+        '200':
+          description: List of matching users
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/UserLookup'
+        '401':
+          $ref: '#/components/responses/Unauthorised'
+        '422':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+
+  # Push Notifications
+  /api/push/subscribe:
+    post:
+      tags:
+        - Push Notifications
+      summary: Subscribe to push notifications
+      description: Register a push subscription for the authenticated user
+      operationId: subscribePush
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - endpoint
+                - keys
+              properties:
+                endpoint:
+                  type: string
+                  format: uri
+                  maxLength: 500
+                  example: "https://fcm.googleapis.com/fcm/send/..."
+                keys:
+                  type: object
+                  required:
+                    - p256dh
+                    - auth
+                  properties:
+                    p256dh:
+                      type: string
+                      description: The P-256 public key
+                    auth:
+                      type: string
+                      description: The authentication secret
+      responses:
+        '201':
+          description: Push subscription created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Push subscription created successfully.
+                  id:
+                    type: string
+                    format: uuid
+        '401':
+          $ref: '#/components/responses/Unauthorised'
+        '422':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+
+  /api/push/unsubscribe:
+    delete:
+      tags:
+        - Push Notifications
+      summary: Unsubscribe from push notifications
+      description: Remove push subscription(s) for the authenticated user
+      operationId: unsubscribePush
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                endpoint:
+                  type: string
+                  format: uri
+                  maxLength: 500
+                  description: Specific endpoint to unsubscribe. If not provided, all subscriptions are removed.
+      responses:
+        '200':
+          description: Push subscription(s) removed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Push subscription(s) removed successfully.
+                  deleted_count:
+                    type: integer
+                    example: 1
         '401':
           $ref: '#/components/responses/Unauthorised'
 
@@ -752,13 +898,34 @@ paths:
         - Items
       summary: List all items
       description: |
-        Retrieve a list of items belonging to the authenticated user.
-        Can be filtered by project_id, status, scheduling scope, and date ranges.
+        Retrieve a list of items for the authenticated user.
+
+        By default, returns items owned by the user that are NOT assigned to anyone else.
+        Completed/cancelled items are excluded by default.
+
+        Use `assigned_to_me=true` to get items assigned to you by other users.
+        Use `delegated=true` to get items you own that are assigned to others.
+        Use `scope=planned` to get future-scheduled items only.
+        Use `include_completed=true` to include completed/cancelled items.
+
+        Can be further filtered by project_id, status, scheduling scope, and date ranges.
       operationId: getItems
       security:
         - bearerAuth: []
         - sessionAuth: []
       parameters:
+        - name: assigned_to_me
+          in: query
+          required: false
+          schema:
+            type: boolean
+          description: Return items assigned to the current user by others
+        - name: delegated
+          in: query
+          required: false
+          schema:
+            type: boolean
+          description: Return items owned by current user that are assigned to others
         - name: project_id
           in: query
           required: false
@@ -882,6 +1049,12 @@ paths:
                   format: uuid
                   nullable: true
                   example: 123e4567-e89b-12d3-a456-426614174000
+                assignee_id:
+                  type: string
+                  format: uuid
+                  nullable: true
+                  description: User ID to assign this item to
+                  example: 123e4567-e89b-12d3-a456-426614174003
                 position:
                   type: integer
                   minimum: 0
@@ -1006,6 +1179,12 @@ paths:
                   format: uuid
                   nullable: true
                   example: 123e4567-e89b-12d3-a456-426614174000
+                assignee_id:
+                  type: string
+                  format: uuid
+                  nullable: true
+                  description: User ID to assign this item to (only owner can change)
+                  example: 123e4567-e89b-12d3-a456-426614174003
                 position:
                   type: integer
                   minimum: 0
@@ -1102,6 +1281,12 @@ paths:
                   format: uuid
                   nullable: true
                   example: 123e4567-e89b-12d3-a456-426614174000
+                assignee_id:
+                  type: string
+                  format: uuid
+                  nullable: true
+                  description: User ID to assign this item to (only owner can change)
+                  example: 123e4567-e89b-12d3-a456-426614174003
                 position:
                   type: integer
                   minimum: 0
@@ -1358,6 +1543,11 @@ components:
           type: string
           format: email
           example: john@example.com
+        phone:
+          type: string
+          maxLength: 20
+          nullable: true
+          example: "+61412345678"
         email_verified_at:
           type: string
           format: date-time
@@ -1375,6 +1565,26 @@ components:
         - id
         - name
         - email
+
+    UserLookup:
+      type: object
+      description: Minimal user info for assignment lookup
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: 123e4567-e89b-12d3-a456-426614174000
+        name:
+          type: string
+          example: John Doe
+        email_masked:
+          type: string
+          description: Partially masked email for privacy
+          example: "j***@example.com"
+      required:
+        - id
+        - name
+        - email_masked
 
     Project:
       type: object
@@ -1428,6 +1638,12 @@ components:
           type: string
           format: uuid
           example: 123e4567-e89b-12d3-a456-426614174001
+        assignee_id:
+          type: string
+          format: uuid
+          nullable: true
+          description: ID of the user this item is assigned to
+          example: 123e4567-e89b-12d3-a456-426614174003
         project_id:
           type: string
           format: uuid
@@ -1493,6 +1709,14 @@ components:
           type: boolean
           description: Whether this item was generated from a recurring template
           example: false
+        is_assigned:
+          type: boolean
+          description: Whether this item is assigned to someone
+          example: false
+        is_delegated:
+          type: boolean
+          description: Whether the current user delegated this item to someone else
+          example: false
         created_at:
           type: string
           format: date-time
@@ -1510,12 +1734,22 @@ components:
           nullable: true
           allOf:
             - $ref: '#/components/schemas/Project'
+        assignee:
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/UserLookup'
+        owner:
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/UserLookup'
       required:
         - id
         - user_id
         - title
         - status
         - position
+        - is_assigned
+        - is_delegated
 
     ValidationError:
       type: object

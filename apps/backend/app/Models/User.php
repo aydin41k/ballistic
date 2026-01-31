@@ -28,6 +28,7 @@ final class User extends Authenticatable
     protected $fillable = [
         'name',
         'email',
+        'phone',
         'password',
         'is_admin',
     ];
@@ -47,6 +48,7 @@ final class User extends Authenticatable
      *
      * @return array<string, string>
      */
+    #[\Override]
     protected function casts(): array
     {
         return [
@@ -56,21 +58,25 @@ final class User extends Authenticatable
         ];
     }
 
+    #[\Override]
     public function getRouteKeyName(): string
     {
         return 'id';
     }
 
+    #[\Override]
     public function getAuthIdentifier(): mixed
     {
         return $this->getKey();
     }
 
+    #[\Override]
     public function getAuthIdentifierName(): string
     {
         return $this->getKeyName();
     }
 
+    #[\Override]
     protected static function boot(): void
     {
         parent::boot();
@@ -95,5 +101,85 @@ final class User extends Authenticatable
     public function tags(): HasMany
     {
         return $this->hasMany(Tag::class);
+    }
+
+    /**
+     * Get items assigned to this user by other users.
+     */
+    public function assignedItems(): HasMany
+    {
+        return $this->hasMany(Item::class, 'assignee_id');
+    }
+
+    /**
+     * Get this user's notifications.
+     */
+    public function taskNotifications(): HasMany
+    {
+        return $this->hasMany(Notification::class);
+    }
+
+    /**
+     * Get this user's unread notifications.
+     */
+    public function unreadNotifications(): HasMany
+    {
+        return $this->taskNotifications()->whereNull('read_at');
+    }
+
+    /**
+     * Get connection requests sent by this user.
+     */
+    public function sentConnectionRequests(): HasMany
+    {
+        return $this->hasMany(Connection::class, 'requester_id');
+    }
+
+    /**
+     * Get connection requests received by this user.
+     */
+    public function receivedConnectionRequests(): HasMany
+    {
+        return $this->hasMany(Connection::class, 'addressee_id');
+    }
+
+    /**
+     * Get all accepted connections for this user (both directions).
+     *
+     * @return \Illuminate\Support\Collection<int, User>
+     */
+    public function connections(): \Illuminate\Support\Collection
+    {
+        $sentIds = $this->sentConnectionRequests()
+            ->where('status', 'accepted')
+            ->pluck('addressee_id');
+
+        $receivedIds = $this->receivedConnectionRequests()
+            ->where('status', 'accepted')
+            ->pluck('requester_id');
+
+        $connectedIds = $sentIds->merge($receivedIds)->unique();
+
+        return User::whereIn('id', $connectedIds)->get();
+    }
+
+    /**
+     * Check if this user is connected with another user.
+     */
+    public function isConnectedWith(User|string $user): bool
+    {
+        $userId = $user instanceof User ? $user->id : $user;
+
+        return Connection::where('status', 'accepted')
+            ->where(function ($query) use ($userId) {
+                $query->where(function ($q) use ($userId) {
+                    $q->where('requester_id', $this->id)
+                        ->where('addressee_id', $userId);
+                })->orWhere(function ($q) use ($userId) {
+                    $q->where('requester_id', $userId)
+                        ->where('addressee_id', $this->id);
+                });
+            })
+            ->exists();
     }
 }

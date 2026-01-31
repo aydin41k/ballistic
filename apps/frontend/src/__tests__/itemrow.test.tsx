@@ -32,6 +32,7 @@ describe("ItemRow", () => {
   const base: Item = {
     id: "1",
     user_id: "user-1",
+    assignee_id: null,
     project_id: null,
     title: "Sample",
     description: null,
@@ -45,6 +46,8 @@ describe("ItemRow", () => {
     recurrence_strategy: null,
     is_recurring_template: false,
     is_recurring_instance: false,
+    is_assigned: false,
+    is_delegated: false,
     created_at: "2025-01-01T00:00:00Z",
     updated_at: "2025-01-01T00:00:00Z",
     deleted_at: null,

@@ -45,6 +45,7 @@ final class UserController extends Controller
                 'max:255',
                 Rule::unique('users')->ignore($user->id),
             ],
+            'phone' => ['nullable', 'string', 'max:20'],
             'password' => ['sometimes', 'required', 'confirmed', Password::defaults()],
         ]);
 

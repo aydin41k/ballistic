@@ -1,9 +1,10 @@
 "use client";
 
-import type { Item, Project, RecurrencePreset } from "@/types";
+import type { Item, Project, RecurrencePreset, UserLookup } from "@/types";
 import { RECURRENCE_PRESET_RULES } from "@/types";
 import { useState } from "react";
 import { ProjectCombobox } from "./ProjectCombobox";
+import { AssignModal } from "./AssignModal";
 
 function derivePreset(rule: string | null | undefined): RecurrencePreset {
   if (!rule) return "none";
@@ -23,11 +24,13 @@ type Props = {
     due_date?: string | null;
     recurrence_rule?: string | null;
     recurrence_strategy?: string | null;
+    assignee_id?: string | null;
   }) => void;
   onCancel: () => void;
   submitLabel?: string;
   projects?: Project[];
   onCreateProject?: (name: string) => Promise<Project>;
+  showAssignment?: boolean;
 };
 
 export function ItemForm({
@@ -37,6 +40,7 @@ export function ItemForm({
   submitLabel = "Save",
   projects = [],
   onCreateProject,
+  showAssignment = true,
 }: Props) {
   const [title, setTitle] = useState(initial?.title ?? "");
   const [description, setDescription] = useState(initial?.description ?? "");
@@ -53,7 +57,11 @@ export function ItemForm({
   const [recurrenceStrategy, setRecurrenceStrategy] = useState<string>(
     initial?.recurrence_strategy ?? "carry_over",
   );
+  const [assignee, setAssignee] = useState<UserLookup | null>(
+    initial?.assignee ?? null,
+  );
   const [showMoreSettings, setShowMoreSettings] = useState(!!initial); // Open by default for edit mode
+  const [showAssignModal, setShowAssignModal] = useState(false);
 
   return (
     <form
@@ -69,6 +77,7 @@ export function ItemForm({
           recurrence_rule: RECURRENCE_PRESET_RULES[recurrencePreset],
           recurrence_strategy:
             recurrencePreset !== "none" ? recurrenceStrategy : null,
+          assignee_id: assignee?.id ?? null,
         });
       }}
     >
@@ -192,13 +201,13 @@ export function ItemForm({
               >
                 <option value="none">None</option>
                 <option value="daily">Daily</option>
-                <option value="weekdays">Weekdays (Mon–Fri)</option>
+                <option value="weekdays">Weekdays (Mon-Fri)</option>
                 <option value="weekly">Weekly</option>
                 <option value="monthly">Monthly</option>
               </select>
             </div>
 
-            {/* If missed — only shown when repeat is set */}
+            {/* If missed - only shown when repeat is set */}
             {recurrencePreset !== "none" && (
               <div>
                 <label className="block text-xs font-medium text-slate-500 mb-1">
@@ -219,9 +228,52 @@ export function ItemForm({
                 </p>
               </div>
             )}
+
+            {/* Assign to */}
+            {showAssignment && (
+              <div>
+                <label className="block text-xs font-medium text-slate-500 mb-1">
+                  Assign to
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setShowAssignModal(true)}
+                  className="w-full flex items-center justify-between rounded-md border border-slate-300 bg-white px-3 py-2 text-sm transition-all duration-200 hover:border-slate-400 focus:border-[var(--blue)] focus:ring-2 focus:ring-[var(--blue)]/20 focus:outline-none"
+                >
+                  {assignee ? (
+                    <span className="text-slate-700">{assignee.name}</span>
+                  ) : (
+                    <span className="text-slate-400">Select user...</span>
+                  )}
+                  <svg
+                    viewBox="0 0 24 24"
+                    width="16"
+                    height="16"
+                    fill="none"
+                    stroke="currentColor"
+                    className="text-slate-400"
+                  >
+                    <path
+                      d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM19 8v6M22 11h-6"
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>
+
+      {/* Assign Modal */}
+      <AssignModal
+        isOpen={showAssignModal}
+        onClose={() => setShowAssignModal(false)}
+        onSelect={setAssignee}
+        currentAssignee={assignee}
+      />
 
       {/* Action buttons */}
       <div className="flex gap-2 pt-2">

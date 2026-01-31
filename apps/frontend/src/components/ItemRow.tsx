@@ -76,7 +76,7 @@ export function ItemRow({
       completed_at: completedAt,
     });
 
-    // Reconcile with server — merge authoritative timestamps
+    // Reconcile with server - merge authoritative timestamps
     // without overwriting status (user may toggle again mid-flight)
     updateStatus(item.id, nextStatus)
       .then((serverItem) => {
@@ -125,7 +125,7 @@ export function ItemRow({
   return (
     <div
       data-item-id={item.id}
-      className={`flex items-center gap-3 rounded-md bg-white p-3 shadow-sm transition-all duration-300 ease-out hover:shadow-md hover:-translate-y-0.5 animate-slide-in-up cursor-pointer ${isDragging ? "opacity-70 ring-2 ring-[var(--blue)]/30" : ""} ${isDragOver ? "ring-2 ring-[var(--blue)]/50" : ""} ${urgency === "overdue" ? "border-l-4 border-l-red-500 bg-red-50/50" : ""} ${urgency === "due-soon" ? "border-l-4 border-l-amber-400 bg-amber-50/30" : ""}`}
+      className={`flex items-center gap-3 rounded-md bg-white p-3 shadow-sm transition-all duration-300 ease-out hover:shadow-md hover:-translate-y-0.5 animate-slide-in-up cursor-pointer ${isDragging ? "scale-105 shadow-xl ring-2 ring-[var(--blue)]/40 bg-blue-50/50 z-50" : ""} ${isDragOver ? "ring-2 ring-[var(--blue)]/60 bg-blue-50/30" : ""} ${urgency === "overdue" ? "border-l-4 border-l-red-500 bg-red-50/50" : ""} ${urgency === "due-soon" ? "border-l-4 border-l-amber-400 bg-amber-50/30" : ""}`}
       style={{
         animationDelay: `${index * 50}ms`,
       }}
@@ -201,13 +201,49 @@ export function ItemRow({
             </svg>
           )}
         </div>
-        {projectName && (
-          <div
-            className={`text-sm transition-colors duration-200 ${isCompleted || isCancelled ? "text-slate-300" : "text-[var(--blue-600)]"}`}
-          >
-            {projectName}
-          </div>
-        )}
+        {/* Project, tags, and assignment badges */}
+        <div className="flex flex-wrap gap-1.5 mt-1">
+          {projectName && (
+            <span
+              className={`text-xs px-2 py-0.5 rounded-full transition-colors duration-200 ${isCompleted || isCancelled ? "bg-slate-100 text-slate-300" : "bg-[var(--blue)]/10 text-[var(--blue-600)]"}`}
+            >
+              {projectName}
+            </span>
+          )}
+          {/* Tags */}
+          {optimisticItem.tags?.map((tag) => (
+            <span
+              key={tag.id}
+              className={`text-xs px-2 py-0.5 rounded-full transition-colors duration-200 ${isCompleted || isCancelled ? "bg-slate-100 text-slate-300" : "bg-violet-100 text-violet-700"}`}
+              style={
+                tag.color && !isCompleted && !isCancelled
+                  ? {
+                      backgroundColor: `${tag.color}20`,
+                      color: tag.color,
+                    }
+                  : undefined
+              }
+            >
+              {tag.name}
+            </span>
+          ))}
+          {optimisticItem.is_delegated && optimisticItem.assignee && (
+            <span
+              className={`text-xs font-medium px-2 py-0.5 rounded-full transition-colors duration-200 ${isCompleted || isCancelled ? "bg-slate-100 text-slate-300" : "bg-amber-100 text-amber-700 border border-amber-200"}`}
+            >
+              → {optimisticItem.assignee.name}
+            </span>
+          )}
+          {optimisticItem.is_assigned &&
+            !optimisticItem.is_delegated &&
+            optimisticItem.owner && (
+              <span
+                className={`text-xs font-medium px-2 py-0.5 rounded-full transition-colors duration-200 ${isCompleted || isCancelled ? "bg-slate-100 text-slate-300" : "bg-emerald-100 text-emerald-700 border border-emerald-200"}`}
+              >
+                ← {optimisticItem.owner.name}
+              </span>
+            )}
+        </div>
         {optimisticItem.description && (
           <div
             className={`text-sm mt-1 transition-colors duration-200 ${isCompleted || isCancelled ? "text-slate-300" : "text-slate-500"}`}

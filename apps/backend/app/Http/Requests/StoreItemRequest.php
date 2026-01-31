@@ -41,6 +41,11 @@ final class StoreItemRequest extends FormRequest
             'due_date' => ['nullable', 'date', 'after_or_equal:scheduled_date'],
             'recurrence_rule' => ['nullable', 'string', 'max:255'],
             'recurrence_strategy' => ['nullable', 'string', Rule::in(['expires', 'carry_over'])],
+            'assignee_id' => [
+                'nullable',
+                'uuid',
+                Rule::exists('users', 'id'),
+            ],
             'tag_ids' => ['nullable', 'array'],
             'tag_ids.*' => [
                 'uuid',
@@ -62,6 +67,7 @@ final class StoreItemRequest extends FormRequest
             'project_id.exists' => 'The selected project does not exist or does not belong to you.',
             'tag_ids.*.exists' => 'One or more selected tags do not exist or do not belong to you.',
             'due_date.after_or_equal' => 'The due date must not be before the scheduled date.',
+            'assignee_id.exists' => 'The selected user does not exist.',
         ];
     }
 }

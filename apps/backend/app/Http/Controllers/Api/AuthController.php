@@ -50,6 +50,9 @@ final class AuthController extends Controller
 
     /**
      * Authenticate user and return an API token.
+     *
+     * Each device gets its own session token - logging in from a new device
+     * does not revoke existing sessions. This enables multi-device support.
      */
     public function login(Request $request): JsonResponse
     {
@@ -72,6 +75,8 @@ final class AuthController extends Controller
         /** @var User $user */
         $user = Auth::user();
 
+        // Create a new token for this device without revoking existing tokens
+        // This enables multi-device login support
         $deviceName = $request->input('device_name', 'api-token');
         $token = $user->createToken($deviceName)->plainTextToken;
 
