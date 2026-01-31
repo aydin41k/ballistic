@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Tests\Feature;
 
 use App\Models\User;
-use Illuminate\Cache\RateLimiter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Tests\TestCase;
@@ -83,7 +82,7 @@ final class RateLimitingTest extends TestCase
                 $response->status() === 422 &&
                 str_contains($response->json('message', ''), 'Too many')
             ),
-            "Expected rate limiting response, got: ".$response->status()." - ".$response->getContent()
+            'Expected rate limiting response, got: '.$response->status().' - '.$response->getContent()
         );
     }
 

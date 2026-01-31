@@ -7,7 +7,6 @@ namespace Tests\Unit;
 use App\Jobs\CreateNotificationJob;
 use App\Models\Notification;
 use App\Models\User;
-use App\Services\WebPushService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 

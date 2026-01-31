@@ -252,7 +252,7 @@ class AuthenticationTest extends TestCase
 
         $this->assertTrue(
             $response->status() === 429 || $response->status() === 422,
-            "Expected rate limited response (429 or 422), got: ".$response->status()
+            'Expected rate limited response (429 or 422), got: '.$response->status()
         );
 
         // If it's a 422 response, check for the throttle message

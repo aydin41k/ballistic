@@ -60,7 +60,7 @@ final class WebPushService implements WebPushServiceInterface
     /**
      * Send a push notification to a specific subscription.
      *
-     * @param array{title: string, body: string, icon?: string, badge?: string, data?: array<string, mixed>} $payload
+     * @param  array{title: string, body: string, icon?: string, badge?: string, data?: array<string, mixed>}  $payload
      */
     public function sendToSubscription(PushSubscription $subscription, array $payload): bool
     {
@@ -119,7 +119,7 @@ final class WebPushService implements WebPushServiceInterface
     /**
      * Send a push notification to all subscriptions for a user.
      *
-     * @param array{title: string, body: string, icon?: string, badge?: string, data?: array<string, mixed>} $payload
+     * @param  array{title: string, body: string, icon?: string, badge?: string, data?: array<string, mixed>}  $payload
      * @return int Number of successful deliveries
      */
     public function sendToUser(User $user, array $payload): int
@@ -140,8 +140,8 @@ final class WebPushService implements WebPushServiceInterface
     /**
      * Send a push notification to multiple subscriptions.
      *
-     * @param Collection<int, PushSubscription> $subscriptions
-     * @param array{title: string, body: string, icon?: string, badge?: string, data?: array<string, mixed>} $payload
+     * @param  Collection<int, PushSubscription>  $subscriptions
+     * @param  array{title: string, body: string, icon?: string, badge?: string, data?: array<string, mixed>}  $payload
      * @return int Number of successful deliveries
      */
     public function sendToSubscriptions(Collection $subscriptions, array $payload): int

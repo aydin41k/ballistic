@@ -41,7 +41,8 @@ export function SplashScreen() {
 
       <style jsx>{`
         @keyframes rocket {
-          0%, 100% {
+          0%,
+          100% {
             transform: translateY(0) rotate(-45deg);
           }
           25% {
@@ -56,7 +57,8 @@ export function SplashScreen() {
         }
 
         @keyframes particle-1 {
-          0%, 100% {
+          0%,
+          100% {
             transform: translateY(0) scale(1);
             opacity: 0.8;
           }
@@ -67,7 +69,8 @@ export function SplashScreen() {
         }
 
         @keyframes particle-2 {
-          0%, 100% {
+          0%,
+          100% {
             transform: translateY(0) scale(1);
             opacity: 0.7;
           }
@@ -78,7 +81,8 @@ export function SplashScreen() {
         }
 
         @keyframes particle-3 {
-          0%, 100% {
+          0%,
+          100% {
             transform: translateY(0) scale(1);
             opacity: 0.8;
           }
@@ -100,7 +104,8 @@ export function SplashScreen() {
         }
 
         @keyframes bounce-dot {
-          0%, 100% {
+          0%,
+          100% {
             transform: translateY(0);
           }
           50% {
