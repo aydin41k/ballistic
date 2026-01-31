@@ -85,9 +85,7 @@ export default function InsightsPage() {
               />
             </svg>
           </button>
-          <h1 className="text-lg font-semibold text-[var(--navy)]">
-            Insights
-          </h1>
+          <h1 className="text-lg font-semibold text-[var(--navy)]">Insights</h1>
         </div>
       </header>
 

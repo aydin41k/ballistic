@@ -97,10 +97,7 @@ export function Heatmap({ entries, from, to }: HeatmapProps) {
 
   const weeks = buildWeeks(from, to);
   const monthLabels = buildMonthLabels(weeks);
-  const totalCompleted = entries.reduce(
-    (sum, e) => sum + e.completed_count,
-    0,
-  );
+  const totalCompleted = entries.reduce((sum, e) => sum + e.completed_count, 0);
 
   return (
     <div>
@@ -142,7 +139,9 @@ export function Heatmap({ entries, from, to }: HeatmapProps) {
                     key={di}
                     className="h-[12px] w-[12px] rounded-sm"
                     style={{
-                      backgroundColor: inRange ? intensityBg(count) : "transparent",
+                      backgroundColor: inRange
+                        ? intensityBg(count)
+                        : "transparent",
                     }}
                     title={
                       inRange && count > 0 ? `${date}: ${count}` : undefined
