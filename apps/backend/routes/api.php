@@ -10,6 +10,7 @@ use App\Http\Controllers\ConnectionController;
 use App\Http\Controllers\ItemController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ProjectController;
+use App\Http\Controllers\PushSubscriptionController;
 use App\Http\Controllers\TagController;
 use App\Http\Controllers\UserDiscoveryController;
 use App\Http\Controllers\UserLookupController;
@@ -43,6 +44,13 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
     Route::get('/notifications', [NotificationController::class, 'index']);
     Route::post('/notifications/{notification}/read', [NotificationController::class, 'markAsRead']);
     Route::post('/notifications/read-all', [NotificationController::class, 'markAllAsRead']);
+
+    // Push notifications (Web Push subscriptions)
+    Route::get('/push/vapid-key', [PushSubscriptionController::class, 'vapidKey']);
+    Route::get('/push/subscriptions', [PushSubscriptionController::class, 'index']);
+    Route::post('/push/subscribe', [PushSubscriptionController::class, 'subscribe']);
+    Route::post('/push/unsubscribe', [PushSubscriptionController::class, 'unsubscribe']);
+    Route::delete('/push/subscriptions/{subscription}', [PushSubscriptionController::class, 'destroy']);
 
     // Connections (mutual consent for task assignment)
     // Extra rate limiting on store to prevent spam requests

@@ -182,4 +182,12 @@ final class User extends Authenticatable
             })
             ->exists();
     }
+
+    /**
+     * Get this user's push notification subscriptions.
+     */
+    public function pushSubscriptions(): HasMany
+    {
+        return $this->hasMany(PushSubscription::class);
+    }
 }

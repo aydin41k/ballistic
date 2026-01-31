@@ -5,6 +5,36 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.0] - 2026-01-31
+
+### Added
+
+#### Web Push Notifications Backend (Phase 1)
+
+- **VAPID Key Authentication**: Zero-cost push notifications using Web Push Protocol with VAPID keys
+  - No external services required (FCM, OneSignal, etc.)
+  - Generate keys with `php artisan webpush:generate-vapid`
+- **Push Subscription Management**: Full CRUD for browser push subscriptions
+  - `GET /api/push/vapid-key` - Get VAPID public key for client subscription
+  - `POST /api/push/subscribe` - Register push subscription (endpoint, p256dh, auth keys)
+  - `POST /api/push/unsubscribe` - Remove subscription by endpoint
+  - `GET /api/push/subscriptions` - List user's push subscriptions
+  - `DELETE /api/push/subscriptions/{id}` - Remove subscription by ID
+- **Multi-Device Support**: Users can register multiple devices, notifications sent to all active subscriptions
+- **WebPushService**: Service for sending push notifications using minishlink/web-push library
+  - Automatic cleanup of expired/invalid subscriptions
+  - Graceful handling when VAPID keys not configured
+- **Integrated Notifications**: CreateNotificationJob now sends Web Push alongside database notifications
+- **User Agent Tracking**: Subscriptions track browser/device info for user reference
+
+### Tests
+
+- Added PushSubscriptionTest (14 tests) covering:
+  - VAPID key retrieval and not-configured handling
+  - Subscription create, update, list, delete operations
+  - User isolation (cannot see/delete other users' subscriptions)
+  - Validation and authentication requirements
+
 ## [0.9.2] - 2026-01-31
 
 ### Merged Features from task_3888

@@ -7,6 +7,7 @@ namespace Tests\Unit;
 use App\Jobs\CreateNotificationJob;
 use App\Models\Notification;
 use App\Models\User;
+use App\Services\WebPushService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -26,7 +27,8 @@ final class CreateNotificationJobTest extends TestCase
             data: ['item_id' => 'test-item-123']
         );
 
-        $job->handle();
+        // Use app container to resolve dependencies
+        app()->call([$job, 'handle']);
 
         $this->assertDatabaseHas('notifications', [
             'user_id' => $user->id,
@@ -51,7 +53,7 @@ final class CreateNotificationJobTest extends TestCase
             data: null
         );
 
-        $job->handle();
+        app()->call([$job, 'handle']);
 
         $this->assertDatabaseHas('notifications', [
             'user_id' => $user->id,
@@ -82,7 +84,7 @@ final class CreateNotificationJobTest extends TestCase
             data: $complexData
         );
 
-        $job->handle();
+        app()->call([$job, 'handle']);
 
         $notification = Notification::where('user_id', $user->id)->first();
         $this->assertEquals($complexData, $notification->data);
@@ -133,8 +135,8 @@ final class CreateNotificationJobTest extends TestCase
             data: ['item_id' => 'task-2']
         );
 
-        $job1->handle();
-        $job2->handle();
+        app()->call([$job1, 'handle']);
+        app()->call([$job2, 'handle']);
 
         $this->assertEquals(2, Notification::where('user_id', $user->id)->count());
     }
