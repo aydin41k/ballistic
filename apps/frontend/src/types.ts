@@ -70,3 +70,38 @@ export const RECURRENCE_PRESET_RULES: Record<RecurrencePreset, string | null> =
     weekly: "FREQ=WEEKLY",
     monthly: "FREQ=MONTHLY",
   };
+
+// Activity Stats Types
+export type StatsPeriod = "year" | "month" | "week";
+
+export interface HeatmapEntry {
+  date: string;
+  completed: number;
+  created: number;
+}
+
+export interface ProjectDistributionEntry {
+  project_id: string | null;
+  project_name: string;
+  project_color: string;
+  count: number;
+}
+
+export interface Streaks {
+  current: number;
+  longest: number;
+}
+
+export interface StatsResponse {
+  period: {
+    from: string;
+    to: string;
+  };
+  totals: {
+    completed: number;
+    created: number;
+  };
+  heatmap: HeatmapEntry[];
+  project_distribution: ProjectDistributionEntry[];
+  streaks: Streaks;
+}

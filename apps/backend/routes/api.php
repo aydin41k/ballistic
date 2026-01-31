@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Http\Controllers\Admin\StatsController as AdminStatsController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\StatsController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\ItemController;
 use App\Http\Controllers\ProjectController;
@@ -36,6 +37,9 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
     // Tags
     Route::apiResource('tags', TagController::class);
+
+    // Activity Statistics
+    Route::get('stats', [StatsController::class, 'index']);
 
     // Admin routes
     Route::prefix('admin')->middleware(['admin'])->group(function () {

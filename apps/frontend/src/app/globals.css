@@ -10,6 +10,13 @@
     --blue-600: #2563eb;
     --page-bg: #f7f8fa; /* very light grey */
     --text: #0b1324;
+
+    /* Heatmap colors (GitHub-style green) */
+    --heatmap-empty: #ebedf0;
+    --heatmap-l1: #9be9a8;
+    --heatmap-l2: #40c463;
+    --heatmap-l3: #30a14e;
+    --heatmap-l4: #216e39;
   }
 
   html,

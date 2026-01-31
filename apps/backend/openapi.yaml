@@ -22,7 +22,7 @@ info:
     Authorization: Bearer {your-token}
     ```
     
-  version: 0.7.0
+  version: 0.8.0
   contact:
     name: Ballistic Backend
   license:
@@ -41,6 +41,8 @@ tags:
     description: API token-based authentication endpoints
   - name: Items
     description: Item management endpoints (API)
+  - name: Stats
+    description: Activity statistics and insights endpoints (API)
   - name: Profile
     description: User profile and settings management
   - name: Password
@@ -1256,6 +1258,66 @@ paths:
         '429':
           $ref: '#/components/responses/TooManyRequests'
 
+  /api/stats:
+    get:
+      tags:
+        - Stats
+      summary: Get activity statistics
+      description: |
+        Retrieve activity statistics for the authenticated user including:
+        - Daily heatmap data (completed and created counts per day)
+        - Project distribution (completed items grouped by project)
+        - Streak calculations (current and longest consecutive days with activity)
+        - Period totals (total completed and created items)
+      operationId: getStats
+      security:
+        - bearerAuth: []
+        - sessionAuth: []
+      parameters:
+        - name: period
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [year, month, week]
+            default: year
+          description: |
+            Preset date range period.
+            year: Last 365 days
+            month: Last 30 days
+            week: Last 7 days
+        - name: from
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+          description: Custom start date (YYYY-MM-DD). Overrides period if provided.
+        - name: to
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+          description: Custom end date (YYYY-MM-DD). Defaults to today.
+      responses:
+        '200':
+          description: Activity statistics retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatsResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorised'
+        '422':
+          description: Validation error (e.g. invalid period, to before from)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
   /api/items/{id}/generate-recurrences:
     post:
       tags:
@@ -1516,6 +1578,112 @@ components:
         - title
         - status
         - position
+
+    StatsResponse:
+      type: object
+      properties:
+        period:
+          type: object
+          properties:
+            from:
+              type: string
+              format: date
+              description: Start date of the period
+              example: "2025-02-01"
+            to:
+              type: string
+              format: date
+              description: End date of the period
+              example: "2026-01-31"
+          required:
+            - from
+            - to
+        totals:
+          type: object
+          properties:
+            completed:
+              type: integer
+              description: Total completed items in the period
+              example: 523
+            created:
+              type: integer
+              description: Total created items in the period
+              example: 687
+          required:
+            - completed
+            - created
+        heatmap:
+          type: array
+          description: Daily activity data for heatmap visualisation
+          items:
+            type: object
+            properties:
+              date:
+                type: string
+                format: date
+                description: The date (YYYY-MM-DD)
+                example: "2026-01-31"
+              completed:
+                type: integer
+                description: Number of items completed on this date
+                example: 5
+              created:
+                type: integer
+                description: Number of items created on this date
+                example: 3
+            required:
+              - date
+              - completed
+              - created
+        project_distribution:
+          type: array
+          description: Completed items grouped by project
+          items:
+            type: object
+            properties:
+              project_id:
+                type: string
+                format: uuid
+                nullable: true
+                description: Project UUID (null for Inbox)
+                example: "123e4567-e89b-12d3-a456-426614174000"
+              project_name:
+                type: string
+                description: Project name
+                example: "Work"
+              project_color:
+                type: string
+                description: Project colour (hex)
+                example: "#3B82F6"
+              count:
+                type: integer
+                description: Number of completed items in this project
+                example: 234
+            required:
+              - project_id
+              - project_name
+              - project_color
+              - count
+        streaks:
+          type: object
+          properties:
+            current:
+              type: integer
+              description: Current consecutive days with at least one completed item
+              example: 7
+            longest:
+              type: integer
+              description: Longest streak of consecutive days with activity
+              example: 23
+          required:
+            - current
+            - longest
+      required:
+        - period
+        - totals
+        - heatmap
+        - project_distribution
+        - streaks
 
     ValidationError:
       type: object

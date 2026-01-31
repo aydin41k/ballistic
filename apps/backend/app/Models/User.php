@@ -96,4 +96,9 @@ final class User extends Authenticatable
     {
         return $this->hasMany(Tag::class);
     }
+
+    public function dailyStats(): HasMany
+    {
+        return $this->hasMany(DailyStat::class);
+    }
 }

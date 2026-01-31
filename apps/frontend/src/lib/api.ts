@@ -1,4 +1,4 @@
-import type { Item, ItemScope, Project, Status } from "@/types";
+import type { Item, ItemScope, Project, StatsPeriod, StatsResponse, Status } from "@/types";
 import { getAuthHeaders, clearToken } from "./auth";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "";
@@ -247,4 +247,32 @@ export async function createProject(payload: {
 
   const data = await handleResponse<Project | { data?: Project }>(response);
   return extractData(data);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Activity Statistics
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Fetch activity statistics for the authenticated user
+ */
+export async function fetchStats(params?: {
+  period?: StatsPeriod;
+  from?: string;
+  to?: string;
+}): Promise<StatsResponse> {
+  const response = await fetch(
+    buildUrl("/api/stats", {
+      period: params?.period,
+      from: params?.from,
+      to: params?.to,
+    }),
+    {
+      method: "GET",
+      headers: getAuthHeaders(),
+      cache: "no-store",
+    },
+  );
+
+  return handleResponse<StatsResponse>(response);
 }

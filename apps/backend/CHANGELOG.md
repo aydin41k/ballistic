@@ -5,6 +5,64 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.0] - 2026-01-31
+
+### Added
+
+#### Activity Insights Feature
+- **Activity Statistics API**: New `GET /api/stats` endpoint provides comprehensive productivity tracking
+  - Supports period presets (`year`, `month`, `week`) and custom date ranges (`from`/`to`)
+  - Returns daily heatmap data (completed and created counts per day)
+  - Returns project distribution (completed items grouped by project)
+  - Returns streak calculations (current and longest consecutive days with activity)
+  - Response caching (60s for week, 300s for month/year views) - disabled in testing environment
+- **Daily Stats Tracking**: New `daily_stats` table stores pre-aggregated daily counts per user
+  - Columns: `user_id`, `date`, `completed_count`, `created_count`
+  - Unique constraint on `(user_id, date)` enables upsert operations
+  - Index for efficient date range queries
+- **ItemObserver**: Automatically maintains `daily_stats` on item events
+  - `created`: Increments `created_count`; also increments `completed_count` if item created as done
+  - `updated`: Increments/decrements `completed_count` when status changes to/from done
+  - `deleted`: Decrements counts appropriately
+  - `restored`: Re-increments counts when item is restored from soft delete
+  - Uses atomic upsert operations to avoid race conditions
+- **Backfill Migration**: Populates historical `daily_stats` from existing items
+- **DailyStat Model**: Eloquent model with UUID primary key, date casting, and user relationship
+- **Frontend Visualisation**:
+  - `ActivityInsights` modal component with period selector and loading/error states
+  - `ActivityHeatmap` component: GitHub-style CSS grid heatmap with hover tooltips
+  - `ProjectDistributionChart` component: Horizontal bar chart showing focus by project
+  - Summary statistics cards (completed, created, current streak, longest streak)
+  - Integrated into main page bottom bar (replaced placeholder Settings button)
+- **Heatmap CSS Variables**: Added `--heatmap-empty`, `--heatmap-l1` through `--heatmap-l4` for theming
+
+### Changed
+- Bottom bar now shows Activity Insights button (bar chart icon) instead of Settings placeholder
+- Frontend types extended with `StatsResponse`, `HeatmapEntry`, `ProjectDistributionEntry`, `Streaks`
+- Frontend API client extended with `fetchStats()` function
+
+### Documentation
+- Updated OpenAPI spec to v0.8.0 with `GET /api/stats` endpoint documentation
+- Added Stats tag for activity statistics endpoints
+- Documented all query parameters, response schemas, and error codes
+
+### Tests
+- Added 17 tests for stats feature:
+  - Authentication requirement
+  - Empty stats for new users
+  - Date range calculations (week, month, year)
+  - Observer increments/decrements on item create/update/delete
+  - Project distribution accuracy
+  - Inbox items in distribution
+  - Period validation
+  - Custom date range support
+  - Date validation (to after from)
+  - Streak calculation for consecutive days
+  - Streak reset on gaps
+  - User isolation (cannot see other users' stats)
+  - Heatmap fills missing days with zeros
+- Total: 132 tests (124 passing API tests, 8 pre-existing web view failures)
+
 ## [0.7.1] - 2026-01-26
 
 ### Fixed
