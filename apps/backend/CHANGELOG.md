@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.1] - 2026-02-01
+
+### Fixed
+
+#### Cache Driver Compatibility
+- **Database Cache Driver Support**: Fixed "This cache store does not support tagging" error when using database cache driver
+  - Replaced `Cache::tags()` with a tracking-based cache invalidation system
+  - `DailyStatService::invalidateCache()` now stores cache keys in a list and individually forgets them
+  - `StatsController` registers cache keys during creation for later invalidation
+  - The application now works with any cache driver (database, file, Redis, Memcached)
+  - All 241 tests passing, including 8 stats tests that exercise the fixed code path
+
 ## [0.10.0] - 2026-01-31
 
 ### Added

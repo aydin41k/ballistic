@@ -63,6 +63,19 @@ final class DailyStatService
      */
     private static function invalidateCache(string $userId): void
     {
-        Cache::tags(["stats:{$userId}"])->flush();
+        // Since we're using database cache driver which doesn't support tags,
+        // we'll use a wildcard-like approach by forgetting specific cache keys.
+        // Cache keys follow pattern: stats:{userId}:{startDate}:{endDate}
+        // We'll use a cache key to track all stat cache keys for this user.
+
+        $cacheKeysKey = "stats_keys:{$userId}";
+        $cachedKeys = Cache::get($cacheKeysKey, []);
+
+        foreach ($cachedKeys as $key) {
+            Cache::forget($key);
+        }
+
+        // Clear the tracking key itself
+        Cache::forget($cacheKeysKey);
     }
 }
