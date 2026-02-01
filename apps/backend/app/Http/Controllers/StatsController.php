@@ -35,7 +35,15 @@ final class StatsController extends Controller
 
         $cacheKey = "stats:{$userId}:{$from->toDateString()}:{$to->toDateString()}";
 
-        $payload = Cache::tags(["stats:{$userId}"])->remember($cacheKey, 60, function () use ($userId, $from, $to): array {
+        // Track this cache key for later invalidation (since database driver doesn't support tags)
+        $cacheKeysKey = "stats_keys:{$userId}";
+        $cachedKeys = Cache::get($cacheKeysKey, []);
+        if (! in_array($cacheKey, $cachedKeys, true)) {
+            $cachedKeys[] = $cacheKey;
+            Cache::put($cacheKeysKey, $cachedKeys, 3600); // 1 hour TTL for the tracking key
+        }
+
+        $payload = Cache::remember($cacheKey, 60, function () use ($userId, $from, $to): array {
             // ── Heatmap: one row per day from daily_stats ──────────────────
             $heatmap = DailyStat::where('user_id', $userId)
                 ->whereBetween('date', [$from->toDateString(), $to->toDateString()])
