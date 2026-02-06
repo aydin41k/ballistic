@@ -5,6 +5,7 @@ import { RECURRENCE_PRESET_RULES } from "@/types";
 import { useState } from "react";
 import { ProjectCombobox } from "./ProjectCombobox";
 import { AssignModal } from "./AssignModal";
+import { useFeatureFlags } from "@/hooks/useFeatureFlags";
 
 function derivePreset(rule: string | null | undefined): RecurrencePreset {
   if (!rule) return "none";
@@ -43,6 +44,7 @@ export function ItemForm({
   onCreateProject,
   showAssignment = true,
 }: Props) {
+  const { dates, delegation } = useFeatureFlags();
   const [title, setTitle] = useState(initial?.title ?? "");
   const [description, setDescription] = useState(initial?.description ?? "");
   const [projectId, setProjectId] = useState<string | null>(
@@ -162,141 +164,151 @@ export function ItemForm({
               />
             </div>
 
-            {/* Scheduled Date */}
-            <div>
-              <label className="block text-xs font-medium text-slate-500 mb-1">
-                Scheduled date
-              </label>
-              <input
-                type="date"
-                className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm transition-all duration-200 focus:border-[var(--blue)] focus:ring-2 focus:ring-[var(--blue)]/20 focus:outline-none"
-                value={scheduledDate}
-                onChange={(e) => setScheduledDate(e.target.value)}
-              />
-              <p className="mt-1 text-xs text-slate-400">
-                Item will appear on this date. Leave empty for immediate
-                visibility.
-              </p>
-            </div>
+            {dates && (
+              <>
+                {/* Scheduled Date */}
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">
+                    Scheduled date
+                  </label>
+                  <input
+                    type="date"
+                    className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm transition-all duration-200 focus:border-[var(--blue)] focus:ring-2 focus:ring-[var(--blue)]/20 focus:outline-none"
+                    value={scheduledDate}
+                    onChange={(e) => setScheduledDate(e.target.value)}
+                  />
+                  <p className="mt-1 text-xs text-slate-400">
+                    Item will appear on this date. Leave empty for immediate
+                    visibility.
+                  </p>
+                </div>
 
-            {/* Due Date */}
-            <div>
-              <label className="block text-xs font-medium text-slate-500 mb-1">
-                Due date
-              </label>
-              <input
-                type="date"
-                className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm transition-all duration-200 focus:border-[var(--blue)] focus:ring-2 focus:ring-[var(--blue)]/20 focus:outline-none"
-                value={dueDate}
-                onChange={(e) => setDueDate(e.target.value)}
-                min={scheduledDate || undefined}
-              />
-              <p className="mt-1 text-xs text-slate-400">
-                Deadline for this item.
-              </p>
-            </div>
+                {/* Due Date */}
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">
+                    Due date
+                  </label>
+                  <input
+                    type="date"
+                    className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm transition-all duration-200 focus:border-[var(--blue)] focus:ring-2 focus:ring-[var(--blue)]/20 focus:outline-none"
+                    value={dueDate}
+                    onChange={(e) => setDueDate(e.target.value)}
+                    min={scheduledDate || undefined}
+                  />
+                  <p className="mt-1 text-xs text-slate-400">
+                    Deadline for this item.
+                  </p>
+                </div>
 
-            {/* Repeat */}
-            <div>
-              <label className="block text-xs font-medium text-slate-500 mb-1">
-                Repeat
-              </label>
-              <select
-                className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm transition-all duration-200 focus:border-[var(--blue)] focus:ring-2 focus:ring-[var(--blue)]/20 focus:outline-none"
-                value={recurrencePreset}
-                onChange={(e) =>
-                  setRecurrencePreset(e.target.value as RecurrencePreset)
-                }
-              >
-                <option value="none">None</option>
-                <option value="daily">Daily</option>
-                <option value="weekdays">Weekdays (Mon-Fri)</option>
-                <option value="weekly">Weekly</option>
-                <option value="monthly">Monthly</option>
-              </select>
-            </div>
-
-            {/* If missed - only shown when repeat is set */}
-            {recurrencePreset !== "none" && (
-              <div>
-                <label className="block text-xs font-medium text-slate-500 mb-1">
-                  If missed
-                </label>
-                <select
-                  className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm transition-all duration-200 focus:border-[var(--blue)] focus:ring-2 focus:ring-[var(--blue)]/20 focus:outline-none"
-                  value={recurrenceStrategy}
-                  onChange={(e) => setRecurrenceStrategy(e.target.value)}
-                >
-                  <option value="carry_over">Carries over until done</option>
-                  <option value="expires">Expires if missed</option>
-                </select>
-                <p className="mt-1 text-xs text-slate-400">
-                  {recurrenceStrategy === "expires"
-                    ? "Past occurrences are automatically skipped."
-                    : "Past occurrences stay overdue until completed."}
-                </p>
-              </div>
-            )}
-
-            {/* Assignee notes - editable for assignees, read-only for owners of delegated tasks */}
-            {isAssignee && (
-              <div>
-                <label className="block text-xs font-medium text-slate-500 mb-1">
-                  My Notes
-                </label>
-                <textarea
-                  className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm transition-all duration-200 focus:border-[var(--blue)] focus:ring-2 focus:ring-[var(--blue)]/20 focus:outline-none resize-none w-full"
-                  rows={2}
-                  placeholder="Add your notes about this task..."
-                  value={assigneeNotes}
-                  onChange={(e) => setAssigneeNotes(e.target.value)}
-                />
-              </div>
-            )}
-            {initial?.is_delegated && initial?.assignee_notes && (
-              <div>
-                <label className="block text-xs font-medium text-slate-500 mb-1">
-                  Assignee Notes
-                </label>
-                <p className="text-sm text-slate-600 bg-slate-50 rounded-md px-3 py-2">
-                  {initial.assignee_notes}
-                </p>
-              </div>
-            )}
-
-            {/* Assign to */}
-            {showAssignment && (
-              <div>
-                <label className="block text-xs font-medium text-slate-500 mb-1">
-                  Assign to
-                </label>
-                <button
-                  type="button"
-                  onClick={() => setShowAssignModal(true)}
-                  className="w-full flex items-center justify-between rounded-md border border-slate-300 bg-white px-3 py-2 text-sm transition-all duration-200 hover:border-slate-400 focus:border-[var(--blue)] focus:ring-2 focus:ring-[var(--blue)]/20 focus:outline-none"
-                >
-                  {assignee ? (
-                    <span className="text-slate-700">{assignee.name}</span>
-                  ) : (
-                    <span className="text-slate-400">Select user...</span>
-                  )}
-                  <svg
-                    viewBox="0 0 24 24"
-                    width="16"
-                    height="16"
-                    fill="none"
-                    stroke="currentColor"
-                    className="text-slate-400"
+                {/* Repeat */}
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">
+                    Repeat
+                  </label>
+                  <select
+                    className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm transition-all duration-200 focus:border-[var(--blue)] focus:ring-2 focus:ring-[var(--blue)]/20 focus:outline-none"
+                    value={recurrencePreset}
+                    onChange={(e) =>
+                      setRecurrencePreset(e.target.value as RecurrencePreset)
+                    }
                   >
-                    <path
-                      d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM19 8v6M22 11h-6"
-                      strokeWidth="1.5"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
+                    <option value="none">None</option>
+                    <option value="daily">Daily</option>
+                    <option value="weekdays">Weekdays (Mon-Fri)</option>
+                    <option value="weekly">Weekly</option>
+                    <option value="monthly">Monthly</option>
+                  </select>
+                </div>
+
+                {/* If missed - only shown when repeat is set */}
+                {recurrencePreset !== "none" && (
+                  <div>
+                    <label className="block text-xs font-medium text-slate-500 mb-1">
+                      If missed
+                    </label>
+                    <select
+                      className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm transition-all duration-200 focus:border-[var(--blue)] focus:ring-2 focus:ring-[var(--blue)]/20 focus:outline-none"
+                      value={recurrenceStrategy}
+                      onChange={(e) => setRecurrenceStrategy(e.target.value)}
+                    >
+                      <option value="carry_over">
+                        Carries over until done
+                      </option>
+                      <option value="expires">Expires if missed</option>
+                    </select>
+                    <p className="mt-1 text-xs text-slate-400">
+                      {recurrenceStrategy === "expires"
+                        ? "Past occurrences are automatically skipped."
+                        : "Past occurrences stay overdue until completed."}
+                    </p>
+                  </div>
+                )}
+              </>
+            )}
+
+            {delegation && (
+              <>
+                {/* Assignee notes - editable for assignees, read-only for owners of delegated tasks */}
+                {isAssignee && (
+                  <div>
+                    <label className="block text-xs font-medium text-slate-500 mb-1">
+                      My Notes
+                    </label>
+                    <textarea
+                      className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm transition-all duration-200 focus:border-[var(--blue)] focus:ring-2 focus:ring-[var(--blue)]/20 focus:outline-none resize-none w-full"
+                      rows={2}
+                      placeholder="Add your notes about this task..."
+                      value={assigneeNotes}
+                      onChange={(e) => setAssigneeNotes(e.target.value)}
                     />
-                  </svg>
-                </button>
-              </div>
+                  </div>
+                )}
+                {initial?.is_delegated && initial?.assignee_notes && (
+                  <div>
+                    <label className="block text-xs font-medium text-slate-500 mb-1">
+                      Assignee Notes
+                    </label>
+                    <p className="text-sm text-slate-600 bg-slate-50 rounded-md px-3 py-2">
+                      {initial.assignee_notes}
+                    </p>
+                  </div>
+                )}
+
+                {/* Assign to */}
+                {showAssignment && (
+                  <div>
+                    <label className="block text-xs font-medium text-slate-500 mb-1">
+                      Assign to
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setShowAssignModal(true)}
+                      className="w-full flex items-center justify-between rounded-md border border-slate-300 bg-white px-3 py-2 text-sm transition-all duration-200 hover:border-slate-400 focus:border-[var(--blue)] focus:ring-2 focus:ring-[var(--blue)]/20 focus:outline-none"
+                    >
+                      {assignee ? (
+                        <span className="text-slate-700">{assignee.name}</span>
+                      ) : (
+                        <span className="text-slate-400">Select user...</span>
+                      )}
+                      <svg
+                        viewBox="0 0 24 24"
+                        width="16"
+                        height="16"
+                        fill="none"
+                        stroke="currentColor"
+                        className="text-slate-400"
+                      >
+                        <path
+                          d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM19 8v6M22 11h-6"
+                          strokeWidth="1.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                    </button>
+                  </div>
+                )}
+              </>
             )}
           </div>
         )}

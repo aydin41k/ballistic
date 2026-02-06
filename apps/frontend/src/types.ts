@@ -95,23 +95,6 @@ export interface ValidationError {
   errors: Record<string, string[]>;
 }
 
-export interface HeatmapEntry {
-  date: string;
-  completed_count: number;
-}
-
-export interface CategoryDistribution {
-  project_id: string | null;
-  project_name: string;
-  project_color: string | null;
-  completed_count: number;
-}
-
-export interface StatsResponse {
-  heatmap: HeatmapEntry[];
-  category_distribution: CategoryDistribution[];
-}
-
 export type RecurrencePreset =
   | "none"
   | "daily"

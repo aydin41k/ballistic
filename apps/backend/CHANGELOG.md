@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.12.0] - 2026-02-06
+
+### Removed
+
+#### Insights / Activity Stats
+- **StatsController**: Removed user-facing `/api/stats` endpoint (admin stats unchanged)
+- **DailyStatService**: Removed daily stat tracking service
+- **DailyStat Model**: Removed model and added migration to drop `daily_stats` table
+- **ItemObserver**: Removed observer that tracked daily created/completed counts
+- **StatsTest**: Removed 8 stats feature tests
+- **OpenAPI**: Removed `/api/stats` path and `HeatmapEntry`, `CategoryDistribution`, `StatsResponse` schemas
+
 ## [0.11.0] - 2026-02-06
 
 ### Added

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useFeatureFlags } from "@/hooks/useFeatureFlags";
 import { useRouter } from "next/navigation";
 import type { Item, ItemScope, Project } from "@/types";
 import {
@@ -85,12 +86,20 @@ export default function Home() {
   const [toast, setToast] = useState<string | null>(null);
   const toastTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [showSettings, setShowSettings] = useState(false);
+  const { dates, delegation } = useFeatureFlags();
 
   const showError = useCallback((message: string) => {
     if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
     setToast(message);
     toastTimeoutRef.current = setTimeout(() => setToast(null), 4000);
   }, []);
+
+  // Reset view scope when dates feature is turned off
+  useEffect(() => {
+    if (!dates && viewScope !== "active") {
+      setViewScope("active");
+    }
+  }, [dates, viewScope]);
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -105,8 +114,12 @@ export default function Home() {
       setLoading(true);
       Promise.all([
         fetchItems({ scope: viewScope }),
-        fetchItems({ assigned_to_me: true, scope: viewScope }),
-        fetchItems({ delegated: true, scope: viewScope }),
+        delegation
+          ? fetchItems({ assigned_to_me: true, scope: viewScope })
+          : Promise.resolve([]),
+        delegation
+          ? fetchItems({ delegated: true, scope: viewScope })
+          : Promise.resolve([]),
         fetchProjects(),
       ])
         .then(([itemsData, assignedData, delegatedData, projectsData]) => {
@@ -120,7 +133,7 @@ export default function Home() {
         })
         .finally(() => setLoading(false));
     }
-  }, [isAuthenticated, viewScope]);
+  }, [isAuthenticated, viewScope, dates, delegation]);
 
   // Handle scrolling to newly added items
   useEffect(() => {
@@ -139,8 +152,8 @@ export default function Home() {
     }
   }, [scrollToItemId]);
 
-  // Sort my tasks by urgency
-  const sortedItems = sortByUrgency(items);
+  // Sort my tasks by urgency (only when dates feature is enabled)
+  const sortedItems = dates ? sortByUrgency(items) : items;
 
   function onRowChange(itemOrUpdater: Item | ((current: Item) => Item)) {
     const updater = (prev: Item[]) => {
@@ -384,7 +397,7 @@ export default function Home() {
       </header>
 
       {/* Planned view banner */}
-      {viewScope === "planned" && (
+      {dates && viewScope === "planned" && (
         <div className="flex items-center justify-between rounded-md bg-sky-50 px-3 py-2 text-sm text-sky-700 border border-sky-200">
           <span>Showing planned items (future scheduled dates)</span>
           <button
@@ -406,6 +419,7 @@ export default function Home() {
               onCancel={() => setShowAdd(false)}
               projects={projects}
               onCreateProject={handleCreateProject}
+              showAssignment={delegation}
               onSubmit={async (v) => {
                 // Create optimistic item for immediate UI feedback
                 // Use a more unique temporary ID to avoid conflicts
@@ -514,6 +528,7 @@ export default function Home() {
                       onCancel={() => setEditing(null)}
                       projects={projects}
                       onCreateProject={handleCreateProject}
+                      showAssignment={delegation}
                       onSubmit={async (v) => {
                         const selectedProject = v.project_id
                           ? projects.find((p) => p.id === v.project_id)
@@ -596,7 +611,7 @@ export default function Home() {
           return (
             <>
               {/* Assigned to Me section */}
-              {assignedItems.length > 0 && (
+              {delegation && assignedItems.length > 0 && (
                 <>
                   <div className="flex items-center justify-between mt-2">
                     <h2 className="text-xs font-semibold uppercase tracking-wider text-emerald-600">
@@ -623,15 +638,17 @@ export default function Home() {
               {/* My Tasks section */}
               {sortedItems.length > 0 && (
                 <>
-                  <h2 className="text-xs font-semibold uppercase tracking-wider text-[var(--navy)] mt-2">
-                    My Tasks
-                  </h2>
+                  {delegation && (
+                    <h2 className="text-xs font-semibold uppercase tracking-wider text-[var(--navy)] mt-2">
+                      My Tasks
+                    </h2>
+                  )}
                   {sortedItems.map((item, index) => renderItem(item, index))}
                 </>
               )}
 
               {/* Delegated to Others section */}
-              {delegatedItems.length > 0 && (
+              {delegation && delegatedItems.length > 0 && (
                 <>
                   <h2 className="text-xs font-semibold uppercase tracking-wider text-amber-600 mt-2">
                     Delegated to Others
@@ -641,9 +658,10 @@ export default function Home() {
               )}
 
               {/* Empty state */}
-              {assignedItems.length === 0 &&
-                sortedItems.length === 0 &&
-                delegatedItems.length === 0 &&
+              {sortedItems.length === 0 &&
+                (!delegation ||
+                  (assignedItems.length === 0 &&
+                    delegatedItems.length === 0)) &&
                 !loading && (
                   <EmptyState
                     type="no-items"
@@ -700,10 +718,13 @@ export default function Home() {
                 ? "Show active items"
                 : "Show planned items"
             }
-            onClick={() =>
-              setViewScope(viewScope === "active" ? "planned" : "active")
-            }
-            className={`tap-target grid h-11 w-11 place-items-center rounded-full shadow-sm hover:shadow-md active:scale-95 ${viewScope === "planned" ? "bg-[var(--blue)] text-white" : "bg-white"}`}
+            onClick={() => {
+              if (dates) {
+                setViewScope(viewScope === "active" ? "planned" : "active");
+              }
+            }}
+            className={`tap-target grid h-11 w-11 place-items-center rounded-full shadow-sm hover:shadow-md active:scale-95 ${viewScope === "planned" && dates ? "bg-[var(--blue)] text-white" : "bg-white"} ${!dates ? "opacity-30 cursor-not-allowed" : ""}`}
+            disabled={!dates}
           >
             {/* funnel icon */}
             <svg
@@ -713,7 +734,9 @@ export default function Home() {
               fill="none"
               stroke="currentColor"
               className={
-                viewScope === "planned" ? "text-white" : "text-[var(--navy)]"
+                viewScope === "planned" && dates
+                  ? "text-white"
+                  : "text-[var(--navy)]"
               }
             >
               <path d="M3 5h18l-7 8v5l-4 2v-7L3 5z" strokeWidth="1.5" />

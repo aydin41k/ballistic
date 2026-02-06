@@ -3,7 +3,6 @@ import type {
   ItemScope,
   Project,
   Status,
-  StatsResponse,
   UserLookup,
   NotificationsResponse,
 } from "@/types";
@@ -225,31 +224,6 @@ export async function deleteItem(id: string): Promise<{ ok: true }> {
 
   await handleResponse<void>(response);
   return { ok: true };
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Stats
-// ─────────────────────────────────────────────────────────────────────────────
-
-/**
- * Fetch activity stats (heatmap + category distribution)
- */
-export async function fetchStats(params?: {
-  from?: string;
-  to?: string;
-}): Promise<StatsResponse> {
-  const url = buildUrl("/api/stats", {
-    from: params?.from,
-    to: params?.to,
-  });
-
-  const response = await fetch(url, {
-    method: "GET",
-    headers: getAuthHeaders(),
-    cache: "no-store",
-  });
-
-  return handleResponse<StatsResponse>(response);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

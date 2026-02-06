@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
 import { PushNotificationToggle } from "./PushNotificationToggle";
+import { useFeatureFlags } from "@/hooks/useFeatureFlags";
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -13,8 +13,8 @@ interface SettingsModalProps {
  * Modal for app settings including push notification preferences.
  */
 export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
-  const router = useRouter();
   const modalRef = useRef<HTMLDivElement>(null);
+  const { dates, delegation, setFlag } = useFeatureFlags();
 
   // Close on escape key
   useEffect(() => {
@@ -77,38 +77,78 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
 
         {/* Settings Content */}
         <div className="space-y-6">
-          {/* Insights */}
+          {/* Features Section */}
           <section>
-            <button
-              type="button"
-              onClick={() => {
-                onClose();
-                router.push("/insights");
-              }}
-              className="w-full flex items-center gap-3 rounded-lg bg-gray-50 p-4 hover:bg-gray-100 transition-colors text-left"
-            >
-              <svg
-                viewBox="0 0 24 24"
-                width="20"
-                height="20"
-                fill="none"
-                stroke="currentColor"
-                className="text-[var(--navy)] shrink-0"
-              >
-                <path
-                  d="M18 20V10M12 20V4M6 20v-6"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-              <div>
-                <p className="text-sm font-medium text-gray-900">Insights</p>
-                <p className="text-xs text-gray-500">
-                  Activity heatmap &amp; project breakdown
-                </p>
+            <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wider mb-3">
+              Features
+            </h3>
+            <div className="bg-gray-50 rounded-lg p-4 space-y-4">
+              {/* Dates & Scheduling toggle */}
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setFlag("dates", !dates)}
+                  className={`
+                    relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full
+                    border-2 border-transparent transition-colors duration-200 ease-in-out
+                    focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
+                    ${dates ? "bg-blue-600" : "bg-gray-200"}
+                  `}
+                  role="switch"
+                  aria-checked={dates}
+                  aria-label="Dates & Scheduling"
+                >
+                  <span
+                    className={`
+                      pointer-events-none inline-block h-5 w-5 transform rounded-full
+                      bg-white shadow ring-0 transition duration-200 ease-in-out
+                      ${dates ? "translate-x-5" : "translate-x-0"}
+                    `}
+                  />
+                </button>
+                <div className="flex flex-col">
+                  <span className="text-sm font-medium text-gray-900">
+                    Dates &amp; Scheduling
+                  </span>
+                  <span className="text-xs text-gray-500">
+                    Due dates, scheduled dates, and repeating tasks
+                  </span>
+                </div>
               </div>
-            </button>
+
+              {/* Task Delegation toggle */}
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setFlag("delegation", !delegation)}
+                  className={`
+                    relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full
+                    border-2 border-transparent transition-colors duration-200 ease-in-out
+                    focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
+                    ${delegation ? "bg-blue-600" : "bg-gray-200"}
+                  `}
+                  role="switch"
+                  aria-checked={delegation}
+                  aria-label="Task Delegation"
+                >
+                  <span
+                    className={`
+                      pointer-events-none inline-block h-5 w-5 transform rounded-full
+                      bg-white shadow ring-0 transition duration-200 ease-in-out
+                      ${delegation ? "translate-x-5" : "translate-x-0"}
+                    `}
+                  />
+                </button>
+                <div className="flex flex-col">
+                  <span className="text-sm font-medium text-gray-900">
+                    Task Delegation
+                  </span>
+                  <span className="text-xs text-gray-500">
+                    Assign tasks to other users
+                  </span>
+                </div>
+              </div>
+            </div>
           </section>
 
           {/* Notifications Section */}
@@ -124,7 +164,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
           {/* Version Info */}
           <section className="pt-4 border-t border-gray-100">
             <p className="text-xs text-gray-400 text-center">
-              Ballistic v0.10.0
+              Ballistic v0.11.0
             </p>
           </section>
         </div>
