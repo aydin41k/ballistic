@@ -7,6 +7,7 @@ namespace App\Services;
 use App\Models\PushSubscription;
 use App\Models\User;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Minishlink\WebPush\Subscription;
 use Minishlink\WebPush\WebPush;
@@ -202,15 +203,17 @@ final class WebPushService implements WebPushServiceInterface
             ]);
         }
 
-        // Batch database operations to avoid N+1 queries
-        if (! empty($successfulIds)) {
-            PushSubscription::whereIn('id', $successfulIds)
-                ->update(['last_used_at' => now()]);
-        }
+        // Batch database operations atomically to avoid N+1 queries
+        DB::transaction(function () use ($successfulIds, $expiredIds): void {
+            if (! empty($successfulIds)) {
+                PushSubscription::whereIn('id', $successfulIds)
+                    ->update(['last_used_at' => now()]);
+            }
 
-        if (! empty($expiredIds)) {
-            PushSubscription::whereIn('id', $expiredIds)->delete();
-        }
+            if (! empty($expiredIds)) {
+                PushSubscription::whereIn('id', $expiredIds)->delete();
+            }
+        });
 
         return count($successfulIds);
     }

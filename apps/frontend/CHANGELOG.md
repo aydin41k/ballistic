@@ -1,3 +1,20 @@
+## 0.9.0 - 2026-02-06
+
+### Added
+
+#### Notes Scratchpad
+
+- **NotesModal**: New bottom-sheet modal providing a free-text scratchpad persisted on the backend
+- **Auto-Save**: Notes save automatically on close if content has changed, with "Saving..." / "Saved" indicator
+- **Character Limit**: 10,000 character maximum with live counter
+- **Bottom Bar**: Notes button (notepad icon) added between Settings and Filter; Add button remains centred via 3-column grid layout
+- **API Functions**: Added `fetchUser()` and `updateUser()` for user profile reads and updates
+
+### Changed
+
+- **User Type**: Added `notes` field to `User` interface
+- **Bottom Bar Layout**: Changed from flex `justify-between` to CSS grid `1fr auto 1fr` to keep the Add button centred with 4 items
+
 ## 0.8.0 - 2026-02-06
 
 ### Added

@@ -17,6 +17,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { ItemForm } from "@/components/ItemForm";
 import { SplashScreen } from "@/components/SplashScreen";
 import { SettingsModal } from "@/components/SettingsModal";
+import { NotesModal } from "@/components/NotesModal";
 import { useAuth } from "@/contexts/AuthContext";
 
 function normaliseItemResponse(payload: Item | { data?: Item }): Item {
@@ -86,6 +87,7 @@ export default function Home() {
   const [toast, setToast] = useState<string | null>(null);
   const toastTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [showSettings, setShowSettings] = useState(false);
+  const [showNotes, setShowNotes] = useState(false);
   const { dates, delegation } = useFeatureFlags();
 
   const showError = useCallback((message: string) => {
@@ -680,28 +682,59 @@ export default function Home() {
 
       {/* Bottom Bar - Glassy style matching top bar */}
       <div className="fixed inset-x-0 bottom-0 z-20 bg-[var(--page-bg)]/95 backdrop-blur border-t border-slate-200/50">
-        <div className="mx-auto flex max-w-sm items-center justify-between px-4 py-3">
-          <button
-            type="button"
-            aria-label="Settings"
-            onClick={() => setShowSettings(true)}
-            className="tap-target grid h-10 w-10 place-items-center rounded-md hover:bg-slate-100 active:scale-95 transition-all duration-200"
-          >
-            {/* gear icon */}
-            <svg
-              viewBox="0 0 24 24"
-              width="20"
-              height="20"
-              fill="none"
-              stroke="currentColor"
-              className="text-[var(--navy)]"
+        <div className="mx-auto grid max-w-sm grid-cols-[1fr_auto_1fr] items-center px-4 py-3">
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              aria-label="Settings"
+              onClick={() => setShowSettings(true)}
+              className="tap-target grid h-10 w-10 place-items-center rounded-md hover:bg-slate-100 active:scale-95 transition-all duration-200"
             >
-              <path
-                d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Zm7.4-3.5a7.4 7.4 0 0 0-.1-1l2.1-1.6-2-3.4-2.5 1a7.6 7.6 0 0 0-1.7-1l-.4-2.6H9.2L8.8 6a7.6 7.6 0 0 0-1.7 1l-2.5-1-2 3.4 2.1 1.6a7.4 7.4 0 0 0 0 2L2.6 14l2 3.4 2.5-1a7.6 7.6 0 0 0 1.7 1l.4 2.6h5.6l.4-2.6a7.6 7.6 0 0 0 1.7-1l2.5 1 2-3.4-2.1-1.6c.1-.3.1-.7.1-1Z"
-                strokeWidth="1.4"
-              />
-            </svg>
-          </button>
+              {/* gear icon */}
+              <svg
+                viewBox="0 0 24 24"
+                width="20"
+                height="20"
+                fill="none"
+                stroke="currentColor"
+                className="text-[var(--navy)]"
+              >
+                <path
+                  d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Zm7.4-3.5a7.4 7.4 0 0 0-.1-1l2.1-1.6-2-3.4-2.5 1a7.6 7.6 0 0 0-1.7-1l-.4-2.6H9.2L8.8 6a7.6 7.6 0 0 0-1.7 1l-2.5-1-2 3.4 2.1 1.6a7.4 7.4 0 0 0 0 2L2.6 14l2 3.4 2.5-1a7.6 7.6 0 0 0 1.7 1l.4 2.6h5.6l.4-2.6a7.6 7.6 0 0 0 1.7-1l2.5 1 2-3.4-2.1-1.6c.1-.3.1-.7.1-1Z"
+                  strokeWidth="1.4"
+                />
+              </svg>
+            </button>
+            <button
+              type="button"
+              aria-label="Notes"
+              onClick={() => setShowNotes(true)}
+              className="tap-target grid h-10 w-10 place-items-center rounded-md hover:bg-slate-100 active:scale-95 transition-all duration-200"
+            >
+              {/* notepad icon */}
+              <svg
+                viewBox="0 0 24 24"
+                width="20"
+                height="20"
+                fill="none"
+                stroke="currentColor"
+                className="text-[var(--navy)]"
+              >
+                <path
+                  d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6Z"
+                  strokeWidth="1.4"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                <path
+                  d="M14 2v6h6M16 13H8M16 17H8M10 9H8"
+                  strokeWidth="1.4"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </button>
+          </div>
           <button
             type="button"
             aria-label="Add a new task"
@@ -711,37 +744,39 @@ export default function Home() {
             <span className="sr-only">Add new task...</span>
             <span className="text-2xl leading-none font-light">+</span>
           </button>
-          <button
-            type="button"
-            aria-label={
-              viewScope === "planned"
-                ? "Show active items"
-                : "Show planned items"
-            }
-            onClick={() => {
-              if (dates) {
-                setViewScope(viewScope === "active" ? "planned" : "active");
+          <div className="flex justify-end">
+            <button
+              type="button"
+              aria-label={
+                viewScope === "planned"
+                  ? "Show active items"
+                  : "Show planned items"
               }
-            }}
-            className={`tap-target grid h-11 w-11 place-items-center rounded-full shadow-sm hover:shadow-md active:scale-95 ${viewScope === "planned" && dates ? "bg-[var(--blue)] text-white" : "bg-white"} ${!dates ? "opacity-30 cursor-not-allowed" : ""}`}
-            disabled={!dates}
-          >
-            {/* funnel icon */}
-            <svg
-              viewBox="0 0 24 24"
-              width="20"
-              height="20"
-              fill="none"
-              stroke="currentColor"
-              className={
-                viewScope === "planned" && dates
-                  ? "text-white"
-                  : "text-[var(--navy)]"
-              }
+              onClick={() => {
+                if (dates) {
+                  setViewScope(viewScope === "active" ? "planned" : "active");
+                }
+              }}
+              className={`tap-target grid h-11 w-11 place-items-center rounded-full shadow-sm hover:shadow-md active:scale-95 ${viewScope === "planned" && dates ? "bg-[var(--blue)] text-white" : "bg-white"} ${!dates ? "opacity-30 cursor-not-allowed" : ""}`}
+              disabled={!dates}
             >
-              <path d="M3 5h18l-7 8v5l-4 2v-7L3 5z" strokeWidth="1.5" />
-            </svg>
-          </button>
+              {/* funnel icon */}
+              <svg
+                viewBox="0 0 24 24"
+                width="20"
+                height="20"
+                fill="none"
+                stroke="currentColor"
+                className={
+                  viewScope === "planned" && dates
+                    ? "text-white"
+                    : "text-[var(--navy)]"
+                }
+              >
+                <path d="M3 5h18l-7 8v5l-4 2v-7L3 5z" strokeWidth="1.5" />
+              </svg>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -750,6 +785,9 @@ export default function Home() {
         isOpen={showSettings}
         onClose={() => setShowSettings(false)}
       />
+
+      {/* Notes Modal */}
+      <NotesModal isOpen={showNotes} onClose={() => setShowNotes(false)} />
     </div>
   );
 }

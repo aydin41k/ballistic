@@ -29,6 +29,7 @@ final class User extends Authenticatable
         'name',
         'email',
         'phone',
+        'notes',
         'password',
         'is_admin',
     ];

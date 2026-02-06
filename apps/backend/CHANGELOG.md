@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.13.0] - 2026-02-06
+
+### Added
+
+#### User Notes (Scratchpad)
+- **Notes Column**: New nullable `text` column on users table for free-form scratchpad content
+- **PATCH /api/user**: Accepts `notes` field (nullable string, max 10,000 characters)
+- **GET /api/user**: Returns `notes` in the user profile response via UserResource
+
+### Fixed
+
+#### Data Integrity — Missing DB Transactions
+- **ItemController::ensureConnection()**: Wrapped delete + create of declined connections in `DB::transaction()` to prevent orphaned state if create fails after delete
+- **ConnectionController::store()**: Wrapped delete of declined connection + create of new pending connection in `DB::transaction()`
+- **WebPushService::sendToSubscriptions()**: Wrapped batch `last_used_at` update + expired subscription delete in `DB::transaction()`
+
+### Tests
+- Added NotesTest with 5 tests covering save, read, max-length validation, clear, and default null
+
 ## [0.12.0] - 2026-02-06
 
 ### Removed

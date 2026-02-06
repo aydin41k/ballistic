@@ -486,34 +486,36 @@ final class ItemController extends Controller
             return;
         }
 
-        // Check for any existing connection (either direction)
-        $existing = Connection::where(function ($query) use ($owner, $assigneeId) {
-            $query->where('requester_id', $owner->id)
-                ->where('addressee_id', $assigneeId);
-        })->orWhere(function ($query) use ($owner, $assigneeId) {
-            $query->where('requester_id', $assigneeId)
-                ->where('addressee_id', $owner->id);
-        })->first();
+        DB::transaction(function () use ($owner, $assigneeId): void {
+            // Check for any existing connection (either direction)
+            $existing = Connection::where(function ($query) use ($owner, $assigneeId) {
+                $query->where('requester_id', $owner->id)
+                    ->where('addressee_id', $assigneeId);
+            })->orWhere(function ($query) use ($owner, $assigneeId) {
+                $query->where('requester_id', $assigneeId)
+                    ->where('addressee_id', $owner->id);
+            })->first();
 
-        if ($existing !== null) {
-            // Accept if pending, or delete and recreate if declined
-            if ($existing->isPending()) {
-                $existing->accept();
-            } elseif ($existing->status === 'declined') {
-                $existing->delete();
+            if ($existing !== null) {
+                // Accept if pending, or delete and recreate if declined
+                if ($existing->isPending()) {
+                    $existing->accept();
+                } elseif ($existing->status === 'declined') {
+                    $existing->delete();
+                    Connection::create([
+                        'requester_id' => $owner->id,
+                        'addressee_id' => $assigneeId,
+                        'status' => 'accepted',
+                    ]);
+                }
+            } else {
+                // No connection at all — create an accepted one
                 Connection::create([
                     'requester_id' => $owner->id,
                     'addressee_id' => $assigneeId,
                     'status' => 'accepted',
                 ]);
             }
-        } else {
-            // No connection at all — create an accepted one
-            Connection::create([
-                'requester_id' => $owner->id,
-                'addressee_id' => $assigneeId,
-                'status' => 'accepted',
-            ]);
-        }
+        });
     }
 }
