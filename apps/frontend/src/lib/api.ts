@@ -193,6 +193,7 @@ export async function updateItem(
       Item,
       | "title"
       | "description"
+      | "assignee_notes"
       | "project_id"
       | "position"
       | "scheduled_date"
@@ -316,6 +317,29 @@ export async function lookupUsers(query: string): Promise<UserLookup[]> {
   );
   const users = extractData(payload);
   return Array.isArray(users) ? users : [];
+}
+
+/**
+ * Discover a user by exact email or phone number.
+ * Searches all users (not just connected ones).
+ * Used to find users before connecting with them.
+ */
+export async function discoverUser(
+  query: string,
+): Promise<{ found: boolean; user?: UserLookup }> {
+  // Determine if query looks like an email or phone
+  const isEmail = query.includes("@");
+  const body: Record<string, string> = isEmail
+    ? { email: query }
+    : { phone: query };
+
+  const response = await fetch(buildUrl("/api/users/discover"), {
+    method: "POST",
+    headers: getAuthHeaders(),
+    body: JSON.stringify(body),
+  });
+
+  return handleResponse<{ found: boolean; user?: UserLookup }>(response);
 }
 
 /**

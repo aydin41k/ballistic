@@ -43,6 +43,7 @@ export interface Item {
   project_id: string | null;
   title: string;
   description: string | null;
+  assignee_notes: string | null;
   status: Status;
   position: number;
   scheduled_date: string | null;

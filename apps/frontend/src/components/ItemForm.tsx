@@ -25,6 +25,7 @@ type Props = {
     recurrence_rule?: string | null;
     recurrence_strategy?: string | null;
     assignee_id?: string | null;
+    assignee_notes?: string | null;
   }) => void;
   onCancel: () => void;
   submitLabel?: string;
@@ -60,8 +61,15 @@ export function ItemForm({
   const [assignee, setAssignee] = useState<UserLookup | null>(
     initial?.assignee ?? null,
   );
+  const [assigneeNotes, setAssigneeNotes] = useState(
+    initial?.assignee_notes ?? "",
+  );
   const [showMoreSettings, setShowMoreSettings] = useState(!!initial); // Open by default for edit mode
   const [showAssignModal, setShowAssignModal] = useState(false);
+
+  // Determine if current user is the assignee (not the owner) of this item
+  const isAssignee =
+    !!initial && initial.is_assigned === true && initial.is_delegated === false;
 
   return (
     <form
@@ -78,6 +86,7 @@ export function ItemForm({
           recurrence_strategy:
             recurrencePreset !== "none" ? recurrenceStrategy : null,
           assignee_id: assignee?.id ?? null,
+          assignee_notes: isAssignee ? assigneeNotes || null : undefined,
         });
       }}
     >
@@ -225,6 +234,32 @@ export function ItemForm({
                   {recurrenceStrategy === "expires"
                     ? "Past occurrences are automatically skipped."
                     : "Past occurrences stay overdue until completed."}
+                </p>
+              </div>
+            )}
+
+            {/* Assignee notes - editable for assignees, read-only for owners of delegated tasks */}
+            {isAssignee && (
+              <div>
+                <label className="block text-xs font-medium text-slate-500 mb-1">
+                  My Notes
+                </label>
+                <textarea
+                  className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm transition-all duration-200 focus:border-[var(--blue)] focus:ring-2 focus:ring-[var(--blue)]/20 focus:outline-none resize-none w-full"
+                  rows={2}
+                  placeholder="Add your notes about this task..."
+                  value={assigneeNotes}
+                  onChange={(e) => setAssigneeNotes(e.target.value)}
+                />
+              </div>
+            )}
+            {initial?.is_delegated && initial?.assignee_notes && (
+              <div>
+                <label className="block text-xs font-medium text-slate-500 mb-1">
+                  Assignee Notes
+                </label>
+                <p className="text-sm text-slate-600 bg-slate-50 rounded-md px-3 py-2">
+                  {initial.assignee_notes}
                 </p>
               </div>
             )}

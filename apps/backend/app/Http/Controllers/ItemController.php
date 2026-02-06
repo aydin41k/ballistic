@@ -8,6 +8,7 @@ use App\Contracts\NotificationServiceInterface;
 use App\Http\Requests\StoreItemRequest;
 use App\Http\Requests\UpdateItemRequest;
 use App\Http\Resources\ItemResource;
+use App\Models\Connection;
 use App\Models\Item;
 use App\Models\User;
 use App\Policies\ItemPolicy;
@@ -148,14 +149,9 @@ final class ItemController extends Controller
         /** @var User $owner */
         $owner = Auth::user();
 
-        // Validate assignee is connected with the owner
+        // Ensure a connection exists with the assignee (auto-create if needed)
         if (! empty($validated['assignee_id'])) {
-            if (! $owner->isConnectedWith($validated['assignee_id'])) {
-                return response()->json(
-                    ['message' => 'You can only assign tasks to users you are connected with.'],
-                    Response::HTTP_FORBIDDEN
-                );
-            }
+            $this->ensureConnection($owner, $validated['assignee_id']);
         }
 
         // Auto-set completed_at if status is 'done'
@@ -224,11 +220,11 @@ final class ItemController extends Controller
         $currentUser = Auth::user();
         $isOwner = (string) $item->user_id === (string) $currentUser->id;
 
-        // Enforce field restrictions for assignees (they can only update status and assignee_notes)
+        // Enforce field restrictions for assignees (they can only update status, assignee_notes, and self-unassign)
         if (! $isOwner) {
             $fieldsBeingUpdated = array_keys($validated);
             $policy = new ItemPolicy;
-            if (! $policy->canAssigneeUpdateFields($currentUser, $item, $fieldsBeingUpdated)) {
+            if (! $policy->canAssigneeUpdateFields($currentUser, $item, $fieldsBeingUpdated, $validated)) {
                 return response()->json(
                     ['message' => 'Assignees can only update status and notes.'],
                     Response::HTTP_FORBIDDEN
@@ -245,16 +241,12 @@ final class ItemController extends Controller
         $newStatus = $validated['status'] ?? $previousStatus;
         $previousTitle = $item->title;
         $previousDescription = $item->description;
+        $previousDueDate = $item->due_date?->toDateString();
 
-        // Validate new assignee is connected with the owner (only owner can assign)
+        // Ensure a connection exists when owner assigns to a new user
         if ($isOwner && $newAssigneeId !== null && (string) $newAssigneeId !== (string) $previousAssigneeId) {
             $owner = User::find($item->user_id);
-            if (! $owner->isConnectedWith($newAssigneeId)) {
-                return response()->json(
-                    ['message' => 'You can only assign tasks to users you are connected with.'],
-                    Response::HTTP_FORBIDDEN
-                );
-            }
+            $this->ensureConnection($owner, $newAssigneeId);
         }
 
         // Auto-manage completed_at based on status changes
@@ -277,7 +269,7 @@ final class ItemController extends Controller
         // Get owner for notifications
         $owner = User::find($item->user_id);
 
-        // Notification: Task unassigned
+        // Notification: Task unassigned by owner
         if ($isOwner && $previousAssigneeId !== null && $newAssigneeId === null) {
             $previousAssignee = User::find($previousAssigneeId);
             if ($previousAssignee !== null) {
@@ -288,6 +280,16 @@ final class ItemController extends Controller
                     $owner->name
                 );
             }
+        }
+
+        // Notification: Assignee rejected / unassigned themselves
+        if (! $isOwner && $previousAssigneeId !== null && $newAssigneeId === null && $owner !== null) {
+            $notificationService->notifyTaskRejected(
+                $owner,
+                (string) $item->id,
+                $item->title,
+                $currentUser->name
+            );
         }
 
         // Notification: Task newly assigned
@@ -318,17 +320,21 @@ final class ItemController extends Controller
                     );
                 }
 
-                // Check if title or description changed (and status didn't complete)
+                // Check if title, description, or due date changed (and status didn't complete)
                 $titleChanged = isset($validated['title']) && $validated['title'] !== $previousTitle;
                 $descriptionChanged = isset($validated['description']) && $validated['description'] !== $previousDescription;
+                $dueDateChanged = array_key_exists('due_date', $validated) && ($validated['due_date'] ?? null) !== $previousDueDate;
 
-                if (($titleChanged || $descriptionChanged) && ! in_array($newStatus, ['done', 'wontdo'])) {
+                if (($titleChanged || $descriptionChanged || $dueDateChanged) && ! in_array($newStatus, ['done', 'wontdo'])) {
                     $changes = [];
                     if ($titleChanged) {
                         $changes['title'] = ['from' => $previousTitle, 'to' => $item->title];
                     }
                     if ($descriptionChanged) {
                         $changes['description'] = true;
+                    }
+                    if ($dueDateChanged) {
+                        $changes['due_date'] = ['from' => $previousDueDate, 'to' => $item->due_date?->toDateString()];
                     }
 
                     $notificationService->notifyTaskUpdated(
@@ -339,6 +345,19 @@ final class ItemController extends Controller
                         $changes
                     );
                 }
+            }
+        }
+
+        // Notification: Task completed/cancelled by assignee (notify owner)
+        if (! $isOwner && $owner !== null) {
+            if (in_array($newStatus, ['done', 'wontdo']) && ! in_array($previousStatus, ['done', 'wontdo'])) {
+                $notificationService->notifyTaskCompletedByAssignee(
+                    $owner,
+                    (string) $item->id,
+                    $item->title,
+                    $currentUser->name,
+                    $newStatus
+                );
             }
         }
 
@@ -452,5 +471,49 @@ final class ItemController extends Controller
         }
 
         return ItemResource::collection(collect($instances));
+    }
+
+    /**
+     * Ensure an accepted connection exists between two users.
+     *
+     * If no connection exists, creates one with status 'accepted'.
+     * If a pending connection exists, accepts it.
+     * If already connected, does nothing.
+     */
+    private function ensureConnection(User $owner, string $assigneeId): void
+    {
+        if ($owner->isConnectedWith($assigneeId)) {
+            return;
+        }
+
+        // Check for any existing connection (either direction)
+        $existing = Connection::where(function ($query) use ($owner, $assigneeId) {
+            $query->where('requester_id', $owner->id)
+                ->where('addressee_id', $assigneeId);
+        })->orWhere(function ($query) use ($owner, $assigneeId) {
+            $query->where('requester_id', $assigneeId)
+                ->where('addressee_id', $owner->id);
+        })->first();
+
+        if ($existing !== null) {
+            // Accept if pending, or delete and recreate if declined
+            if ($existing->isPending()) {
+                $existing->accept();
+            } elseif ($existing->status === 'declined') {
+                $existing->delete();
+                Connection::create([
+                    'requester_id' => $owner->id,
+                    'addressee_id' => $assigneeId,
+                    'status' => 'accepted',
+                ]);
+            }
+        } else {
+            // No connection at all — create an accepted one
+            Connection::create([
+                'requester_id' => $owner->id,
+                'addressee_id' => $assigneeId,
+                'status' => 'accepted',
+            ]);
+        }
     }
 }

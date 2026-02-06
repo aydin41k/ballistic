@@ -139,22 +139,36 @@ export default function Home() {
     }
   }, [scrollToItemId]);
 
-  // Combine all items: my tasks sorted by urgency, assigned to me, and delegated
+  // Sort my tasks by urgency
   const sortedItems = sortByUrgency(items);
-  const allItems = [
-    ...assignedItems, // Tasks assigned to me (from others)
-    ...sortedItems, // My own tasks (not delegated)
-    ...delegatedItems, // Tasks I delegated to others
-  ];
 
   function onRowChange(itemOrUpdater: Item | ((current: Item) => Item)) {
-    setItems((prev) => {
+    const updater = (prev: Item[]) => {
       if (!Array.isArray(prev)) return [];
       if (typeof itemOrUpdater === "function") {
         return prev.map(itemOrUpdater);
       }
       return prev.map((i) => (i.id === itemOrUpdater.id ? itemOrUpdater : i));
-    });
+    };
+
+    // Update all three arrays — the mapper is by ID so non-matching items are unchanged
+    setItems(updater);
+    setAssignedItems(updater);
+    setDelegatedItems(updater);
+  }
+
+  // Decline (reject) an assigned task — optimistically removes from assigned list
+  async function handleDecline(item: Item) {
+    const previousAssigned = [...assignedItems];
+    setAssignedItems((prev) => prev.filter((i) => i.id !== item.id));
+
+    try {
+      await updateItem(item.id, { assignee_id: null });
+    } catch (error) {
+      console.error("Failed to decline task:", error);
+      setAssignedItems(previousAssigned);
+      showError("Failed to decline task. Please try again.");
+    }
   }
 
   // Optimistic reordering function that updates UI immediately and persists via bulk API
@@ -418,6 +432,7 @@ export default function Home() {
                     null,
                   is_recurring_template: !!v.recurrence_rule,
                   is_recurring_instance: false,
+                  assignee_notes: null,
                   is_assigned: !!v.assignee_id,
                   is_delegated: !!v.assignee_id,
                   created_at: new Date().toISOString(),
@@ -484,93 +499,160 @@ export default function Home() {
           </div>
         )}
 
-        {/* Task Items */}
-        {allItems.map((item, index) => (
-          <div key={item.id || `item-${index}`} className="flex flex-col gap-2">
-            {editing?.id === item.id ? (
-              <div className="rounded-md bg-white p-3 shadow-sm animate-scale-in">
-                <ItemForm
-                  initial={item}
-                  onCancel={() => setEditing(null)}
-                  projects={projects}
-                  onCreateProject={handleCreateProject}
-                  onSubmit={async (v) => {
-                    // Create optimistic update for immediate UI feedback
-                    const selectedProject = v.project_id
-                      ? projects.find((p) => p.id === v.project_id)
-                      : null;
-                    const optimisticUpdate: Item = {
-                      ...item,
-                      title: v.title,
-                      description: v.description || null,
-                      project_id: v.project_id ?? null,
-                      project: selectedProject ?? null,
-                      scheduled_date: v.scheduled_date ?? null,
-                      due_date: v.due_date ?? null,
-                      recurrence_rule: v.recurrence_rule ?? null,
-                      recurrence_strategy:
-                        (v.recurrence_strategy as Item["recurrence_strategy"]) ??
-                        null,
-                      is_recurring_template: !!v.recurrence_rule,
-                      assignee_id: v.assignee_id ?? null,
-                    };
+        {/* Render a single item — either in edit mode or as a row */}
+        {(() => {
+          function renderItem(item: Item, index: number) {
+            return (
+              <div
+                key={item.id || `item-${index}`}
+                className="flex flex-col gap-2"
+              >
+                {editing?.id === item.id ? (
+                  <div className="rounded-md bg-white p-3 shadow-sm animate-scale-in">
+                    <ItemForm
+                      initial={item}
+                      onCancel={() => setEditing(null)}
+                      projects={projects}
+                      onCreateProject={handleCreateProject}
+                      onSubmit={async (v) => {
+                        const selectedProject = v.project_id
+                          ? projects.find((p) => p.id === v.project_id)
+                          : null;
+                        const optimisticUpdate: Item = {
+                          ...item,
+                          title: v.title,
+                          description: v.description || null,
+                          assignee_notes:
+                            v.assignee_notes !== undefined
+                              ? v.assignee_notes
+                              : item.assignee_notes,
+                          project_id: v.project_id ?? null,
+                          project: selectedProject ?? null,
+                          scheduled_date: v.scheduled_date ?? null,
+                          due_date: v.due_date ?? null,
+                          recurrence_rule: v.recurrence_rule ?? null,
+                          recurrence_strategy:
+                            (v.recurrence_strategy as Item["recurrence_strategy"]) ??
+                            null,
+                          is_recurring_template: !!v.recurrence_rule,
+                          assignee_id: v.assignee_id ?? null,
+                        };
 
-                    // Update UI immediately and close edit form
-                    setItems((prev) =>
-                      prev.map((i) =>
-                        i.id === item.id ? optimisticUpdate : i,
-                      ),
-                    );
-                    setEditing(null);
+                        // Update all arrays optimistically
+                        const updater = (prev: Item[]) =>
+                          prev.map((i) =>
+                            i.id === item.id ? optimisticUpdate : i,
+                          );
+                        setItems(updater);
+                        setAssignedItems(updater);
+                        setDelegatedItems(updater);
+                        setEditing(null);
 
-                    // Send API request in background (fire and forget)
-                    updateItem(item.id, {
-                      title: v.title,
-                      description: v.description || null,
-                      project_id: v.project_id,
-                      scheduled_date: v.scheduled_date,
-                      due_date: v.due_date,
-                      recurrence_rule: v.recurrence_rule,
-                      recurrence_strategy:
-                        (v.recurrence_strategy as Item["recurrence_strategy"]) ??
-                        null,
-                      assignee_id: v.assignee_id,
-                    }).catch((error) => {
-                      console.error("Failed to update item:", error);
-                      setItems((prev) =>
-                        prev.map((i) => (i.id === item.id ? item : i)),
-                      );
-                      showError("Failed to update task. Changes reverted.");
-                    });
-                  }}
-                />
+                        updateItem(item.id, {
+                          title: v.title,
+                          description: v.description || null,
+                          assignee_notes: v.assignee_notes,
+                          project_id: v.project_id,
+                          scheduled_date: v.scheduled_date,
+                          due_date: v.due_date,
+                          recurrence_rule: v.recurrence_rule,
+                          recurrence_strategy:
+                            (v.recurrence_strategy as Item["recurrence_strategy"]) ??
+                            null,
+                          assignee_id: v.assignee_id,
+                        }).catch((error) => {
+                          console.error("Failed to update item:", error);
+                          const revert = (prev: Item[]) =>
+                            prev.map((i) => (i.id === item.id ? item : i));
+                          setItems(revert);
+                          setAssignedItems(revert);
+                          setDelegatedItems(revert);
+                          showError("Failed to update task. Changes reverted.");
+                        });
+                      }}
+                    />
+                  </div>
+                ) : (
+                  <ItemRow
+                    item={item}
+                    onChange={onRowChange}
+                    onOptimisticReorder={onOptimisticReorder}
+                    index={index}
+                    onEdit={() => setEditing(item)}
+                    isFirst={index === 0}
+                    onDragStart={handleDragStart}
+                    onDragEnter={handleDragEnter}
+                    onDropItem={handleDrop}
+                    onDragEnd={handleDragEnd}
+                    draggingId={draggingId}
+                    dragOverId={dragOverId}
+                    onError={showError}
+                  />
+                )}
               </div>
-            ) : (
-              <ItemRow
-                item={item}
-                onChange={onRowChange}
-                onOptimisticReorder={onOptimisticReorder}
-                index={index}
-                onEdit={() => setEditing(item)}
-                isFirst={index === 0}
-                onDragStart={handleDragStart}
-                onDragEnter={handleDragEnter}
-                onDropItem={handleDrop}
-                onDragEnd={handleDragEnd}
-                draggingId={draggingId}
-                dragOverId={dragOverId}
-                onError={showError}
-              />
-            )}
-          </div>
-        ))}
+            );
+          }
 
-        {allItems.length === 0 && !loading && (
-          <EmptyState
-            type="no-items"
-            message="Start your bullet journal journey by adding your first task!"
-          />
-        )}
+          return (
+            <>
+              {/* Assigned to Me section */}
+              {assignedItems.length > 0 && (
+                <>
+                  <div className="flex items-center justify-between mt-2">
+                    <h2 className="text-xs font-semibold uppercase tracking-wider text-emerald-600">
+                      Assigned to Me
+                    </h2>
+                  </div>
+                  {assignedItems.map((item, index) => (
+                    <div key={item.id || `assigned-${index}`}>
+                      {renderItem(item, index)}
+                      {editing?.id !== item.id && (
+                        <button
+                          type="button"
+                          onClick={() => handleDecline(item)}
+                          className="mt-1 text-xs text-red-500 hover:text-red-700 transition-colors px-3"
+                        >
+                          Decline
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </>
+              )}
+
+              {/* My Tasks section */}
+              {sortedItems.length > 0 && (
+                <>
+                  <h2 className="text-xs font-semibold uppercase tracking-wider text-[var(--navy)] mt-2">
+                    My Tasks
+                  </h2>
+                  {sortedItems.map((item, index) => renderItem(item, index))}
+                </>
+              )}
+
+              {/* Delegated to Others section */}
+              {delegatedItems.length > 0 && (
+                <>
+                  <h2 className="text-xs font-semibold uppercase tracking-wider text-amber-600 mt-2">
+                    Delegated to Others
+                  </h2>
+                  {delegatedItems.map((item, index) => renderItem(item, index))}
+                </>
+              )}
+
+              {/* Empty state */}
+              {assignedItems.length === 0 &&
+                sortedItems.length === 0 &&
+                delegatedItems.length === 0 &&
+                !loading && (
+                  <EmptyState
+                    type="no-items"
+                    message="Start your bullet journal journey by adding your first task!"
+                  />
+                )}
+            </>
+          );
+        })()}
       </div>
 
       {/* Footer */}

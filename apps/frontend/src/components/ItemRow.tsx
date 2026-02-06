@@ -253,6 +253,18 @@ export function ItemRow({
               : optimisticItem.description}
           </div>
         )}
+        {optimisticItem.assignee_notes && (
+          <div
+            className={`text-sm mt-1 italic transition-colors duration-200 ${isCompleted || isCancelled ? "text-slate-300" : "text-slate-400"}`}
+          >
+            <span className="text-xs font-medium not-italic text-slate-500">
+              Note:{" "}
+            </span>
+            {optimisticItem.assignee_notes.length > 80
+              ? `${optimisticItem.assignee_notes.slice(0, 80)}...`
+              : optimisticItem.assignee_notes}
+          </div>
+        )}
         {optimisticItem.due_date && !isCompleted && !isCancelled && (
           <div
             className={`text-xs mt-1 flex items-center gap-1 ${
