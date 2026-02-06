@@ -1,3 +1,44 @@
+## 0.9.0 - 2026-02-06
+
+### Added
+
+#### Notes Scratchpad
+
+- **NotesModal**: New bottom-sheet modal providing a free-text scratchpad persisted on the backend
+- **Auto-Save**: Notes save automatically on close if content has changed, with "Saving..." / "Saved" indicator
+- **Character Limit**: 10,000 character maximum with live counter
+- **Bottom Bar**: Notes button (notepad icon) added between Settings and Filter; Add button remains centred via 3-column grid layout
+- **API Functions**: Added `fetchUser()` and `updateUser()` for user profile reads and updates
+
+### Changed
+
+- **User Type**: Added `notes` field to `User` interface
+- **Bottom Bar Layout**: Changed from flex `justify-between` to CSS grid `1fr auto 1fr` to keep the Add button centred with 4 items
+
+## 0.8.0 - 2026-02-06
+
+### Added
+
+#### Feature Flags
+
+- **Feature Flags Hook**: New `useFeatureFlags()` hook backed by localStorage for toggling optional features on/off
+- **Settings Toggles**: "Features" section in Settings modal with toggle switches for "Dates & Scheduling" and "Task Delegation"
+- **Dates Flag**: When off, hides scheduled dates, due dates, recurrence fields, urgency styling, planned view toggle, and urgency-based sorting
+- **Delegation Flag**: When off, hides "Assigned to Me" section, "Delegated to Others" section, assignment badges, assignee notes, decline button, and skips delegation API calls
+
+### Removed
+
+- **Insights Page**: Removed `/insights` route, Heatmap component, and CategoryChart component
+- **Stats API**: Removed `fetchStats()` function and `HeatmapEntry`, `CategoryDistribution`, `StatsResponse` types
+- **Settings Insights Button**: Removed Insights navigation button from Settings modal
+
+### Changed
+
+- **ItemForm**: Date fields (scheduled date, due date, repeat, if missed) and delegation fields (assignee notes, assign to) are conditionally rendered based on feature flags
+- **ItemRow**: Recurrence icon, due/scheduled date displays, urgency border styling, delegation badges, and assignee notes are conditionally rendered based on feature flags
+- **Home Page**: Urgency sorting, planned view toggle, delegation sections, and delegation API calls are conditionally gated by feature flags
+- **Version**: Bumped to v0.11.0
+
 ## 0.7.0 - 2026-01-31
 
 ### Added

@@ -53,6 +53,27 @@ interface NotificationServiceInterface
     ): void;
 
     /**
+     * Dispatch a notification when a task is completed by the assignee.
+     */
+    public function notifyTaskCompletedByAssignee(
+        User $owner,
+        string $taskId,
+        string $taskTitle,
+        string $assigneeName,
+        string $newStatus
+    ): void;
+
+    /**
+     * Dispatch a notification when an assignee rejects (unassigns themselves from) a task.
+     */
+    public function notifyTaskRejected(
+        User $owner,
+        string $taskId,
+        string $taskTitle,
+        string $assigneeName
+    ): void;
+
+    /**
      * Dispatch a notification for a connection request.
      */
     public function notifyConnectionRequest(

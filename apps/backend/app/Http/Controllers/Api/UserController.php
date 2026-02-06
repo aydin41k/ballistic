@@ -46,6 +46,7 @@ final class UserController extends Controller
                 Rule::unique('users')->ignore($user->id),
             ],
             'phone' => ['nullable', 'string', 'max:20'],
+            'notes' => ['nullable', 'string', 'max:10000'],
             'password' => ['sometimes', 'required', 'confirmed', Password::defaults()],
         ]);
 

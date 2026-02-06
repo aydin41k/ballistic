@@ -56,9 +56,14 @@ final class ItemPolicy
     /**
      * Check if the user (as assignee) is allowed to update the given fields.
      *
+     * Assignees may update status and assignee_notes unconditionally.
+     * They may also set assignee_id to null (self-unassignment / rejection),
+     * but cannot reassign the task to another user.
+     *
      * @param  array<string>  $fieldsBeingUpdated
+     * @param  array<string, mixed>  $validatedData  The validated request data for conditional checks
      */
-    public function canAssigneeUpdateFields(User $user, Item $item, array $fieldsBeingUpdated): bool
+    public function canAssigneeUpdateFields(User $user, Item $item, array $fieldsBeingUpdated, array $validatedData = []): bool
     {
         // Owner can update any field
         if ($this->isOwner($user, $item)) {
@@ -68,9 +73,16 @@ final class ItemPolicy
         // Assignee can only update allowed fields
         if ($this->isAssignee($user, $item)) {
             foreach ($fieldsBeingUpdated as $field) {
-                if (! in_array($field, self::ASSIGNEE_ALLOWED_FIELDS, true)) {
-                    return false;
+                if (in_array($field, self::ASSIGNEE_ALLOWED_FIELDS, true)) {
+                    continue;
                 }
+
+                // Allow assignee_id only when setting to null (self-unassignment)
+                if ($field === 'assignee_id' && array_key_exists('assignee_id', $validatedData) && $validatedData['assignee_id'] === null) {
+                    continue;
+                }
+
+                return false;
             }
 
             return true;

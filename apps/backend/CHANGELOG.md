@@ -5,6 +5,105 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.13.0] - 2026-02-06
+
+### Added
+
+#### User Notes (Scratchpad)
+- **Notes Column**: New nullable `text` column on users table for free-form scratchpad content
+- **PATCH /api/user**: Accepts `notes` field (nullable string, max 10,000 characters)
+- **GET /api/user**: Returns `notes` in the user profile response via UserResource
+
+### Fixed
+
+#### Data Integrity — Missing DB Transactions
+- **ItemController::ensureConnection()**: Wrapped delete + create of declined connections in `DB::transaction()` to prevent orphaned state if create fails after delete
+- **ConnectionController::store()**: Wrapped delete of declined connection + create of new pending connection in `DB::transaction()`
+- **WebPushService::sendToSubscriptions()**: Wrapped batch `last_used_at` update + expired subscription delete in `DB::transaction()`
+
+### Tests
+- Added NotesTest with 5 tests covering save, read, max-length validation, clear, and default null
+
+## [0.12.0] - 2026-02-06
+
+### Removed
+
+#### Insights / Activity Stats
+- **StatsController**: Removed user-facing `/api/stats` endpoint (admin stats unchanged)
+- **DailyStatService**: Removed daily stat tracking service
+- **DailyStat Model**: Removed model and added migration to drop `daily_stats` table
+- **ItemObserver**: Removed observer that tracked daily created/completed counts
+- **StatsTest**: Removed 8 stats feature tests
+- **OpenAPI**: Removed `/api/stats` path and `HeatmapEntry`, `CategoryDistribution`, `StatsResponse` schemas
+
+## [0.11.0] - 2026-02-06
+
+### Added
+
+#### Assignee Completion Notifications
+- Assignee completing a task (`done` or `wontdo`) now notifies the task creator via `task_completed_by_assignee` notification type
+- New `notifyTaskCompletedByAssignee` method on NotificationService and interface
+- Push notification sent to creator immediately when assignee completes
+
+#### Due Date Change Notifications
+- Owner changing a task's due date now notifies the assignee via the existing `task_updated` notification type
+- Due date changes tracked alongside title and description changes in the notification `data.changes` payload
+- Clearing a due date (setting to null) also triggers notification
+
+#### Assignment Rejection (Self-Unassignment)
+- Assignees can now unassign themselves from a task by setting `assignee_id` to null
+- Self-unassignment sends a `task_rejected` notification to the task creator
+- Assignees still cannot reassign tasks to other users (only owner can do that)
+- New `notifyTaskRejected` method on NotificationService and interface
+
+#### Auto-Connect on Assignment
+- Assigning a task to any user now auto-creates an accepted connection if one does not exist
+- Pending connections are auto-accepted when the owner assigns a task
+- Declined connections are replaced with a fresh accepted connection
+- Removes the need to manually connect before delegating tasks
+
+#### User Discovery in Assign Modal (Frontend)
+- The Assign Modal now falls back to the `/api/users/discover` endpoint when no connected user is found
+- Entering a full email address or phone number will find any user on the platform
+- Discovered (unconnected) users are displayed with a visual distinction (amber highlight)
+- Backend auto-connects on assignment, so no manual connection step is needed
+
+#### Task List Section Headers (Frontend)
+- Task list now visually separates items into three sections: "Assigned to Me", "My Tasks", and "Delegated to Others"
+- Section headers only appear when items exist in that section
+- "Decline" button available on assigned items for quick rejection
+
+#### Assignee Notes (Frontend)
+- Assignee notes now displayed inline on item rows
+- Assignees can edit their notes in the task edit form via "My Notes" textarea
+- Owners of delegated tasks see assignee notes as read-only in the edit form
+
+### Fixed
+
+#### Jobs Table Schema (Pre-existing Bug)
+- Fixed `jobs` table using UUID primary key instead of `BIGSERIAL` — Laravel's database queue driver expects an auto-incrementing integer `id`
+- Added migration to recreate the table with the correct schema
+- Updated the original base migration to use `$table->id()` for fresh installs
+
+#### Frontend State Management
+- Status toggling on assigned or delegated items now correctly updates the UI
+- `onRowChange` now updates all three item arrays (items, assignedItems, delegatedItems)
+- Edit form optimistic updates now correctly propagate across all item arrays
+
+### Changed
+- Assignment no longer requires a pre-existing connection — connections are auto-created on assignment
+- `ItemPolicy::canAssigneeUpdateFields()` now accepts `$validatedData` parameter for conditional field checks
+- `CreateNotificationJob::getNotificationUrl()` now routes `task_completed_by_assignee`, `task_rejected`, and `task_unassigned` types to the app URL
+
+### Tests
+- Added 12 new backend tests covering all three notification gaps and assignment rejection:
+  - 4 tests for assignee completion notifications (done, wontdo, own task guard, double-notify guard)
+  - 3 tests for due date change notifications (change, clear, unassigned guard)
+  - 5 tests for assignment rejection (self-unassign, creator notification, no unassigned notification, combined fields, restricted fields)
+- Updated 3 existing tests to verify auto-connect behaviour (previously asserted 403, now assert 200 + connection created)
+- All 40 ItemAssignment tests passing (28 existing + 12 new)
+- All 253 backend tests passing, all 40 frontend tests passing
+
 ## [0.10.1] - 2026-02-01
 
 ### Fixed

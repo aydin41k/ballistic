@@ -78,7 +78,7 @@ final class CreateNotificationJob implements ShouldQueue
         $appUrl = config('app.frontend_url', config('app.url', '/'));
 
         return match ($this->type) {
-            'task_assigned', 'task_updated', 'task_completed' => $appUrl,
+            'task_assigned', 'task_updated', 'task_completed', 'task_completed_by_assignee', 'task_rejected', 'task_unassigned' => $appUrl,
             'connection_request' => $appUrl.'/connections',
             'connection_accepted' => $appUrl.'/connections',
             default => $appUrl,

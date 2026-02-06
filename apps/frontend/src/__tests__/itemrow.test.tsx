@@ -46,6 +46,7 @@ describe("ItemRow", () => {
     recurrence_strategy: null,
     is_recurring_template: false,
     is_recurring_instance: false,
+    assignee_notes: null,
     is_assigned: false,
     is_delegated: false,
     created_at: "2025-01-01T00:00:00Z",

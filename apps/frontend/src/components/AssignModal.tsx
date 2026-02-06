@@ -2,7 +2,7 @@
 
 import type { UserLookup } from "@/types";
 import { useState, useEffect, useCallback } from "react";
-import { lookupUsers } from "@/lib/api";
+import { lookupUsers, discoverUser } from "@/lib/api";
 
 type Props = {
   isOpen: boolean;
@@ -19,22 +19,37 @@ export function AssignModal({
 }: Props) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<UserLookup[]>([]);
+  const [discoveredUser, setDiscoveredUser] = useState<UserLookup | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Debounced search
+  // Debounced search: lookup connected users first, then discover if empty
   const searchUsers = useCallback(async (searchQuery: string) => {
     if (searchQuery.length < 3) {
       setResults([]);
+      setDiscoveredUser(null);
       return;
     }
 
     setLoading(true);
     setError(null);
+    setDiscoveredUser(null);
 
     try {
+      // First search among connected users
       const users = await lookupUsers(searchQuery);
-      setResults(users);
+
+      if (users.length > 0) {
+        setResults(users);
+        return;
+      }
+
+      // No connected user found — try discovery (exact email or phone)
+      setResults([]);
+      const discovery = await discoverUser(searchQuery);
+      if (discovery.found && discovery.user) {
+        setDiscoveredUser(discovery.user);
+      }
     } catch (err) {
       setError("Failed to search users");
       console.error("User lookup error:", err);
@@ -57,6 +72,7 @@ export function AssignModal({
     if (!isOpen) {
       setQuery("");
       setResults([]);
+      setDiscoveredUser(null);
       setError(null);
     }
   }, [isOpen]);
@@ -149,12 +165,17 @@ export function AssignModal({
             <div className="py-4 text-center text-sm text-red-500">{error}</div>
           )}
 
-          {!loading && !error && results.length === 0 && query.length >= 3 && (
-            <div className="py-4 text-center text-sm text-slate-500">
-              No users found
-            </div>
-          )}
+          {!loading &&
+            !error &&
+            results.length === 0 &&
+            !discoveredUser &&
+            query.length >= 3 && (
+              <div className="py-4 text-center text-sm text-slate-500">
+                No users found
+              </div>
+            )}
 
+          {/* Connected users — direct selection */}
           {!loading && results.length > 0 && (
             <div className="space-y-2">
               {results.map((user) => (
@@ -166,7 +187,6 @@ export function AssignModal({
                   }}
                   className="w-full flex items-center gap-3 p-3 rounded-md hover:bg-slate-50 transition-colors text-left"
                 >
-                  {/* Avatar placeholder */}
                   <div className="w-10 h-10 rounded-full bg-[var(--blue)] flex items-center justify-center text-white font-medium">
                     {user.name.charAt(0).toUpperCase()}
                   </div>
@@ -180,6 +200,34 @@ export function AssignModal({
                   </div>
                 </button>
               ))}
+            </div>
+          )}
+
+          {/* Discovered user — not yet connected, but backend auto-connects on assignment */}
+          {!loading && discoveredUser && (
+            <div className="space-y-2">
+              <p className="text-xs text-slate-500">
+                User found — a connection will be created automatically
+              </p>
+              <button
+                onClick={() => {
+                  onSelect(discoveredUser);
+                  onClose();
+                }}
+                className="w-full flex items-center gap-3 p-3 rounded-md bg-amber-50 border border-amber-200 hover:bg-amber-100 transition-colors text-left"
+              >
+                <div className="w-10 h-10 rounded-full bg-amber-500 flex items-center justify-center text-white font-medium">
+                  {discoveredUser.name.charAt(0).toUpperCase()}
+                </div>
+                <div>
+                  <div className="text-sm font-medium text-slate-700">
+                    {discoveredUser.name}
+                  </div>
+                  <div className="text-xs text-slate-500">
+                    {discoveredUser.email_masked}
+                  </div>
+                </div>
+              </button>
             </div>
           )}
         </div>

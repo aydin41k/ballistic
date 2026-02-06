@@ -11,6 +11,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 final class ConnectionController extends Controller
 {
@@ -133,16 +134,21 @@ final class ConnectionController extends Controller
                 );
             }
 
-            // If previously declined, allow new request
-            $existingConnection->delete();
+            // If previously declined, allow new request — delete inside transaction below
         }
 
-        // Create new connection request
-        $connection = Connection::create([
-            'requester_id' => $currentUser->id,
-            'addressee_id' => $targetUserId,
-            'status' => 'pending',
-        ]);
+        // Create new connection request (atomically replace any declined connection)
+        $connection = DB::transaction(function () use ($existingConnection, $currentUser, $targetUserId): Connection {
+            if ($existingConnection !== null && $existingConnection->status === 'declined') {
+                $existingConnection->delete();
+            }
+
+            return Connection::create([
+                'requester_id' => $currentUser->id,
+                'addressee_id' => $targetUserId,
+                'status' => 'pending',
+            ]);
+        });
 
         // Notify the target user
         $targetUser = User::find($targetUserId);

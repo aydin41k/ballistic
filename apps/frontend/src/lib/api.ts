@@ -3,7 +3,7 @@ import type {
   ItemScope,
   Project,
   Status,
-  StatsResponse,
+  User,
   UserLookup,
   NotificationsResponse,
 } from "@/types";
@@ -83,6 +83,40 @@ function buildUrl(
   }
 
   return url.toString();
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// User Profile
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Fetch the authenticated user's profile.
+ */
+export async function fetchUser(): Promise<User> {
+  const response = await fetch(buildUrl("/api/user"), {
+    method: "GET",
+    headers: getAuthHeaders(),
+    cache: "no-store",
+  });
+
+  const payload = await handleResponse<User | { data?: User }>(response);
+  return extractData(payload);
+}
+
+/**
+ * Update the authenticated user's profile.
+ */
+export async function updateUser(
+  data: Partial<Pick<User, "name" | "email" | "phone" | "notes">>,
+): Promise<User> {
+  const response = await fetch(buildUrl("/api/user"), {
+    method: "PATCH",
+    headers: getAuthHeaders(),
+    body: JSON.stringify(data),
+  });
+
+  const payload = await handleResponse<User | { data?: User }>(response);
+  return extractData(payload);
 }
 
 /**
@@ -193,6 +227,7 @@ export async function updateItem(
       Item,
       | "title"
       | "description"
+      | "assignee_notes"
       | "project_id"
       | "position"
       | "scheduled_date"
@@ -224,31 +259,6 @@ export async function deleteItem(id: string): Promise<{ ok: true }> {
 
   await handleResponse<void>(response);
   return { ok: true };
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Stats
-// ─────────────────────────────────────────────────────────────────────────────
-
-/**
- * Fetch activity stats (heatmap + category distribution)
- */
-export async function fetchStats(params?: {
-  from?: string;
-  to?: string;
-}): Promise<StatsResponse> {
-  const url = buildUrl("/api/stats", {
-    from: params?.from,
-    to: params?.to,
-  });
-
-  const response = await fetch(url, {
-    method: "GET",
-    headers: getAuthHeaders(),
-    cache: "no-store",
-  });
-
-  return handleResponse<StatsResponse>(response);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -316,6 +326,29 @@ export async function lookupUsers(query: string): Promise<UserLookup[]> {
   );
   const users = extractData(payload);
   return Array.isArray(users) ? users : [];
+}
+
+/**
+ * Discover a user by exact email or phone number.
+ * Searches all users (not just connected ones).
+ * Used to find users before connecting with them.
+ */
+export async function discoverUser(
+  query: string,
+): Promise<{ found: boolean; user?: UserLookup }> {
+  // Determine if query looks like an email or phone
+  const isEmail = query.includes("@");
+  const body: Record<string, string> = isEmail
+    ? { email: query }
+    : { phone: query };
+
+  const response = await fetch(buildUrl("/api/users/discover"), {
+    method: "POST",
+    headers: getAuthHeaders(),
+    body: JSON.stringify(body),
+  });
+
+  return handleResponse<{ found: boolean; user?: UserLookup }>(response);
 }
 
 /**

@@ -103,6 +103,52 @@ final class NotificationService implements NotificationServiceInterface
     }
 
     /**
+     * Dispatch a notification when a task is completed by the assignee.
+     */
+    public function notifyTaskCompletedByAssignee(
+        User $owner,
+        string $taskId,
+        string $taskTitle,
+        string $assigneeName,
+        string $newStatus
+    ): void {
+        $statusLabel = $newStatus === 'done' ? 'completed' : 'marked as won\'t do';
+
+        CreateNotificationJob::dispatch(
+            userId: (string) $owner->id,
+            type: 'task_completed_by_assignee',
+            title: 'Task Completed by Assignee',
+            message: "{$assigneeName} {$statusLabel}: {$taskTitle}",
+            data: [
+                'item_id' => $taskId,
+                'assignee_name' => $assigneeName,
+                'new_status' => $newStatus,
+            ],
+        );
+    }
+
+    /**
+     * Dispatch a notification when an assignee rejects (unassigns themselves from) a task.
+     */
+    public function notifyTaskRejected(
+        User $owner,
+        string $taskId,
+        string $taskTitle,
+        string $assigneeName
+    ): void {
+        CreateNotificationJob::dispatch(
+            userId: (string) $owner->id,
+            type: 'task_rejected',
+            title: 'Task Rejected',
+            message: "{$assigneeName} declined the task: {$taskTitle}",
+            data: [
+                'item_id' => $taskId,
+                'assignee_name' => $assigneeName,
+            ],
+        );
+    }
+
+    /**
      * Dispatch a notification for a connection request.
      */
     public function notifyConnectionRequest(

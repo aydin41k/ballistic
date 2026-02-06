@@ -5,6 +5,7 @@ export interface User {
   name: string;
   email: string;
   phone: string | null;
+  notes: string | null;
   email_verified_at: string | null;
   created_at: string;
   updated_at: string;
@@ -43,6 +44,7 @@ export interface Item {
   project_id: string | null;
   title: string;
   description: string | null;
+  assignee_notes: string | null;
   status: Status;
   position: number;
   scheduled_date: string | null;
@@ -92,23 +94,6 @@ export interface AuthResponse {
 export interface ValidationError {
   message: string;
   errors: Record<string, string[]>;
-}
-
-export interface HeatmapEntry {
-  date: string;
-  completed_count: number;
-}
-
-export interface CategoryDistribution {
-  project_id: string | null;
-  project_name: string;
-  project_color: string | null;
-  completed_count: number;
-}
-
-export interface StatsResponse {
-  heatmap: HeatmapEntry[];
-  category_distribution: CategoryDistribution[];
 }
 
 export type RecurrencePreset =

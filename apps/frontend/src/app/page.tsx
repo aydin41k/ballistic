@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useFeatureFlags } from "@/hooks/useFeatureFlags";
 import { useRouter } from "next/navigation";
 import type { Item, ItemScope, Project } from "@/types";
 import {
@@ -16,6 +17,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { ItemForm } from "@/components/ItemForm";
 import { SplashScreen } from "@/components/SplashScreen";
 import { SettingsModal } from "@/components/SettingsModal";
+import { NotesModal } from "@/components/NotesModal";
 import { useAuth } from "@/contexts/AuthContext";
 
 function normaliseItemResponse(payload: Item | { data?: Item }): Item {
@@ -85,12 +87,21 @@ export default function Home() {
   const [toast, setToast] = useState<string | null>(null);
   const toastTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [showSettings, setShowSettings] = useState(false);
+  const [showNotes, setShowNotes] = useState(false);
+  const { dates, delegation } = useFeatureFlags();
 
   const showError = useCallback((message: string) => {
     if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
     setToast(message);
     toastTimeoutRef.current = setTimeout(() => setToast(null), 4000);
   }, []);
+
+  // Reset view scope when dates feature is turned off
+  useEffect(() => {
+    if (!dates && viewScope !== "active") {
+      setViewScope("active");
+    }
+  }, [dates, viewScope]);
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -105,8 +116,12 @@ export default function Home() {
       setLoading(true);
       Promise.all([
         fetchItems({ scope: viewScope }),
-        fetchItems({ assigned_to_me: true, scope: viewScope }),
-        fetchItems({ delegated: true, scope: viewScope }),
+        delegation
+          ? fetchItems({ assigned_to_me: true, scope: viewScope })
+          : Promise.resolve([]),
+        delegation
+          ? fetchItems({ delegated: true, scope: viewScope })
+          : Promise.resolve([]),
         fetchProjects(),
       ])
         .then(([itemsData, assignedData, delegatedData, projectsData]) => {
@@ -120,7 +135,7 @@ export default function Home() {
         })
         .finally(() => setLoading(false));
     }
-  }, [isAuthenticated, viewScope]);
+  }, [isAuthenticated, viewScope, dates, delegation]);
 
   // Handle scrolling to newly added items
   useEffect(() => {
@@ -139,22 +154,36 @@ export default function Home() {
     }
   }, [scrollToItemId]);
 
-  // Combine all items: my tasks sorted by urgency, assigned to me, and delegated
-  const sortedItems = sortByUrgency(items);
-  const allItems = [
-    ...assignedItems, // Tasks assigned to me (from others)
-    ...sortedItems, // My own tasks (not delegated)
-    ...delegatedItems, // Tasks I delegated to others
-  ];
+  // Sort my tasks by urgency (only when dates feature is enabled)
+  const sortedItems = dates ? sortByUrgency(items) : items;
 
   function onRowChange(itemOrUpdater: Item | ((current: Item) => Item)) {
-    setItems((prev) => {
+    const updater = (prev: Item[]) => {
       if (!Array.isArray(prev)) return [];
       if (typeof itemOrUpdater === "function") {
         return prev.map(itemOrUpdater);
       }
       return prev.map((i) => (i.id === itemOrUpdater.id ? itemOrUpdater : i));
-    });
+    };
+
+    // Update all three arrays — the mapper is by ID so non-matching items are unchanged
+    setItems(updater);
+    setAssignedItems(updater);
+    setDelegatedItems(updater);
+  }
+
+  // Decline (reject) an assigned task — optimistically removes from assigned list
+  async function handleDecline(item: Item) {
+    const previousAssigned = [...assignedItems];
+    setAssignedItems((prev) => prev.filter((i) => i.id !== item.id));
+
+    try {
+      await updateItem(item.id, { assignee_id: null });
+    } catch (error) {
+      console.error("Failed to decline task:", error);
+      setAssignedItems(previousAssigned);
+      showError("Failed to decline task. Please try again.");
+    }
   }
 
   // Optimistic reordering function that updates UI immediately and persists via bulk API
@@ -370,7 +399,7 @@ export default function Home() {
       </header>
 
       {/* Planned view banner */}
-      {viewScope === "planned" && (
+      {dates && viewScope === "planned" && (
         <div className="flex items-center justify-between rounded-md bg-sky-50 px-3 py-2 text-sm text-sky-700 border border-sky-200">
           <span>Showing planned items (future scheduled dates)</span>
           <button
@@ -392,6 +421,7 @@ export default function Home() {
               onCancel={() => setShowAdd(false)}
               projects={projects}
               onCreateProject={handleCreateProject}
+              showAssignment={delegation}
               onSubmit={async (v) => {
                 // Create optimistic item for immediate UI feedback
                 // Use a more unique temporary ID to avoid conflicts
@@ -418,6 +448,7 @@ export default function Home() {
                     null,
                   is_recurring_template: !!v.recurrence_rule,
                   is_recurring_instance: false,
+                  assignee_notes: null,
                   is_assigned: !!v.assignee_id,
                   is_delegated: !!v.assignee_id,
                   created_at: new Date().toISOString(),
@@ -484,93 +515,164 @@ export default function Home() {
           </div>
         )}
 
-        {/* Task Items */}
-        {allItems.map((item, index) => (
-          <div key={item.id || `item-${index}`} className="flex flex-col gap-2">
-            {editing?.id === item.id ? (
-              <div className="rounded-md bg-white p-3 shadow-sm animate-scale-in">
-                <ItemForm
-                  initial={item}
-                  onCancel={() => setEditing(null)}
-                  projects={projects}
-                  onCreateProject={handleCreateProject}
-                  onSubmit={async (v) => {
-                    // Create optimistic update for immediate UI feedback
-                    const selectedProject = v.project_id
-                      ? projects.find((p) => p.id === v.project_id)
-                      : null;
-                    const optimisticUpdate: Item = {
-                      ...item,
-                      title: v.title,
-                      description: v.description || null,
-                      project_id: v.project_id ?? null,
-                      project: selectedProject ?? null,
-                      scheduled_date: v.scheduled_date ?? null,
-                      due_date: v.due_date ?? null,
-                      recurrence_rule: v.recurrence_rule ?? null,
-                      recurrence_strategy:
-                        (v.recurrence_strategy as Item["recurrence_strategy"]) ??
-                        null,
-                      is_recurring_template: !!v.recurrence_rule,
-                      assignee_id: v.assignee_id ?? null,
-                    };
+        {/* Render a single item — either in edit mode or as a row */}
+        {(() => {
+          function renderItem(item: Item, index: number) {
+            return (
+              <div
+                key={item.id || `item-${index}`}
+                className="flex flex-col gap-2"
+              >
+                {editing?.id === item.id ? (
+                  <div className="rounded-md bg-white p-3 shadow-sm animate-scale-in">
+                    <ItemForm
+                      initial={item}
+                      onCancel={() => setEditing(null)}
+                      projects={projects}
+                      onCreateProject={handleCreateProject}
+                      showAssignment={delegation}
+                      onSubmit={async (v) => {
+                        const selectedProject = v.project_id
+                          ? projects.find((p) => p.id === v.project_id)
+                          : null;
+                        const optimisticUpdate: Item = {
+                          ...item,
+                          title: v.title,
+                          description: v.description || null,
+                          assignee_notes:
+                            v.assignee_notes !== undefined
+                              ? v.assignee_notes
+                              : item.assignee_notes,
+                          project_id: v.project_id ?? null,
+                          project: selectedProject ?? null,
+                          scheduled_date: v.scheduled_date ?? null,
+                          due_date: v.due_date ?? null,
+                          recurrence_rule: v.recurrence_rule ?? null,
+                          recurrence_strategy:
+                            (v.recurrence_strategy as Item["recurrence_strategy"]) ??
+                            null,
+                          is_recurring_template: !!v.recurrence_rule,
+                          assignee_id: v.assignee_id ?? null,
+                        };
 
-                    // Update UI immediately and close edit form
-                    setItems((prev) =>
-                      prev.map((i) =>
-                        i.id === item.id ? optimisticUpdate : i,
-                      ),
-                    );
-                    setEditing(null);
+                        // Update all arrays optimistically
+                        const updater = (prev: Item[]) =>
+                          prev.map((i) =>
+                            i.id === item.id ? optimisticUpdate : i,
+                          );
+                        setItems(updater);
+                        setAssignedItems(updater);
+                        setDelegatedItems(updater);
+                        setEditing(null);
 
-                    // Send API request in background (fire and forget)
-                    updateItem(item.id, {
-                      title: v.title,
-                      description: v.description || null,
-                      project_id: v.project_id,
-                      scheduled_date: v.scheduled_date,
-                      due_date: v.due_date,
-                      recurrence_rule: v.recurrence_rule,
-                      recurrence_strategy:
-                        (v.recurrence_strategy as Item["recurrence_strategy"]) ??
-                        null,
-                      assignee_id: v.assignee_id,
-                    }).catch((error) => {
-                      console.error("Failed to update item:", error);
-                      setItems((prev) =>
-                        prev.map((i) => (i.id === item.id ? item : i)),
-                      );
-                      showError("Failed to update task. Changes reverted.");
-                    });
-                  }}
-                />
+                        updateItem(item.id, {
+                          title: v.title,
+                          description: v.description || null,
+                          assignee_notes: v.assignee_notes,
+                          project_id: v.project_id,
+                          scheduled_date: v.scheduled_date,
+                          due_date: v.due_date,
+                          recurrence_rule: v.recurrence_rule,
+                          recurrence_strategy:
+                            (v.recurrence_strategy as Item["recurrence_strategy"]) ??
+                            null,
+                          assignee_id: v.assignee_id,
+                        }).catch((error) => {
+                          console.error("Failed to update item:", error);
+                          const revert = (prev: Item[]) =>
+                            prev.map((i) => (i.id === item.id ? item : i));
+                          setItems(revert);
+                          setAssignedItems(revert);
+                          setDelegatedItems(revert);
+                          showError("Failed to update task. Changes reverted.");
+                        });
+                      }}
+                    />
+                  </div>
+                ) : (
+                  <ItemRow
+                    item={item}
+                    onChange={onRowChange}
+                    onOptimisticReorder={onOptimisticReorder}
+                    index={index}
+                    onEdit={() => setEditing(item)}
+                    isFirst={index === 0}
+                    onDragStart={handleDragStart}
+                    onDragEnter={handleDragEnter}
+                    onDropItem={handleDrop}
+                    onDragEnd={handleDragEnd}
+                    draggingId={draggingId}
+                    dragOverId={dragOverId}
+                    onError={showError}
+                  />
+                )}
               </div>
-            ) : (
-              <ItemRow
-                item={item}
-                onChange={onRowChange}
-                onOptimisticReorder={onOptimisticReorder}
-                index={index}
-                onEdit={() => setEditing(item)}
-                isFirst={index === 0}
-                onDragStart={handleDragStart}
-                onDragEnter={handleDragEnter}
-                onDropItem={handleDrop}
-                onDragEnd={handleDragEnd}
-                draggingId={draggingId}
-                dragOverId={dragOverId}
-                onError={showError}
-              />
-            )}
-          </div>
-        ))}
+            );
+          }
 
-        {allItems.length === 0 && !loading && (
-          <EmptyState
-            type="no-items"
-            message="Start your bullet journal journey by adding your first task!"
-          />
-        )}
+          return (
+            <>
+              {/* Assigned to Me section */}
+              {delegation && assignedItems.length > 0 && (
+                <>
+                  <div className="flex items-center justify-between mt-2">
+                    <h2 className="text-xs font-semibold uppercase tracking-wider text-emerald-600">
+                      Assigned to Me
+                    </h2>
+                  </div>
+                  {assignedItems.map((item, index) => (
+                    <div key={item.id || `assigned-${index}`}>
+                      {renderItem(item, index)}
+                      {editing?.id !== item.id && (
+                        <button
+                          type="button"
+                          onClick={() => handleDecline(item)}
+                          className="mt-1 text-xs text-red-500 hover:text-red-700 transition-colors px-3"
+                        >
+                          Decline
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </>
+              )}
+
+              {/* My Tasks section */}
+              {sortedItems.length > 0 && (
+                <>
+                  {delegation && (
+                    <h2 className="text-xs font-semibold uppercase tracking-wider text-[var(--navy)] mt-2">
+                      My Tasks
+                    </h2>
+                  )}
+                  {sortedItems.map((item, index) => renderItem(item, index))}
+                </>
+              )}
+
+              {/* Delegated to Others section */}
+              {delegation && delegatedItems.length > 0 && (
+                <>
+                  <h2 className="text-xs font-semibold uppercase tracking-wider text-amber-600 mt-2">
+                    Delegated to Others
+                  </h2>
+                  {delegatedItems.map((item, index) => renderItem(item, index))}
+                </>
+              )}
+
+              {/* Empty state */}
+              {sortedItems.length === 0 &&
+                (!delegation ||
+                  (assignedItems.length === 0 &&
+                    delegatedItems.length === 0)) &&
+                !loading && (
+                  <EmptyState
+                    type="no-items"
+                    message="Start your bullet journal journey by adding your first task!"
+                  />
+                )}
+            </>
+          );
+        })()}
       </div>
 
       {/* Footer */}
@@ -580,28 +682,59 @@ export default function Home() {
 
       {/* Bottom Bar - Glassy style matching top bar */}
       <div className="fixed inset-x-0 bottom-0 z-20 bg-[var(--page-bg)]/95 backdrop-blur border-t border-slate-200/50">
-        <div className="mx-auto flex max-w-sm items-center justify-between px-4 py-3">
-          <button
-            type="button"
-            aria-label="Settings"
-            onClick={() => setShowSettings(true)}
-            className="tap-target grid h-10 w-10 place-items-center rounded-md hover:bg-slate-100 active:scale-95 transition-all duration-200"
-          >
-            {/* gear icon */}
-            <svg
-              viewBox="0 0 24 24"
-              width="20"
-              height="20"
-              fill="none"
-              stroke="currentColor"
-              className="text-[var(--navy)]"
+        <div className="mx-auto grid max-w-sm grid-cols-[1fr_auto_1fr] items-center px-4 py-3">
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              aria-label="Settings"
+              onClick={() => setShowSettings(true)}
+              className="tap-target grid h-10 w-10 place-items-center rounded-md hover:bg-slate-100 active:scale-95 transition-all duration-200"
             >
-              <path
-                d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Zm7.4-3.5a7.4 7.4 0 0 0-.1-1l2.1-1.6-2-3.4-2.5 1a7.6 7.6 0 0 0-1.7-1l-.4-2.6H9.2L8.8 6a7.6 7.6 0 0 0-1.7 1l-2.5-1-2 3.4 2.1 1.6a7.4 7.4 0 0 0 0 2L2.6 14l2 3.4 2.5-1a7.6 7.6 0 0 0 1.7 1l.4 2.6h5.6l.4-2.6a7.6 7.6 0 0 0 1.7-1l2.5 1 2-3.4-2.1-1.6c.1-.3.1-.7.1-1Z"
-                strokeWidth="1.4"
-              />
-            </svg>
-          </button>
+              {/* gear icon */}
+              <svg
+                viewBox="0 0 24 24"
+                width="20"
+                height="20"
+                fill="none"
+                stroke="currentColor"
+                className="text-[var(--navy)]"
+              >
+                <path
+                  d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Zm7.4-3.5a7.4 7.4 0 0 0-.1-1l2.1-1.6-2-3.4-2.5 1a7.6 7.6 0 0 0-1.7-1l-.4-2.6H9.2L8.8 6a7.6 7.6 0 0 0-1.7 1l-2.5-1-2 3.4 2.1 1.6a7.4 7.4 0 0 0 0 2L2.6 14l2 3.4 2.5-1a7.6 7.6 0 0 0 1.7 1l.4 2.6h5.6l.4-2.6a7.6 7.6 0 0 0 1.7-1l2.5 1 2-3.4-2.1-1.6c.1-.3.1-.7.1-1Z"
+                  strokeWidth="1.4"
+                />
+              </svg>
+            </button>
+            <button
+              type="button"
+              aria-label="Notes"
+              onClick={() => setShowNotes(true)}
+              className="tap-target grid h-10 w-10 place-items-center rounded-md hover:bg-slate-100 active:scale-95 transition-all duration-200"
+            >
+              {/* notepad icon */}
+              <svg
+                viewBox="0 0 24 24"
+                width="20"
+                height="20"
+                fill="none"
+                stroke="currentColor"
+                className="text-[var(--navy)]"
+              >
+                <path
+                  d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6Z"
+                  strokeWidth="1.4"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                <path
+                  d="M14 2v6h6M16 13H8M16 17H8M10 9H8"
+                  strokeWidth="1.4"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </button>
+          </div>
           <button
             type="button"
             aria-label="Add a new task"
@@ -611,32 +744,39 @@ export default function Home() {
             <span className="sr-only">Add new task...</span>
             <span className="text-2xl leading-none font-light">+</span>
           </button>
-          <button
-            type="button"
-            aria-label={
-              viewScope === "planned"
-                ? "Show active items"
-                : "Show planned items"
-            }
-            onClick={() =>
-              setViewScope(viewScope === "active" ? "planned" : "active")
-            }
-            className={`tap-target grid h-11 w-11 place-items-center rounded-full shadow-sm hover:shadow-md active:scale-95 ${viewScope === "planned" ? "bg-[var(--blue)] text-white" : "bg-white"}`}
-          >
-            {/* funnel icon */}
-            <svg
-              viewBox="0 0 24 24"
-              width="20"
-              height="20"
-              fill="none"
-              stroke="currentColor"
-              className={
-                viewScope === "planned" ? "text-white" : "text-[var(--navy)]"
+          <div className="flex justify-end">
+            <button
+              type="button"
+              aria-label={
+                viewScope === "planned"
+                  ? "Show active items"
+                  : "Show planned items"
               }
+              onClick={() => {
+                if (dates) {
+                  setViewScope(viewScope === "active" ? "planned" : "active");
+                }
+              }}
+              className={`tap-target grid h-11 w-11 place-items-center rounded-full shadow-sm hover:shadow-md active:scale-95 ${viewScope === "planned" && dates ? "bg-[var(--blue)] text-white" : "bg-white"} ${!dates ? "opacity-30 cursor-not-allowed" : ""}`}
+              disabled={!dates}
             >
-              <path d="M3 5h18l-7 8v5l-4 2v-7L3 5z" strokeWidth="1.5" />
-            </svg>
-          </button>
+              {/* funnel icon */}
+              <svg
+                viewBox="0 0 24 24"
+                width="20"
+                height="20"
+                fill="none"
+                stroke="currentColor"
+                className={
+                  viewScope === "planned" && dates
+                    ? "text-white"
+                    : "text-[var(--navy)]"
+                }
+              >
+                <path d="M3 5h18l-7 8v5l-4 2v-7L3 5z" strokeWidth="1.5" />
+              </svg>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -645,6 +785,9 @@ export default function Home() {
         isOpen={showSettings}
         onClose={() => setShowSettings(false)}
       />
+
+      {/* Notes Modal */}
+      <NotesModal isOpen={showNotes} onClose={() => setShowNotes(false)} />
     </div>
   );
 }
