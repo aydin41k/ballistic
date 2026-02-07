@@ -7,13 +7,15 @@ Route::get('/', function () {
     return Inertia::render('welcome');
 })->name('home');
 
-// Web dashboard is restricted to admin users only
-// Regular users should use the API and mobile/desktop apps
-Route::middleware(['auth', 'verified', 'admin'])->group(function () {
-    Route::get('dashboard', function () {
-        return Inertia::render('dashboard');
-    })->name('dashboard');
-});
+// Smart dashboard redirect: admins go to admin panel, others go to profile settings
+Route::get('dashboard', function () {
+    if (auth()->user()?->is_admin) {
+        return redirect()->route('admin.dashboard');
+    }
 
+    return redirect()->route('profile.edit');
+})->name('dashboard')->middleware(['auth', 'verified']);
+
+require __DIR__.'/admin.php';
 require __DIR__.'/settings.php';
 require __DIR__.'/auth.php';

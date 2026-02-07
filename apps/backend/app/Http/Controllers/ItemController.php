@@ -14,6 +14,7 @@ use App\Models\User;
 use App\Policies\ItemPolicy;
 use App\Services\RecurrenceService;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -100,7 +101,7 @@ final class ItemController extends Controller
         }
 
         if ($request->has('tag_id')) {
-            $query->whereHas('tags', function ($q) use ($request) {
+            $query->whereHas('tags', function (Builder $q) use ($request): void {
                 $q->where('tags.id', $request->tag_id);
             });
         }
@@ -488,10 +489,10 @@ final class ItemController extends Controller
 
         DB::transaction(function () use ($owner, $assigneeId): void {
             // Check for any existing connection (either direction)
-            $existing = Connection::where(function ($query) use ($owner, $assigneeId) {
+            $existing = Connection::where(function (Builder $query) use ($owner, $assigneeId): void {
                 $query->where('requester_id', $owner->id)
                     ->where('addressee_id', $assigneeId);
-            })->orWhere(function ($query) use ($owner, $assigneeId) {
+            })->orWhere(function (Builder $query) use ($owner, $assigneeId): void {
                 $query->where('requester_id', $assigneeId)
                     ->where('addressee_id', $owner->id);
             })->first();

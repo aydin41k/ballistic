@@ -7,6 +7,7 @@ namespace App\Http\Controllers;
 use App\Contracts\NotificationServiceInterface;
 use App\Models\Connection;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -97,10 +98,10 @@ final class ConnectionController extends Controller
         }
 
         // Check if connection already exists (either direction)
-        $existingConnection = Connection::where(function ($query) use ($currentUser, $targetUserId) {
+        $existingConnection = Connection::where(function (Builder $query) use ($currentUser, $targetUserId): void {
             $query->where('requester_id', $currentUser->id)
                 ->where('addressee_id', $targetUserId);
-        })->orWhere(function ($query) use ($currentUser, $targetUserId) {
+        })->orWhere(function (Builder $query) use ($currentUser, $targetUserId): void {
             $query->where('requester_id', $targetUserId)
                 ->where('addressee_id', $currentUser->id);
         })->first();

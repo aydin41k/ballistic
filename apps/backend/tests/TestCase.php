@@ -19,5 +19,8 @@ abstract class TestCase extends BaseTestCase
             \Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class,
             \Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class,
         ]);
+
+        // Fake Vite manifest so Inertia page renders don't fail in tests
+        $this->withoutVite();
     }
 }

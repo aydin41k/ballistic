@@ -34,7 +34,7 @@ final class Tag extends Model
     {
         parent::boot();
 
-        self::creating(function ($model): void {
+        self::creating(function (self $model): void {
             if (empty($model->id)) {
                 $model->id = Str::uuid();
             }

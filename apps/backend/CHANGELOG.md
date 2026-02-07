@@ -5,6 +5,70 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.14.3] - 2026-02-07
+
+### Changed
+
+#### PHP Type Safety Improvements
+- Added `declare(strict_types=1)` and `final` to all auth controllers, settings controllers, middleware, seeders, and form requests
+- Added typed closure parameters (`function (self $model): void`, `function (Builder $query): void`, etc.) throughout controllers, models, providers, and request classes
+- Added explicit return types to all method declarations and closures where missing
+- Fixed `resolveRouteBinding` override in `Item` model to use compatible signature (`$field = null` instead of `?string $field`) to satisfy LSP
+- Reverted invalid typed property declarations on Eloquent model properties (`$fillable`, `$casts`, `$keyType`, `$incrementing`, `$hidden`) — PHP 8.4 forbids adding types to properties inherited from untyped parent class declarations
+- Fixed `UsersController::show()` eager-load closure: changed `fn (Builder $q)` to `fn ($q)` since Laravel passes the `HasMany` relation object (not a plain `Builder`) to `with()` constraints
+
+## [0.14.2] - 2026-02-07
+
+### Fixed
+
+#### AuditLog timestamp and write pattern
+- **`$timestamps = false` → `UPDATED_AT = null`**: Eloquent now auto-populates `created_at` from PHP (app UTC timezone) instead of relying on the database `useCurrent()` default — ensures timezone consistency regardless of DB server config
+- **Two-write antipattern removed**: `AuditLogService::log()` previously accepted `?Request` and callers passed `null`, then did a second `$log->update()` for IP/UA; it now accepts `ipAddress` and `userAgent` directly so everything is written in a single `INSERT`
+- **Fragile DB re-query removed**: `hardReset()` used `AuditLog::where(...)->latest('created_at')->first()` to find the just-created log — race-condition-prone and three round-trips; the returned model is now used directly
+- **Redundant `reset_at` removed**: `new_values` for hard_reset no longer stores a manually-formatted `now()->toIso8601String()` string; `created_at` already records the timestamp
+- **Manual UUID boot → `HasUuids` trait**: removes `Str::uuid()` object-vs-string comparison hazard
+- **`HasFactory` added**: `AuditLog::factory()` now works for test fixtures
+- **`$target->id` → `$target->getKey()`**: consistent safe UUID string conversion across all service methods
+
+### Tests
+- Expanded `AuditLogTest` from 5 to 14 tests covering: timestamp auto-population, UTC timezone, absence of `updated_at`, IP/UA single-write on all three action types, factory states (hardReset, roleChanged, profileUpdated), and admin relationship loading
+
+## [0.14.1] - 2026-02-07
+
+### Fixed
+
+#### Admin Dashboard UI/UX
+- **Smart dashboard redirect**: `/dashboard` route no longer requires admin middleware; admins are redirected to `/admin`, non-admins to `/settings/profile` — fixes 403 for regular users after login
+- **Admin sidebar label**: Navigation group now shows "Administration" instead of the generic "Platform"
+- **Admin sidebar footer**: Replaced broken `NavFooter` (which opened links in new tabs) with a proper Inertia `Link`-based Settings entry; also added a visual separator before the user menu
+- **Admin dashboard welcome**: Added personalised greeting with the admin's name and an "Admin" badge; added Quick Actions (Manage Users, Settings)
+- **Blank template page**: Replaced `PlaceholderPattern` placeholders in `pages/dashboard.tsx` with a proper welcome page showing the user's name and navigation links
+
+## [0.14.0] - 2026-02-07
+
+### Added
+
+#### Admin Dashboard (Web UI)
+- **Secure Admin Middleware**: Enhanced `EnsureUserIsAdmin` with security logging (unauthorized attempts logged to `security` channel) and differentiated responses (JSON 403 for API, abort 403 for web)
+- **Admin Gate**: Registered `admin` Gate in `AuthServiceProvider` for fine-grained authorization checks
+- **`audit_logs` table**: New migration with UUID pk, admin_id FK, action, subject_type/id, old/new values JSON, IP, user agent, and composite indexes for efficient querying
+- **Performance Indexes**: Added indexes on `users.name`, `users.created_at`, `users.is_admin` for admin search/sort
+- **AuditLogService**: Centralised audit logging for all admin actions (hard reset, role change, profile update)
+- **AdminStatsService**: Cached (60s) health pulse stats — users, content (active todos, items by status), 24h growth, queue health (pending/failed jobs, pending notifications)
+- **AdminUserService**: Transactional hard reset (wipes items, projects, tags, notifications, connections, push subscriptions, tokens), role toggle, and profile update — all with audit trails
+- **Admin Web Controllers**: `DashboardController` (invokable) and `UsersController` (index, show, update, hardReset) under `routes/admin.php` with `auth`, `verified`, `admin` middleware
+- **Inertia Admin UI**: Admin layout with sidebar, Health Pulse dashboard, paginated/searchable users index (25/page), and user detail page with collaboration history (assigned items, delegated items, shared projects)
+- **NotificationFactory**: New factory for seeding/testing notifications
+
+### Fixed
+- **Dashboard route**: `/dashboard` now resolves directly to `DashboardController` instead of redirecting, so tests pass and page renders correctly
+- **UUID comparison**: Self-protection checks (prevent self-reset and self-demotion) now use string-cast key comparison to handle `Str::uuid()` returning `UuidInterface` objects vs DB strings
+- **Test Vite manifest**: Added `$this->withoutVite()` to base `TestCase::setUp()` so all Inertia page-render tests work without a built Vite manifest
+
+### Tests
+- Added `AdminWebTest` (18 tests) covering access control, search/filter/pagination, collaboration history, hard reset, role toggle, and health pulse stats
+- Added `AuditLogTest` (5 tests) verifying audit entries for hard reset, role change, and profile update
+
 ## [0.13.0] - 2026-02-06
 
 ### Added

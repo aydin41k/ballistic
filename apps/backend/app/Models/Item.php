@@ -53,17 +53,17 @@ final class Item extends Model
     }
 
     #[\Override]
-    public function resolveRouteBinding($value, $field = null)
+    public function resolveRouteBinding(mixed $value, $field = null): ?static
     {
         return $this->where($field ?? $this->getRouteKeyName(), $value)->first();
     }
 
     #[\Override]
-    protected static function boot()
+    protected static function boot(): void
     {
         parent::boot();
 
-        self::creating(function ($model) {
+        self::creating(function (self $model): void {
             if (empty($model->id)) {
                 $model->id = Str::uuid();
             }

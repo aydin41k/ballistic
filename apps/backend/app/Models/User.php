@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -82,7 +83,7 @@ final class User extends Authenticatable
     {
         parent::boot();
 
-        self::creating(function ($model): void {
+        self::creating(function (self $model): void {
             if (empty($model->id)) {
                 $model->id = Str::uuid();
             }
@@ -172,11 +173,11 @@ final class User extends Authenticatable
         $userId = $user instanceof User ? $user->id : $user;
 
         return Connection::where('status', 'accepted')
-            ->where(function ($query) use ($userId) {
-                $query->where(function ($q) use ($userId) {
+            ->where(function (Builder $query) use ($userId): void {
+                $query->where(function (Builder $q) use ($userId): void {
                     $q->where('requester_id', $this->id)
                         ->where('addressee_id', $userId);
-                })->orWhere(function ($q) use ($userId) {
+                })->orWhere(function (Builder $q) use ($userId): void {
                     $q->where('requester_id', $userId)
                         ->where('addressee_id', $this->id);
                 });

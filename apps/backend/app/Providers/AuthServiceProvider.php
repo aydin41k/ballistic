@@ -7,10 +7,12 @@ namespace App\Providers;
 use App\Models\Item;
 use App\Models\Project;
 use App\Models\Tag;
+use App\Models\User;
 use App\Policies\ItemPolicy;
 use App\Policies\ProjectPolicy;
 use App\Policies\TagPolicy;
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
+use Illuminate\Support\Facades\Gate;
 
 final class AuthServiceProvider extends ServiceProvider
 {
@@ -31,5 +33,7 @@ final class AuthServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->registerPolicies();
+
+        Gate::define('admin', fn (User $user): bool => $user->is_admin);
     }
 }

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests;
 
+use Illuminate\Database\Query\Builder;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
@@ -30,7 +31,7 @@ final class StoreTagRequest extends FormRequest
                 'required',
                 'string',
                 'max:255',
-                Rule::unique('tags')->where(function ($query) {
+                Rule::unique('tags')->where(function (Builder $query): Builder {
                     return $query->where('user_id', Auth::id());
                 }),
             ],

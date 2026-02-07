@@ -54,7 +54,7 @@ final class UserDiscoveryController extends Controller
                 $user = User::where('id', '!=', $currentUserId)
                     ->whereNotNull('phone')
                     ->get()
-                    ->first(function ($u) use ($phoneSuffix) {
+                    ->first(function (User $u) use ($phoneSuffix): bool {
                         $userPhoneDigits = preg_replace('/[^0-9]/', '', $u->phone ?? '');
                         $userSuffix = strlen($userPhoneDigits) >= 9 ? substr($userPhoneDigits, -9) : $userPhoneDigits;
 

@@ -69,7 +69,7 @@ final class StatsController extends Controller
             ->orderByDesc('items_count')
             ->limit(10)
             ->get()
-            ->map(function ($user) {
+            ->map(function (User $user): array {
                 return [
                     'id' => $user->id,
                     'name' => $user->name,

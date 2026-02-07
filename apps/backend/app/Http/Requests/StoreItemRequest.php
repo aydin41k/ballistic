@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests;
 
+use Illuminate\Database\Query\Builder;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
@@ -32,7 +33,7 @@ final class StoreItemRequest extends FormRequest
             'project_id' => [
                 'nullable',
                 'uuid',
-                Rule::exists('projects', 'id')->where(function ($query) {
+                Rule::exists('projects', 'id')->where(function (Builder $query): void {
                     $query->where('user_id', Auth::id());
                 }),
             ],
@@ -49,7 +50,7 @@ final class StoreItemRequest extends FormRequest
             'tag_ids' => ['nullable', 'array'],
             'tag_ids.*' => [
                 'uuid',
-                Rule::exists('tags', 'id')->where(function ($query) {
+                Rule::exists('tags', 'id')->where(function (Builder $query): void {
                     $query->where('user_id', Auth::id());
                 }),
             ],

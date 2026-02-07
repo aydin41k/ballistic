@@ -9,18 +9,8 @@ use Minishlink\WebPush\VAPID;
 
 final class GenerateVapidKeysCommand extends Command
 {
-    /**
-     * The name and signature of the console command.
-     *
-     * @var string
-     */
     protected $signature = 'webpush:generate-vapid';
 
-    /**
-     * The console command description.
-     *
-     * @var string
-     */
     protected $description = 'Generate VAPID keys for Web Push notifications';
 
     /**

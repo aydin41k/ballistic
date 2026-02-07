@@ -56,7 +56,7 @@ final class UserLookupController extends Controller
             $users = User::whereIn('id', $connectedUserIds)
                 ->whereNotNull('phone')
                 ->get()
-                ->filter(function ($user) use ($phoneSuffix) {
+                ->filter(function (User $user) use ($phoneSuffix): bool {
                     // Extract digits only from phone and get last 9
                     $phoneDigits = preg_replace('/[^0-9]/', '', $user->phone ?? '');
                     $userSuffix = strlen($phoneDigits) >= 9 ? substr($phoneDigits, -9) : $phoneDigits;
