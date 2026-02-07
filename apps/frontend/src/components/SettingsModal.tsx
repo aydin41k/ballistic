@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { PushNotificationToggle } from "./PushNotificationToggle";
 import { useFeatureFlags } from "@/hooks/useFeatureFlags";
 
@@ -15,6 +15,8 @@ interface SettingsModalProps {
 export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const modalRef = useRef<HTMLDivElement>(null);
   const { dates, delegation, setFlag } = useFeatureFlags();
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // Close on escape key
   useEffect(() => {
@@ -34,6 +36,23 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   function handleBackdropClick(e: React.MouseEvent) {
     if (modalRef.current && !modalRef.current.contains(e.target as Node)) {
       onClose();
+    }
+  }
+
+  async function handleToggle(flag: "dates" | "delegation", value: boolean) {
+    if (saving) return;
+
+    setSaving(true);
+    setError(null);
+
+    try {
+      await setFlag(flag, value);
+      // Success - state is already updated via AuthContext
+      setSaving(false);
+    } catch (err) {
+      console.error("Failed to save feature flag:", err);
+      setError("Failed to save settings. Please try again.");
+      setSaving(false);
     }
   }
 
@@ -75,6 +94,20 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
           </button>
         </div>
 
+        {/* Error message */}
+        {error && (
+          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md text-sm text-red-700">
+            {error}
+          </div>
+        )}
+
+        {/* Saving indicator */}
+        {saving && (
+          <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md text-sm text-blue-700">
+            Saving...
+          </div>
+        )}
+
         {/* Settings Content */}
         <div className="space-y-6">
           {/* Features Section */}
@@ -87,12 +120,14 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
               <div className="flex items-center gap-3">
                 <button
                   type="button"
-                  onClick={() => setFlag("dates", !dates)}
+                  onClick={() => handleToggle("dates", !dates)}
+                  disabled={saving}
                   className={`
                     relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full
                     border-2 border-transparent transition-colors duration-200 ease-in-out
                     focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
                     ${dates ? "bg-blue-600" : "bg-gray-200"}
+                    ${saving ? "opacity-50 cursor-not-allowed" : ""}
                   `}
                   role="switch"
                   aria-checked={dates}
@@ -120,12 +155,14 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
               <div className="flex items-center gap-3">
                 <button
                   type="button"
-                  onClick={() => setFlag("delegation", !delegation)}
+                  onClick={() => handleToggle("delegation", !delegation)}
+                  disabled={saving}
                   className={`
                     relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full
                     border-2 border-transparent transition-colors duration-200 ease-in-out
                     focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
                     ${delegation ? "bg-blue-600" : "bg-gray-200"}
+                    ${saving ? "opacity-50 cursor-not-allowed" : ""}
                   `}
                   role="switch"
                   aria-checked={delegation}

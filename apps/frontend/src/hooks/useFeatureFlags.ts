@@ -1,8 +1,7 @@
 "use client";
 
-import { useState, useCallback } from "react";
-
-const STORAGE_KEY = "ballistic_feature_flags";
+import { useMemo, useCallback, useContext } from "react";
+import { AuthContext } from "@/contexts/AuthContext";
 
 interface FeatureFlags {
   dates: boolean;
@@ -11,39 +10,41 @@ interface FeatureFlags {
 
 const DEFAULTS: FeatureFlags = { dates: false, delegation: false };
 
-function readFlags(): FeatureFlags {
-  if (typeof window === "undefined") return DEFAULTS;
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return DEFAULTS;
-    const parsed = JSON.parse(raw);
-    return {
-      dates: typeof parsed.dates === "boolean" ? parsed.dates : false,
-      delegation:
-        typeof parsed.delegation === "boolean" ? parsed.delegation : false,
-    };
-  } catch {
-    return DEFAULTS;
-  }
-}
-
 export function useFeatureFlags() {
-  const [flags, setFlags] = useState<FeatureFlags>(readFlags);
+  // Use useContext directly instead of useAuth to avoid throwing in tests
+  const auth = useContext(AuthContext);
+
+  // In test environment or when AuthProvider is not available, use defaults
+  const user = auth?.user ?? null;
+  const updateUser = useMemo(() => auth?.updateUser ?? (async () => {}), [auth?.updateUser]);
+
+  // Get flags from user object (no separate fetch needed)
+  const flags = useMemo(() => {
+    if (!user?.feature_flags) return DEFAULTS;
+    return {
+      dates: user.feature_flags.dates ?? false,
+      delegation: user.feature_flags.delegation ?? false,
+    };
+  }, [user?.feature_flags]);
 
   const setFlag = useCallback(
-    (flag: "dates" | "delegation", value: boolean) => {
-      setFlags((prev) => {
-        const next = { ...prev, [flag]: value };
-        try {
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-        } catch {
-          // Silently ignore storage errors
-        }
-        return next;
-      });
+    async (flag: "dates" | "delegation", value: boolean) => {
+      const next = { ...flags, [flag]: value };
+
+      try {
+        await updateUser({ feature_flags: next });
+      } catch (error) {
+        console.error("Failed to save feature flags:", error);
+        throw error;
+      }
     },
-    [],
+    [flags, updateUser],
   );
 
-  return { dates: flags.dates, delegation: flags.delegation, setFlag };
+  return {
+    dates: flags.dates,
+    delegation: flags.delegation,
+    setFlag,
+    loaded: user !== null
+  };
 }

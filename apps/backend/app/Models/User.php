@@ -30,6 +30,7 @@ final class User extends Authenticatable
         'email',
         'phone',
         'notes',
+        'feature_flags',
         'password',
         'is_admin',
     ];
@@ -56,6 +57,7 @@ final class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'is_admin' => 'boolean',
+            'feature_flags' => 'array',
         ];
     }
 

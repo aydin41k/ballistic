@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.14.4] - 2026-02-07
+
+### Added
+- **Feature Flags Storage**: Added backend support for persisting feature flags in user profile
+  - Added `feature_flags` JSON column to users table (nullable, default: `{"dates":false,"delegation":false}`)
+  - Updated User model to include `feature_flags` in fillable array and cast as array
+  - Updated UserController validation to accept `feature_flags` and nested boolean fields
+  - Updated UserResource to include `feature_flags` in API response
+  - Feature flags now sync across devices and sessions via backend storage
+
 ## [0.14.3] - 2026-02-07
 
 ### Changed

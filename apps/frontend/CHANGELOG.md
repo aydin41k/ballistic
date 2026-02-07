@@ -1,3 +1,60 @@
+## 1.0.0 - 2026-02-07
+
+### Added
+
+#### Backend-Persisted Feature Flags
+
+- **Feature Flags Storage**: Feature flags (dates, delegation) now persist in user profile on backend
+  - Added `feature_flags` JSON column to users table
+  - Updated User model, controller, and resource to support feature flags
+  - Feature flags sync across all devices and sessions
+  - Flags stored as `{"dates": false, "delegation": false}` in database
+
+- **AuthContext Enhancements**: Centralised user data management
+  - `refreshUser()`: Fetch fresh user data from backend
+  - `updateUser()`: Update user profile and sync state across app
+  - Single user fetch on mount (eliminates redundant API calls)
+  - Feature flags loaded automatically with user data
+
+- **Optimised Data Fetching**: Eliminated redundant user fetches
+  - AuthContext fetches user once on mount with feature flags
+  - useFeatureFlags hook reads from AuthContext (no separate fetch)
+  - Toggle updates both backend and local state immediately
+  - No page reload required - UI updates reactively
+
+### Changed
+
+#### Full-Screen Modal UX
+
+- **NotesModal**: Converted from bottom-sheet to full-screen centered modal for better usability
+  - Changed layout from `items-end` to `items-center justify-center`
+  - Increased width from `max-w-md` to `w-[90vw] max-w-2xl` for more screen real estate
+  - Changed border radius from `rounded-t-2xl` to `rounded-lg` (all corners)
+  - Added `max-h-[90vh] overflow-y-auto` for proper scrolling
+  - Increased textarea `min-h` from `[200px]` to `[400px]` for more editing space
+  - Updated backdrop opacity from `bg-black/40` to `bg-black/50`
+  - Animation changed to `animate-scale-in` for full-screen entrance
+
+- **EditItemModal**: New full-screen modal component for creating and editing tasks
+  - Replaces inline ItemForm rendering with modal-based editing
+  - Provides consistent modal pattern across Notes and Task editing
+  - Features: ESC key support, click-outside to close, proper header with close button
+  - Modal wrapper around ItemForm with all form fields accessible
+  - Improved focus and better mobile/desktop app experience
+
+- **Home Page**: Updated task editing flow to use EditItemModal
+  - Removed inline ItemForm rendering for both create and edit operations
+  - Add button now triggers full-screen modal instead of inline form
+  - Edit item row click triggers full-screen modal
+  - All task CRUD operations now use consistent modal pattern
+  - Improved state management with `showEditModal` and `editingItem`
+
+### Technical
+
+- **CSS Animations**: Verified `animate-scale-in` animation exists for full-screen modal entrance
+- **Component Architecture**: Cleaner separation between display (ItemRow) and editing (EditItemModal)
+- **UX Consistency**: Unified modal pattern for all editing operations
+
 ## 0.9.0 - 2026-02-06
 
 ### Added

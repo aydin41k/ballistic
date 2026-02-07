@@ -14,10 +14,10 @@ import {
 } from "@/lib/api";
 import { ItemRow } from "@/components/ItemRow";
 import { EmptyState } from "@/components/EmptyState";
-import { ItemForm } from "@/components/ItemForm";
 import { SplashScreen } from "@/components/SplashScreen";
 import { SettingsModal } from "@/components/SettingsModal";
 import { NotesModal } from "@/components/NotesModal";
+import { EditItemModal } from "@/components/EditItemModal";
 import { useAuth } from "@/contexts/AuthContext";
 
 function normaliseItemResponse(payload: Item | { data?: Item }): Item {
@@ -74,8 +74,8 @@ export default function Home() {
   const [assignedItems, setAssignedItems] = useState<Item[]>([]);
   const [delegatedItems, setDelegatedItems] = useState<Item[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
-  const [editing, setEditing] = useState<Item | null>(null);
-  const [showAdd, setShowAdd] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingItem, setEditingItem] = useState<Item | null>(null);
   const [loading, setLoading] = useState(true);
   const [scrollToItemId, setScrollToItemId] = useState<string | null>(null);
   const [draggingId, setDraggingId] = useState<string | null>(null);
@@ -414,199 +414,29 @@ export default function Home() {
 
       {/* List */}
       <div className="flex flex-col gap-2">
-        {showAdd && (
-          <div className="rounded-md bg-white p-3 shadow-sm animate-scale-in">
-            <ItemForm
-              submitLabel="Add"
-              onCancel={() => setShowAdd(false)}
-              projects={projects}
-              onCreateProject={handleCreateProject}
-              showAssignment={delegation}
-              onSubmit={async (v) => {
-                // Create optimistic item for immediate UI feedback
-                // Use a more unique temporary ID to avoid conflicts
-                const tempId = `temp-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
-                const selectedProject = v.project_id
-                  ? projects.find((p) => p.id === v.project_id)
-                  : null;
-                const optimisticItem: Item = {
-                  id: tempId, // Temporary ID
-                  user_id: user?.id || "",
-                  assignee_id: v.assignee_id ?? null,
-                  project_id: v.project_id ?? null,
-                  title: v.title,
-                  description: v.description || null,
-                  status: "todo",
-                  position: items.length,
-                  scheduled_date: v.scheduled_date ?? null,
-                  due_date: v.due_date ?? null,
-                  completed_at: null,
-                  recurrence_rule: v.recurrence_rule ?? null,
-                  recurrence_parent_id: null,
-                  recurrence_strategy:
-                    (v.recurrence_strategy as Item["recurrence_strategy"]) ??
-                    null,
-                  is_recurring_template: !!v.recurrence_rule,
-                  is_recurring_instance: false,
-                  assignee_notes: null,
-                  is_assigned: !!v.assignee_id,
-                  is_delegated: !!v.assignee_id,
-                  created_at: new Date().toISOString(),
-                  updated_at: new Date().toISOString(),
-                  deleted_at: null,
-                  project: selectedProject ?? null,
-                };
-
-                // Update UI immediately and close form
-                setItems((prev) => {
-                  // Ensure we're working with an array and no duplicate IDs
-                  if (!Array.isArray(prev)) {
-                    return [optimisticItem];
-                  }
-                  // Check for duplicate IDs before adding
-                  const hasDuplicate = prev.some((item) => item.id === tempId);
-                  if (hasDuplicate) {
-                    console.warn(
-                      "Duplicate ID detected, skipping optimistic item",
-                    );
-                    return prev;
-                  }
-                  return [...prev, optimisticItem];
-                });
-                setShowAdd(false);
-
-                // Set the item to scroll to
-                setScrollToItemId(tempId);
-
-                // Send API request in background (fire and forget)
-                createItem({
-                  title: v.title,
-                  description: v.description,
-                  status: "todo",
-                  project_id: v.project_id,
-                  position: items.length,
-                  scheduled_date: v.scheduled_date,
-                  due_date: v.due_date,
-                  recurrence_rule: v.recurrence_rule,
-                  recurrence_strategy: v.recurrence_strategy,
-                  assignee_id: v.assignee_id,
-                })
-                  .then((created) => {
-                    const resolvedItem = normaliseItemResponse(created);
-                    // Update the optimistic item with the real item from server
-                    setItems((prev) => {
-                      if (!Array.isArray(prev)) {
-                        return [resolvedItem];
-                      }
-                      return prev.map((item) =>
-                        item.id === tempId ? resolvedItem : item,
-                      );
-                    });
-                  })
-                  .catch((error) => {
-                    console.error("Failed to create item:", error);
-                    setItems((prev) =>
-                      prev.filter((item) => item.id !== tempId),
-                    );
-                    showError("Failed to create task. Please try again.");
-                  });
-              }}
-            />
-          </div>
-        )}
-
-        {/* Render a single item — either in edit mode or as a row */}
+        {/* Render a single item as a row */}
         {(() => {
           function renderItem(item: Item, index: number) {
             return (
-              <div
+              <ItemRow
                 key={item.id || `item-${index}`}
-                className="flex flex-col gap-2"
-              >
-                {editing?.id === item.id ? (
-                  <div className="rounded-md bg-white p-3 shadow-sm animate-scale-in">
-                    <ItemForm
-                      initial={item}
-                      onCancel={() => setEditing(null)}
-                      projects={projects}
-                      onCreateProject={handleCreateProject}
-                      showAssignment={delegation}
-                      onSubmit={async (v) => {
-                        const selectedProject = v.project_id
-                          ? projects.find((p) => p.id === v.project_id)
-                          : null;
-                        const optimisticUpdate: Item = {
-                          ...item,
-                          title: v.title,
-                          description: v.description || null,
-                          assignee_notes:
-                            v.assignee_notes !== undefined
-                              ? v.assignee_notes
-                              : item.assignee_notes,
-                          project_id: v.project_id ?? null,
-                          project: selectedProject ?? null,
-                          scheduled_date: v.scheduled_date ?? null,
-                          due_date: v.due_date ?? null,
-                          recurrence_rule: v.recurrence_rule ?? null,
-                          recurrence_strategy:
-                            (v.recurrence_strategy as Item["recurrence_strategy"]) ??
-                            null,
-                          is_recurring_template: !!v.recurrence_rule,
-                          assignee_id: v.assignee_id ?? null,
-                        };
-
-                        // Update all arrays optimistically
-                        const updater = (prev: Item[]) =>
-                          prev.map((i) =>
-                            i.id === item.id ? optimisticUpdate : i,
-                          );
-                        setItems(updater);
-                        setAssignedItems(updater);
-                        setDelegatedItems(updater);
-                        setEditing(null);
-
-                        updateItem(item.id, {
-                          title: v.title,
-                          description: v.description || null,
-                          assignee_notes: v.assignee_notes,
-                          project_id: v.project_id,
-                          scheduled_date: v.scheduled_date,
-                          due_date: v.due_date,
-                          recurrence_rule: v.recurrence_rule,
-                          recurrence_strategy:
-                            (v.recurrence_strategy as Item["recurrence_strategy"]) ??
-                            null,
-                          assignee_id: v.assignee_id,
-                        }).catch((error) => {
-                          console.error("Failed to update item:", error);
-                          const revert = (prev: Item[]) =>
-                            prev.map((i) => (i.id === item.id ? item : i));
-                          setItems(revert);
-                          setAssignedItems(revert);
-                          setDelegatedItems(revert);
-                          showError("Failed to update task. Changes reverted.");
-                        });
-                      }}
-                    />
-                  </div>
-                ) : (
-                  <ItemRow
-                    item={item}
-                    onChange={onRowChange}
-                    onOptimisticReorder={onOptimisticReorder}
-                    index={index}
-                    onEdit={() => setEditing(item)}
-                    isFirst={index === 0}
-                    onDragStart={handleDragStart}
-                    onDragEnter={handleDragEnter}
-                    onDropItem={handleDrop}
-                    onDragEnd={handleDragEnd}
-                    draggingId={draggingId}
-                    dragOverId={dragOverId}
-                    onError={showError}
-                  />
-                )}
-              </div>
+                item={item}
+                onChange={onRowChange}
+                onOptimisticReorder={onOptimisticReorder}
+                index={index}
+                onEdit={() => {
+                  setEditingItem(item);
+                  setShowEditModal(true);
+                }}
+                isFirst={index === 0}
+                onDragStart={handleDragStart}
+                onDragEnter={handleDragEnter}
+                onDropItem={handleDrop}
+                onDragEnd={handleDragEnd}
+                draggingId={draggingId}
+                dragOverId={dragOverId}
+                onError={showError}
+              />
             );
           }
 
@@ -623,15 +453,13 @@ export default function Home() {
                   {assignedItems.map((item, index) => (
                     <div key={item.id || `assigned-${index}`}>
                       {renderItem(item, index)}
-                      {editing?.id !== item.id && (
-                        <button
-                          type="button"
-                          onClick={() => handleDecline(item)}
-                          className="mt-1 text-xs text-red-500 hover:text-red-700 transition-colors px-3"
-                        >
-                          Decline
-                        </button>
-                      )}
+                      <button
+                        type="button"
+                        onClick={() => handleDecline(item)}
+                        className="mt-1 text-xs text-red-500 hover:text-red-700 transition-colors px-3"
+                      >
+                        Decline
+                      </button>
                     </div>
                   ))}
                 </>
@@ -738,7 +566,10 @@ export default function Home() {
           <button
             type="button"
             aria-label="Add a new task"
-            onClick={() => setShowAdd(true)}
+            onClick={() => {
+              setEditingItem(null);
+              setShowEditModal(true);
+            }}
             className="tap-target grid h-12 w-12 place-items-center rounded-full bg-[var(--blue)] text-white shadow-md hover:shadow-lg hover:bg-[var(--blue-600)] active:scale-95 transition-all duration-200"
           >
             <span className="sr-only">Add new task...</span>
@@ -788,6 +619,153 @@ export default function Home() {
 
       {/* Notes Modal */}
       <NotesModal isOpen={showNotes} onClose={() => setShowNotes(false)} />
+
+      {/* Edit/Create Item Modal */}
+      <EditItemModal
+        isOpen={showEditModal}
+        onClose={() => {
+          setShowEditModal(false);
+          setEditingItem(null);
+        }}
+        item={editingItem}
+        projects={projects}
+        onCreateProject={handleCreateProject}
+        showAssignment={delegation}
+        onSubmit={async (v) => {
+          if (editingItem) {
+            // Update existing item
+            const selectedProject = v.project_id
+              ? projects.find((p) => p.id === v.project_id)
+              : null;
+            const optimisticUpdate: Item = {
+              ...editingItem,
+              title: v.title,
+              description: v.description || null,
+              assignee_notes:
+                v.assignee_notes !== undefined
+                  ? v.assignee_notes
+                  : editingItem.assignee_notes,
+              project_id: v.project_id ?? null,
+              project: selectedProject ?? null,
+              scheduled_date: v.scheduled_date ?? null,
+              due_date: v.due_date ?? null,
+              recurrence_rule: v.recurrence_rule ?? null,
+              recurrence_strategy:
+                (v.recurrence_strategy as Item["recurrence_strategy"]) ?? null,
+              is_recurring_template: !!v.recurrence_rule,
+              assignee_id: v.assignee_id ?? null,
+            };
+
+            // Update all arrays optimistically
+            const updater = (prev: Item[]) =>
+              prev.map((i) =>
+                i.id === editingItem.id ? optimisticUpdate : i,
+              );
+            setItems(updater);
+            setAssignedItems(updater);
+            setDelegatedItems(updater);
+
+            updateItem(editingItem.id, {
+              title: v.title,
+              description: v.description || null,
+              assignee_notes: v.assignee_notes,
+              project_id: v.project_id,
+              scheduled_date: v.scheduled_date,
+              due_date: v.due_date,
+              recurrence_rule: v.recurrence_rule,
+              recurrence_strategy:
+                (v.recurrence_strategy as Item["recurrence_strategy"]) ?? null,
+              assignee_id: v.assignee_id,
+            }).catch((error) => {
+              console.error("Failed to update item:", error);
+              const revert = (prev: Item[]) =>
+                prev.map((i) => (i.id === editingItem.id ? editingItem : i));
+              setItems(revert);
+              setAssignedItems(revert);
+              setDelegatedItems(revert);
+              showError("Failed to update task. Changes reverted.");
+            });
+          } else {
+            // Create new item
+            const tempId = `temp-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+            const selectedProject = v.project_id
+              ? projects.find((p) => p.id === v.project_id)
+              : null;
+            const optimisticItem: Item = {
+              id: tempId,
+              user_id: user?.id || "",
+              assignee_id: v.assignee_id ?? null,
+              project_id: v.project_id ?? null,
+              title: v.title,
+              description: v.description || null,
+              status: "todo",
+              position: items.length,
+              scheduled_date: v.scheduled_date ?? null,
+              due_date: v.due_date ?? null,
+              completed_at: null,
+              recurrence_rule: v.recurrence_rule ?? null,
+              recurrence_parent_id: null,
+              recurrence_strategy:
+                (v.recurrence_strategy as Item["recurrence_strategy"]) ?? null,
+              is_recurring_template: !!v.recurrence_rule,
+              is_recurring_instance: false,
+              assignee_notes: null,
+              is_assigned: !!v.assignee_id,
+              is_delegated: !!v.assignee_id,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+              deleted_at: null,
+              project: selectedProject ?? null,
+            };
+
+            // Update UI immediately
+            setItems((prev) => {
+              if (!Array.isArray(prev)) {
+                return [optimisticItem];
+              }
+              const hasDuplicate = prev.some((item) => item.id === tempId);
+              if (hasDuplicate) {
+                console.warn("Duplicate ID detected, skipping optimistic item");
+                return prev;
+              }
+              return [...prev, optimisticItem];
+            });
+
+            // Set the item to scroll to
+            setScrollToItemId(tempId);
+
+            // Send API request in background
+            createItem({
+              title: v.title,
+              description: v.description,
+              status: "todo",
+              project_id: v.project_id,
+              position: items.length,
+              scheduled_date: v.scheduled_date,
+              due_date: v.due_date,
+              recurrence_rule: v.recurrence_rule,
+              recurrence_strategy: v.recurrence_strategy,
+              assignee_id: v.assignee_id,
+            })
+              .then((created) => {
+                const resolvedItem = normaliseItemResponse(created);
+                setItems((prev) => {
+                  if (!Array.isArray(prev)) {
+                    return [resolvedItem];
+                  }
+                  return prev.map((item) =>
+                    item.id === tempId ? resolvedItem : item,
+                  );
+                });
+              })
+              .catch((error) => {
+                console.error("Failed to create item:", error);
+                setItems((prev) => prev.filter((item) => item.id !== tempId));
+                showError("Failed to create task. Please try again.");
+              });
+          }
+        }}
+      />
     </div>
   );
 }
