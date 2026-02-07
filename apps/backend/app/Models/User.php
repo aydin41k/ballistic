@@ -191,4 +191,12 @@ final class User extends Authenticatable
     {
         return $this->hasMany(PushSubscription::class);
     }
+
+    /**
+     * Get this user's audit logs.
+     */
+    public function auditLogs(): HasMany
+    {
+        return $this->hasMany(AuditLog::class);
+    }
 }
