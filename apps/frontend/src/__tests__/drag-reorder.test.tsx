@@ -187,17 +187,19 @@ jest.mock("@/lib/api", () => ({
     created_at: "2025-01-01T00:00:00Z",
     updated_at: "2025-01-01T00:00:00Z",
   }),
-  updateUser: jest.fn().mockImplementation((data) => Promise.resolve({
-    id: "user-1",
-    name: "Test User",
-    email: "test@example.com",
-    phone: null,
-    notes: null,
-    feature_flags: data.feature_flags || { dates: false, delegation: false },
-    email_verified_at: "2025-01-01T00:00:00Z",
-    created_at: "2025-01-01T00:00:00Z",
-    updated_at: "2025-01-01T00:00:00Z",
-  })),
+  updateUser: jest.fn().mockImplementation((data) =>
+    Promise.resolve({
+      id: "user-1",
+      name: "Test User",
+      email: "test@example.com",
+      phone: null,
+      notes: null,
+      feature_flags: data.feature_flags || { dates: false, delegation: false },
+      email_verified_at: "2025-01-01T00:00:00Z",
+      created_at: "2025-01-01T00:00:00Z",
+      updated_at: "2025-01-01T00:00:00Z",
+    }),
+  ),
 }));
 
 // Mock next/navigation

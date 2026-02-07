@@ -16,7 +16,10 @@ export function useFeatureFlags() {
 
   // In test environment or when AuthProvider is not available, use defaults
   const user = auth?.user ?? null;
-  const updateUser = useMemo(() => auth?.updateUser ?? (async () => {}), [auth?.updateUser]);
+  const updateUser = useMemo(
+    () => auth?.updateUser ?? (async () => {}),
+    [auth?.updateUser],
+  );
 
   // Get flags from user object (no separate fetch needed)
   const flags = useMemo(() => {
@@ -45,6 +48,6 @@ export function useFeatureFlags() {
     dates: flags.dates,
     delegation: flags.delegation,
     setFlag,
-    loaded: user !== null
+    loaded: user !== null,
   };
 }

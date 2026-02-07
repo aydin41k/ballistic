@@ -658,9 +658,7 @@ export default function Home() {
 
             // Update all arrays optimistically
             const updater = (prev: Item[]) =>
-              prev.map((i) =>
-                i.id === editingItem.id ? optimisticUpdate : i,
-              );
+              prev.map((i) => (i.id === editingItem.id ? optimisticUpdate : i));
             setItems(updater);
             setAssignedItems(updater);
             setDelegatedItems(updater);

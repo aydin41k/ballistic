@@ -32,7 +32,11 @@ interface AuthContextType {
   ) => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
-  updateUser: (data: Partial<Pick<User, "name" | "email" | "phone" | "notes" | "feature_flags">>) => Promise<void>;
+  updateUser: (
+    data: Partial<
+      Pick<User, "name" | "email" | "phone" | "notes" | "feature_flags">
+    >,
+  ) => Promise<void>;
 }
 
 export const AuthContext = createContext<AuthContextType | null>(null);
@@ -97,11 +101,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setStoredUser(fetchedUser);
   }, []);
 
-  const updateUser = useCallback(async (data: Partial<Pick<User, "name" | "email" | "phone" | "notes" | "feature_flags">>) => {
-    const updatedUser = await apiUpdateUser(data);
-    setUser(updatedUser);
-    setStoredUser(updatedUser);
-  }, []);
+  const updateUser = useCallback(
+    async (
+      data: Partial<
+        Pick<User, "name" | "email" | "phone" | "notes" | "feature_flags">
+      >,
+    ) => {
+      const updatedUser = await apiUpdateUser(data);
+      setUser(updatedUser);
+      setStoredUser(updatedUser);
+    },
+    [],
+  );
 
   const value: AuthContextType = {
     user,

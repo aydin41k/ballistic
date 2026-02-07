@@ -107,7 +107,9 @@ export async function fetchUser(): Promise<User> {
  * Update the authenticated user's profile.
  */
 export async function updateUser(
-  data: Partial<Pick<User, "name" | "email" | "phone" | "notes" | "feature_flags">>,
+  data: Partial<
+    Pick<User, "name" | "email" | "phone" | "notes" | "feature_flags">
+  >,
 ): Promise<User> {
   const response = await fetch(buildUrl("/api/user"), {
     method: "PATCH",
