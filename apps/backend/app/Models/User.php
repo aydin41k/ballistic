@@ -30,6 +30,7 @@ final class User extends Authenticatable
         'email',
         'phone',
         'notes',
+        'feature_flags',
         'password',
         'is_admin',
     ];
@@ -56,6 +57,7 @@ final class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'is_admin' => 'boolean',
+            'feature_flags' => 'array',
         ];
     }
 
@@ -190,5 +192,13 @@ final class User extends Authenticatable
     public function pushSubscriptions(): HasMany
     {
         return $this->hasMany(PushSubscription::class);
+    }
+
+    /**
+     * Get this user's audit logs.
+     */
+    public function auditLogs(): HasMany
+    {
+        return $this->hasMany(AuditLog::class);
     }
 }

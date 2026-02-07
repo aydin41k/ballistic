@@ -1,6 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import AppLayout from '@/layouts/app-layout';
-import { dashboard } from '@/routes';
+import AdminLayout from '@/layouts/admin-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head } from '@inertiajs/react';
 import { Activity, AlertCircle, CheckCircle2, Users } from 'lucide-react';
@@ -45,16 +44,14 @@ interface Props {
 }
 
 const breadcrumbs: BreadcrumbItem[] = [
-    {
-        title: 'Dashboard',
-        href: dashboard().url,
-    },
+    { title: 'Dashboard', href: '/dashboard' },
+    { title: 'System Health', href: '/admin/health' },
 ];
 
-export default function Dashboard({ stats }: Props) {
+export default function HealthIndex({ stats }: Props) {
     return (
-        <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title="Dashboard" />
+        <AdminLayout breadcrumbs={breadcrumbs}>
+            <Head title="System Health" />
 
             <div className="flex h-full flex-1 flex-col gap-4 p-4">
                 <h1 className="text-2xl font-bold">System Health Pulse</h1>
@@ -167,6 +164,6 @@ export default function Dashboard({ stats }: Props) {
                     </CardContent>
                 </Card>
             </div>
-        </AppLayout>
+        </AdminLayout>
     );
 }

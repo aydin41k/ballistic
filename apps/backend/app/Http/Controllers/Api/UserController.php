@@ -47,6 +47,9 @@ final class UserController extends Controller
             ],
             'phone' => ['nullable', 'string', 'max:20'],
             'notes' => ['nullable', 'string', 'max:10000'],
+            'feature_flags' => ['nullable', 'array'],
+            'feature_flags.dates' => ['sometimes', 'boolean'],
+            'feature_flags.delegation' => ['sometimes', 'boolean'],
             'password' => ['sometimes', 'required', 'confirmed', Password::defaults()],
         ]);
 

@@ -11,7 +11,7 @@ interface NotesModalProps {
 const MAX_CHARS = 10_000;
 
 /**
- * Bottom-sheet modal providing a free-text scratchpad persisted on the backend.
+ * Full-screen modal providing a free-text scratchpad persisted on the backend.
  */
 export function NotesModal({ isOpen, onClose }: NotesModalProps) {
   const modalRef = useRef<HTMLDivElement>(null);
@@ -95,12 +95,12 @@ export function NotesModal({ isOpen, onClose }: NotesModalProps) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 backdrop-blur-sm animate-fade-in"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-fade-in"
       onClick={handleBackdropClick}
     >
       <div
         ref={modalRef}
-        className="w-full max-w-md rounded-t-2xl bg-white p-6 shadow-xl animate-slide-in-up"
+        className="w-[90vw] max-w-2xl max-h-[90vh] overflow-y-auto rounded-lg bg-white p-6 shadow-xl animate-scale-in"
       >
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
@@ -142,7 +142,7 @@ export function NotesModal({ isOpen, onClose }: NotesModalProps) {
           onChange={(e) => setNotes(e.target.value.slice(0, MAX_CHARS))}
           onBlur={() => saveNotes(notes)}
           placeholder="Jot down anything..."
-          className="w-full min-h-[200px] max-h-[60vh] resize-y rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-300 focus:outline-none focus:ring-1 focus:ring-blue-300"
+          className="w-full min-h-[400px] max-h-[80vh] resize-y rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-300 focus:outline-none focus:ring-1 focus:ring-blue-300"
         />
 
         {/* Character counter */}

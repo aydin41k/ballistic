@@ -11,3 +11,8 @@ echo "Migrated database"
 cd /home/site/wwwroot/storage/
 mkdir -p framework/{sessions,views,cache}
 chmod -R 775 framework
+
+# Optimize application for production
+cd /home/site/wwwroot
+php artisan optimize
+echo "Optimized application (config, routes, views, events cached)"
