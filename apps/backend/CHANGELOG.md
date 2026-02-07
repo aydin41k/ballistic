@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.14.6] - 2026-02-07
+
+### Fixed
+
+#### Frontend — Service worker never registered / never compiled
+- **Root cause of empty `push_subscriptions`**: The compiled service worker (`public/sw.js`) was never registered in the browser because `layout.tsx` had no registration code. As a result `navigator.serviceWorker.ready` inside `usePushNotifications` would hang indefinitely, keeping the push state stuck at "loading" and making the subscribe flow unreachable by the user.
+- **Fix 1 — Registration**: Added `ServiceWorkerRegistration` client component (`src/components/ServiceWorkerRegistration.tsx`) that calls `new Serwist("/sw.js").register()` via `@serwist/window` on mount, included in `layout.tsx`.
+- **Fix 2 — Turbopack incompatibility**: `@serwist/next` is a webpack plugin; `next build --turbopack` skips webpack entirely so `public/sw.js` was never written even in production. Removed `--turbopack` from the `build` script so production builds use webpack and Serwist can compile the service worker. Dev (`next dev --turbopack`) keeps Turbopack for fast HMR.
+- **Fix 3 — Dev-mode guard**: Added `disable: process.env.NODE_ENV !== "production"` to `next.config.ts` and `process.env.NODE_ENV === "production"` guard in the registration component to prevent a 404-caused SW installation error when running `next dev`.
+
+## [0.14.5] - 2026-02-07
+
+### Fixed
+
+#### Web Push — Observability and correctness
+
+- **Dedicated `webpush` log channel**: Added a daily-rotated `storage/logs/webpush-*.log` channel so push activity is instantly filterable with `tail -f` without wading through the main Laravel log
+- **Silent failure eliminated**: `sendToUser()` and `sendToSubscriptions()` previously returned `0` with no log entry when VAPID keys were missing — they now emit a `warning` on the `webpush` channel identifying the affected user/subscription, matching the existing behaviour of `sendToSubscription()`
+- **Off-by-one index bug fixed in `sendToSubscriptions()`**: The old code tracked results against `$indexedSubscriptions` (all subscriptions including failed-to-queue ones) while `flush()` only yields reports for successfully-queued entries — causing wrong subscriptions to be marked as used or expired under error conditions. The fix builds a separate `$queuedSubscriptions` array that is appended to *only* when `queueNotification()` succeeds, keeping it positionally aligned with the flush results
+- **Sanity guards added**: `error`-level log if flush yields more reports than queued; `warning`-level log if it yields fewer — catches any future library-level mismatches immediately
+- **Dispatch/completion tracing**: `sendToUser()` now logs an `info` entry when dispatching (with subscription count and title) and a summary entry on completion (delivered/of N); `sendToSubscriptions()` logs a `debug` entry before flushing and an `info` summary after the batch DB update
+
 ## [0.14.4] - 2026-02-07
 
 ### Added
