@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { Nunito } from "next/font/google";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { ServiceWorkerRegistration } from "@/components/ServiceWorkerRegistration";
 
 const nunito = Nunito({
   subsets: ["latin"],
@@ -37,6 +38,7 @@ export default function RootLayout({
       <body
         className={`min-h-dvh bg-[var(--page-bg)] text-[var(--text)] ${nunito.className}`}
       >
+        <ServiceWorkerRegistration />
         <AuthProvider>
           <div className="mx-auto w-full max-w-screen-sm p-4">{children}</div>
         </AuthProvider>
