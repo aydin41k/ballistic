@@ -36,9 +36,9 @@ final class UserDiscoveryController extends Controller
 
         $user = null;
 
-        // Search by exact email
+        // Search by case-insensitive exact email
         if (! empty($validated['email'])) {
-            $user = User::where('email', $validated['email'])
+            $user = User::whereRaw('LOWER(email) = LOWER(?)', [strtolower($validated['email'])])
                 ->where('id', '!=', $currentUserId)
                 ->first();
         }

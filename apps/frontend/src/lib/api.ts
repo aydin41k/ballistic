@@ -363,6 +363,24 @@ export async function assignItem(
   return updateItem(itemId, { assignee_id: userId });
 }
 
+/**
+ * Toggle a user as a favourite contact.
+ * Returns the updated favourite status and full favourites list.
+ */
+export async function toggleFavourite(
+  userId: string,
+): Promise<{ is_favourite: boolean; favourites: { data: UserLookup[] } }> {
+  const response = await fetch(buildUrl(`/api/favourites/${userId}`), {
+    method: "POST",
+    headers: getAuthHeaders(),
+  });
+
+  return handleResponse<{
+    is_favourite: boolean;
+    favourites: { data: UserLookup[] };
+  }>(response);
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Notifications (poll-based)
 // ─────────────────────────────────────────────────────────────────────────────

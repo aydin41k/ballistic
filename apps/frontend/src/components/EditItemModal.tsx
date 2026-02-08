@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef } from "react";
-import type { Item, Project } from "@/types";
+import type { Item, Project, UserLookup } from "@/types";
 import { ItemForm } from "./ItemForm";
 
 interface EditItemModalProps {
@@ -22,6 +22,8 @@ interface EditItemModalProps {
     assignee_notes?: string | null;
   }) => void;
   showAssignment?: boolean;
+  favourites?: UserLookup[];
+  onFavouriteToggled?: () => Promise<void>;
 }
 
 /**
@@ -35,6 +37,8 @@ export function EditItemModal({
   onCreateProject,
   onSubmit,
   showAssignment = true,
+  favourites,
+  onFavouriteToggled,
 }: EditItemModalProps) {
   const modalRef = useRef<HTMLDivElement>(null);
 
@@ -127,6 +131,8 @@ export function EditItemModal({
           projects={projects}
           onCreateProject={onCreateProject}
           showAssignment={showAssignment}
+          favourites={favourites}
+          onFavouriteToggled={onFavouriteToggled}
         />
       </div>
     </div>

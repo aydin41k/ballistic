@@ -27,6 +27,7 @@ final class UserResource extends JsonResource
             'is_admin' => $this->is_admin,
             'created_at' => $this->created_at?->toIso8601String(),
             'updated_at' => $this->updated_at?->toIso8601String(),
+            'favourites' => UserLookupResource::collection($this->whenLoaded('favourites')),
             'items_count' => $this->when($this->items_count !== null, $this->items_count),
             'projects_count' => $this->when($this->projects_count !== null, $this->projects_count),
             'tags_count' => $this->when($this->tags_count !== null, $this->tags_count),

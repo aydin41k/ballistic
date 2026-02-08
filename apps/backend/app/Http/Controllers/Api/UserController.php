@@ -22,6 +22,7 @@ final class UserController extends Controller
     {
         /** @var User $user */
         $user = $request->user();
+        $user->load('favourites');
 
         return new UserResource($user);
     }

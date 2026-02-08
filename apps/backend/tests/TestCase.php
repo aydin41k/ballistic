@@ -19,5 +19,8 @@ abstract class TestCase extends BaseTestCase
             \Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class,
             \Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class,
         ]);
+
+        // Disable Vite manifest resolution — no built assets exist in the test environment
+        $this->withoutVite();
     }
 }

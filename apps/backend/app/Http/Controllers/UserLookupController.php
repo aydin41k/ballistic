@@ -43,9 +43,9 @@ final class UserLookupController extends Controller
         // Get the last 9 digits for phone suffix matching
         $phoneSuffix = strlen($cleanedQuery) >= 9 ? substr($cleanedQuery, -9) : $cleanedQuery;
 
-        // First try exact email match (only among connected users)
+        // First try case-insensitive exact email match (only among connected users)
         $users = User::whereIn('id', $connectedUserIds)
-            ->where('email', $query)
+            ->whereRaw('LOWER(email) = LOWER(?)', [$query])
             ->limit(10)
             ->get();
 
@@ -64,6 +64,13 @@ final class UserLookupController extends Controller
                     return $userSuffix === $phoneSuffix;
                 })
                 ->take(10);
+        }
+
+        // Sort favourites to the top
+        $favouriteIds = $currentUser->favourites()->pluck('id')->toArray();
+
+        if (! empty($favouriteIds)) {
+            $users = $users->sortByDesc(fn ($u) => in_array($u->id, $favouriteIds, true));
         }
 
         return UserLookupResource::collection($users);

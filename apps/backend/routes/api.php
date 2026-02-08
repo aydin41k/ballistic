@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Http\Controllers\Admin\StatsController as AdminStatsController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\FavouriteController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\ConnectionController;
 use App\Http\Controllers\ItemController;
@@ -31,6 +32,9 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
     // User profile
     Route::get('/user', [UserController::class, 'show']);
     Route::patch('/user', [UserController::class, 'update']);
+
+    // Favourite contacts (quick-pick for task assignment)
+    Route::post('/favourites/{user}', [FavouriteController::class, 'toggle'])->middleware('throttle:user-search');
 
     // User lookup (for task assignment - only shows connected users)
     // Extra rate limiting to prevent enumeration attacks

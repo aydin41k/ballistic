@@ -5,6 +5,39 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.15.0] - 2026-02-08
+
+### Added
+
+#### Favourite Contacts
+
+- **`user_favourites` pivot table**: New migration creates a `(user_id, favourite_id)` pivot table with cascade-delete foreign keys and `created_at` timestamp for ordering (most recently favourited first)
+- **`User::favourites()` relationship**: `BelongsToMany` to self via `user_favourites` pivot, ordered by `created_at desc`
+- **`POST /api/favourites/{user}` endpoint**: Toggle a user as a favourite contact. Returns `{ is_favourite, favourites[] }`. Self-favouriting returns 422; non-existent user returns 404. Rate-limited by existing `user-search` throttle.
+- **`FavouriteController`**: Final class in `App\Http\Controllers\Api` namespace; single `toggle()` method with route model binding
+- **`UserResource`**: Now includes `favourites` (eager-loaded via `whenLoaded`)
+- **`UserController@show`**: Eager-loads `favourites` relationship
+
+#### Case-Insensitive Search
+
+- **`UserLookupController`**: Email matching now uses `LOWER()` comparison (`whereRaw('LOWER(email) = LOWER(?)', [$query])`) — resolves case-sensitivity differences between SQLite (testing) and PostgreSQL (production)
+- **`UserDiscoveryController`**: Same case-insensitive email matching applied to discovery endpoint
+
+#### Favourites-First Sort
+
+- **`UserLookupController`**: Connected users who are favourites of the searching user are sorted to the top of lookup results
+
+### Fixed
+
+#### Push Notification Click-Through URL
+
+- **Root cause**: `CreateNotificationJob::getNotificationUrl()` called `config('app.frontend_url', ...)` but `config/app.php` had no `frontend_url` key, so it silently fell back to `config('app.url')` (the backend API URL), sending users to the backend when tapping push notifications on mobile.
+- **Fix**: Added `'frontend_url' => env('FRONTEND_URL', 'http://localhost:3000')` to `config/app.php`. Operators set `FRONTEND_URL=https://your-pwa-domain.com` in production `.env`.
+
+### Tests
+
+- Added `FavouriteTest` (10 tests): add favourite, toggle off, self-favourite 422, non-existent 404, favourites-first sort in lookup, case-insensitive email lookup, case-insensitive email discovery, favourites in `/api/user`, unauthenticated 401, full list returned on toggle
+
 ## [0.14.6] - 2026-02-07
 
 ### Fixed

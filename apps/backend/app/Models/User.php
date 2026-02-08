@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -200,5 +201,14 @@ final class User extends Authenticatable
     public function auditLogs(): HasMany
     {
         return $this->hasMany(AuditLog::class);
+    }
+
+    /**
+     * Get this user's favourite contacts.
+     */
+    public function favourites(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'user_favourites', 'user_id', 'favourite_id')
+            ->orderByPivot('created_at', 'desc');
     }
 }
