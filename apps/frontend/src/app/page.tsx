@@ -84,6 +84,8 @@ export default function Home() {
   const dragOverRef = useRef<string | null>(null);
   const dropHandledRef = useRef(false);
   const [viewScope, setViewScope] = useState<ItemScope>("active");
+  const [filterProjectId, setFilterProjectId] = useState<string | null>(null);
+  const [showFilter, setShowFilter] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const toastTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [showSettings, setShowSettings] = useState(false);
@@ -156,6 +158,17 @@ export default function Home() {
 
   // Sort my tasks by urgency (only when dates feature is enabled)
   const sortedItems = dates ? sortByUrgency(items) : items;
+
+  // Apply project filter client-side
+  const filteredItems = filterProjectId
+    ? sortedItems.filter((i) => i.project_id === filterProjectId)
+    : sortedItems;
+  const filteredAssignedItems = filterProjectId
+    ? assignedItems.filter((i) => i.project_id === filterProjectId)
+    : assignedItems;
+  const filteredDelegatedItems = filterProjectId
+    ? delegatedItems.filter((i) => i.project_id === filterProjectId)
+    : delegatedItems;
 
   function onRowChange(itemOrUpdater: Item | ((current: Item) => Item)) {
     const updater = (prev: Item[]) => {
@@ -443,14 +456,14 @@ export default function Home() {
           return (
             <>
               {/* Assigned to Me section */}
-              {delegation && assignedItems.length > 0 && (
+              {delegation && filteredAssignedItems.length > 0 && (
                 <>
                   <div className="flex items-center justify-between mt-2">
                     <h2 className="text-xs font-semibold uppercase tracking-wider text-emerald-600">
                       Assigned to Me
                     </h2>
                   </div>
-                  {assignedItems.map((item, index) => (
+                  {filteredAssignedItems.map((item, index) => (
                     <div key={item.id || `assigned-${index}`}>
                       {renderItem(item, index)}
                       <button
@@ -466,36 +479,42 @@ export default function Home() {
               )}
 
               {/* My Tasks section */}
-              {sortedItems.length > 0 && (
+              {filteredItems.length > 0 && (
                 <>
                   {delegation && (
                     <h2 className="text-xs font-semibold uppercase tracking-wider text-[var(--navy)] mt-2">
                       My Tasks
                     </h2>
                   )}
-                  {sortedItems.map((item, index) => renderItem(item, index))}
+                  {filteredItems.map((item, index) => renderItem(item, index))}
                 </>
               )}
 
               {/* Delegated to Others section */}
-              {delegation && delegatedItems.length > 0 && (
+              {delegation && filteredDelegatedItems.length > 0 && (
                 <>
                   <h2 className="text-xs font-semibold uppercase tracking-wider text-amber-600 mt-2">
                     Delegated to Others
                   </h2>
-                  {delegatedItems.map((item, index) => renderItem(item, index))}
+                  {filteredDelegatedItems.map((item, index) =>
+                    renderItem(item, index),
+                  )}
                 </>
               )}
 
               {/* Empty state */}
-              {sortedItems.length === 0 &&
+              {filteredItems.length === 0 &&
                 (!delegation ||
-                  (assignedItems.length === 0 &&
-                    delegatedItems.length === 0)) &&
+                  (filteredAssignedItems.length === 0 &&
+                    filteredDelegatedItems.length === 0)) &&
                 !loading && (
                   <EmptyState
                     type="no-items"
-                    message="Start your bullet journal journey by adding your first task!"
+                    message={
+                      filterProjectId
+                        ? "No tasks in this project."
+                        : "Start your bullet journal journey by adding your first task!"
+                    }
                   />
                 )}
             </>
@@ -507,6 +526,89 @@ export default function Home() {
       <footer className="text-center py-6 text-sm text-slate-500">
         Psycode Pty. Ltd. © {new Date().getFullYear()}
       </footer>
+
+      {/* Filter Panel */}
+      {showFilter && (
+        <>
+          <div
+            className="fixed inset-0 z-[19]"
+            onClick={() => setShowFilter(false)}
+            aria-hidden="true"
+          />
+          <div className="fixed inset-x-0 bottom-[4.5rem] z-[21]">
+            <div className="mx-auto max-w-sm px-4">
+              <div className="rounded-xl bg-white shadow-xl border border-slate-200/50 p-4 space-y-4 animate-slide-in-up">
+                {/* Project filter */}
+                <div>
+                  <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">
+                    Project
+                  </h3>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setFilterProjectId(null)}
+                      className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                        filterProjectId === null
+                          ? "bg-[var(--blue)] text-white"
+                          : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                      }`}
+                    >
+                      All
+                    </button>
+                    {projects.map((project) => (
+                      <button
+                        key={project.id}
+                        type="button"
+                        onClick={() => setFilterProjectId(project.id)}
+                        className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                          filterProjectId === project.id
+                            ? "bg-[var(--blue)] text-white"
+                            : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                        }`}
+                      >
+                        {project.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Scope toggle (dates feature only) */}
+                {dates && (
+                  <div>
+                    <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">
+                      Scope
+                    </h3>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setViewScope("active")}
+                        className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                          viewScope === "active"
+                            ? "bg-[var(--blue)] text-white"
+                            : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                        }`}
+                      >
+                        Active
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setViewScope("planned")}
+                        className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                          viewScope === "planned"
+                            ? "bg-[var(--blue)] text-white"
+                            : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                        }`}
+                      >
+                        Planned
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </>
+      )}
 
       {/* Bottom Bar - Glassy style matching top bar */}
       <div className="fixed inset-x-0 bottom-0 z-20 bg-[var(--page-bg)]/95 backdrop-blur border-t border-slate-200/50">
@@ -578,18 +680,9 @@ export default function Home() {
           <div className="flex justify-end">
             <button
               type="button"
-              aria-label={
-                viewScope === "planned"
-                  ? "Show active items"
-                  : "Show planned items"
-              }
-              onClick={() => {
-                if (dates) {
-                  setViewScope(viewScope === "active" ? "planned" : "active");
-                }
-              }}
-              className={`tap-target grid h-11 w-11 place-items-center rounded-full shadow-sm hover:shadow-md active:scale-95 ${viewScope === "planned" && dates ? "bg-[var(--blue)] text-white" : "bg-white"} ${!dates ? "opacity-30 cursor-not-allowed" : ""}`}
-              disabled={!dates}
+              aria-label="Filter"
+              onClick={() => setShowFilter((prev) => !prev)}
+              className={`tap-target grid h-11 w-11 place-items-center rounded-full shadow-sm hover:shadow-md active:scale-95 ${showFilter || filterProjectId !== null || (dates && viewScope === "planned") ? "bg-[var(--blue)]" : "bg-white"}`}
             >
               {/* funnel icon */}
               <svg
@@ -599,7 +692,9 @@ export default function Home() {
                 fill="none"
                 stroke="currentColor"
                 className={
-                  viewScope === "planned" && dates
+                  showFilter ||
+                  filterProjectId !== null ||
+                  (dates && viewScope === "planned")
                     ? "text-white"
                     : "text-[var(--navy)]"
                 }
