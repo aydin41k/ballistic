@@ -33,6 +33,8 @@ type Props = {
   projects?: Project[];
   onCreateProject?: (name: string) => Promise<Project>;
   showAssignment?: boolean;
+  favourites?: UserLookup[];
+  onFavouriteToggled?: () => Promise<void>;
 };
 
 export function ItemForm({
@@ -43,6 +45,8 @@ export function ItemForm({
   projects = [],
   onCreateProject,
   showAssignment = true,
+  favourites,
+  onFavouriteToggled,
 }: Props) {
   const { dates, delegation } = useFeatureFlags();
   const [title, setTitle] = useState(initial?.title ?? "");
@@ -320,6 +324,8 @@ export function ItemForm({
         onClose={() => setShowAssignModal(false)}
         onSelect={setAssignee}
         currentAssignee={assignee}
+        favourites={favourites}
+        onFavouriteToggled={onFavouriteToggled}
       />
 
       {/* Action buttons */}

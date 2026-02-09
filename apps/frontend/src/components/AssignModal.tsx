@@ -2,13 +2,15 @@
 
 import type { UserLookup } from "@/types";
 import { useState, useEffect, useCallback } from "react";
-import { lookupUsers, discoverUser } from "@/lib/api";
+import { lookupUsers, discoverUser, toggleFavourite } from "@/lib/api";
 
 type Props = {
   isOpen: boolean;
   onClose: () => void;
   onSelect: (user: UserLookup | null) => void;
   currentAssignee?: UserLookup | null;
+  favourites?: UserLookup[];
+  onFavouriteToggled?: () => Promise<void>;
 };
 
 export function AssignModal({
@@ -16,12 +18,15 @@ export function AssignModal({
   onClose,
   onSelect,
   currentAssignee,
+  favourites = [],
+  onFavouriteToggled,
 }: Props) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<UserLookup[]>([]);
   const [discoveredUser, setDiscoveredUser] = useState<UserLookup | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [togglingFavId, setTogglingFavId] = useState<string | null>(null);
 
   // Debounced search: lookup connected users first, then discover if empty
   const searchUsers = useCallback(async (searchQuery: string) => {
@@ -77,7 +82,29 @@ export function AssignModal({
     }
   }, [isOpen]);
 
+  async function handleToggleFavourite(
+    e: React.MouseEvent,
+    userId: string,
+  ): Promise<void> {
+    e.stopPropagation();
+    setTogglingFavId(userId);
+    try {
+      await toggleFavourite(userId);
+      await onFavouriteToggled?.();
+    } catch (err) {
+      console.error("Failed to toggle favourite:", err);
+    } finally {
+      setTogglingFavId(null);
+    }
+  }
+
+  function isFavourite(userId: string): boolean {
+    return favourites.some((f) => f.id === userId);
+  }
+
   if (!isOpen) return null;
+
+  const showFavourites = query.length < 3 && favourites.length > 0;
 
   return (
     <div
@@ -153,6 +180,30 @@ export function AssignModal({
           </div>
         )}
 
+        {/* Favourites quick-pick (shown when no active search) */}
+        {showFavourites && (
+          <div className="px-4 pb-2">
+            <p className="text-xs font-medium text-slate-500 mb-2">
+              Favourites
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {favourites.map((fav) => (
+                <button
+                  key={fav.id}
+                  onClick={() => {
+                    onSelect(fav);
+                    onClose();
+                  }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 border border-amber-200 rounded-full text-sm text-slate-700 hover:bg-amber-100 transition-colors"
+                >
+                  <span className="text-amber-500">★</span>
+                  {fav.name}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Results */}
         <div className="px-4 pb-4 max-h-64 overflow-y-auto">
           {loading && (
@@ -178,26 +229,48 @@ export function AssignModal({
           {/* Connected users — direct selection */}
           {!loading && results.length > 0 && (
             <div className="space-y-2">
-              {results.map((user) => (
+              {results.map((resultUser) => (
                 <button
-                  key={user.id}
+                  key={resultUser.id}
                   onClick={() => {
-                    onSelect(user);
+                    onSelect(resultUser);
                     onClose();
                   }}
                   className="w-full flex items-center gap-3 p-3 rounded-md hover:bg-slate-50 transition-colors text-left"
                 >
                   <div className="w-10 h-10 rounded-full bg-[var(--blue)] flex items-center justify-center text-white font-medium">
-                    {user.name.charAt(0).toUpperCase()}
+                    {resultUser.name.charAt(0).toUpperCase()}
                   </div>
-                  <div>
-                    <div className="text-sm font-medium text-slate-700">
-                      {user.name}
+                  <div className="flex-1">
+                    <div className="flex items-center gap-1">
+                      <span className="text-sm font-medium text-slate-700">
+                        {resultUser.name}
+                      </span>
+                      {isFavourite(resultUser.id) && (
+                        <span className="text-amber-500 text-xs">★</span>
+                      )}
                     </div>
                     <div className="text-xs text-slate-500">
-                      {user.email_masked}
+                      {resultUser.email_masked}
                     </div>
                   </div>
+                  <button
+                    type="button"
+                    aria-label={
+                      isFavourite(resultUser.id)
+                        ? "Remove from favourites"
+                        : "Add to favourites"
+                    }
+                    disabled={togglingFavId === resultUser.id}
+                    onClick={(e) => handleToggleFavourite(e, resultUser.id)}
+                    className="p-1 rounded-md hover:bg-slate-100 transition-colors disabled:opacity-50"
+                  >
+                    <span
+                      className={`text-lg ${isFavourite(resultUser.id) ? "text-amber-400" : "text-slate-300"}`}
+                    >
+                      ★
+                    </span>
+                  </button>
                 </button>
               ))}
             </div>

@@ -69,7 +69,13 @@ function sortByUrgency(items: Item[]): Item[] {
 
 export default function Home() {
   const router = useRouter();
-  const { isAuthenticated, isLoading: authLoading, logout, user } = useAuth();
+  const {
+    isAuthenticated,
+    isLoading: authLoading,
+    logout,
+    user,
+    refreshUser,
+  } = useAuth();
   const [items, setItems] = useState<Item[]>([]);
   const [assignedItems, setAssignedItems] = useState<Item[]>([]);
   const [delegatedItems, setDelegatedItems] = useState<Item[]>([]);
@@ -155,6 +161,73 @@ export default function Home() {
       return () => clearTimeout(timer);
     }
   }, [scrollToItemId]);
+
+  // Listen for service worker messages (real-time task updates from push notifications)
+  useEffect(() => {
+    if (typeof navigator === "undefined" || !navigator.serviceWorker) return;
+
+    function handleSwMessage(event: MessageEvent) {
+      if (event.data?.type !== "TASK_UPDATE") return;
+
+      const notificationType: string = event.data.notificationType ?? "";
+
+      if (
+        notificationType === "task_unassigned" ||
+        notificationType === "task_rejected"
+      ) {
+        // Refresh both assigned and delegated lists
+        Promise.all([
+          fetchItems({ assigned_to_me: true, scope: viewScope }),
+          fetchItems({ delegated: true, scope: viewScope }),
+        ])
+          .then(([assignedData, delegatedData]) => {
+            setAssignedItems(assignedData);
+            setDelegatedItems(delegatedData);
+          })
+          .catch(console.error);
+      } else {
+        // task_assigned, task_updated, task_completed, etc.
+        fetchItems({ assigned_to_me: true, scope: viewScope })
+          .then(setAssignedItems)
+          .catch(console.error);
+      }
+    }
+
+    navigator.serviceWorker.addEventListener("message", handleSwMessage);
+    return () => {
+      navigator.serviceWorker.removeEventListener("message", handleSwMessage);
+    };
+  }, [viewScope]);
+
+  // Refresh all lists when the tab becomes visible again
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    function handleVisibilityChange() {
+      if (document.visibilityState !== "visible") return;
+
+      Promise.all([
+        fetchItems({ scope: viewScope }),
+        delegation
+          ? fetchItems({ assigned_to_me: true, scope: viewScope })
+          : Promise.resolve([]),
+        delegation
+          ? fetchItems({ delegated: true, scope: viewScope })
+          : Promise.resolve([]),
+      ])
+        .then(([itemsData, assignedData, delegatedData]) => {
+          setItems(itemsData);
+          setAssignedItems(assignedData);
+          setDelegatedItems(delegatedData);
+        })
+        .catch(console.error);
+    }
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [isAuthenticated, viewScope, delegation]);
 
   // Sort my tasks by urgency (only when dates feature is enabled)
   const sortedItems = dates ? sortByUrgency(items) : items;
@@ -726,6 +799,8 @@ export default function Home() {
         projects={projects}
         onCreateProject={handleCreateProject}
         showAssignment={delegation}
+        favourites={user?.favourites}
+        onFavouriteToggled={refreshUser}
         onSubmit={async (v) => {
           if (editingItem) {
             // Update existing item

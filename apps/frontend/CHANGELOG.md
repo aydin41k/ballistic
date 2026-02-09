@@ -1,3 +1,28 @@
+## 0.15.0 - 2026-02-08
+
+### Added
+
+#### Favourite Contacts in Assign Modal
+
+- **Quick-pick favourites**: When no search query is entered (< 3 chars), the Assign Modal shows a "Favourites" section with one-click assignment buttons for starred contacts
+- **Star toggle**: Search results include a ★ button to toggle favourite status. Starred users are highlighted with the star icon in results.
+- **Favourites first**: Favourite contacts appear at the top of search results
+- **`toggleFavourite()` API function**: `POST /api/favourites/{userId}` — toggles favourite status and refreshes user data via `onFavouriteToggled` callback
+
+#### Real-Time Task State Management
+
+- **Service Worker messages**: SW posts a `TASK_UPDATE` message to all open app windows when a push notification is received (even when user doesn't tap it), enabling foreground data refresh
+- **SW message listener**: `page.tsx` listens for `TASK_UPDATE` messages and re-fetches the relevant item lists based on notification type (`task_assigned`, `task_unassigned`, `task_rejected`, `task_updated`, `task_completed`)
+- **Visibility change refresh**: `page.tsx` re-fetches all item lists when the tab becomes visible (fallback for when SW is inactive)
+
+### Changed
+
+- **`AssignModal`**: Refactored to accept `favourites` and `onFavouriteToggled` as props instead of calling `useAuth()` directly — eliminates test-environment dependency on `AuthProvider`
+- **`ItemForm`**: Passes `favourites` and `onFavouriteToggled` props through to `AssignModal`
+- **`EditItemModal`**: Passes `favourites` and `onFavouriteToggled` props through to `ItemForm`
+- **`page.tsx`**: Passes `user?.favourites` and `refreshUser` down to `EditItemModal`
+- **`User` type**: Added `favourites?: UserLookup[]` field
+
 ## 1.0.0 - 2026-02-07
 
 ### Added

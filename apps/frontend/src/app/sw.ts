@@ -67,7 +67,25 @@ self.addEventListener("push", (event: PushEvent) => {
     tag: data?.type || "default",
   };
 
-  event.waitUntil(self.registration.showNotification(title, options));
+  // Notify all open app windows so they can refresh their data
+  const notifyClients = self.clients
+    .matchAll({ type: "window", includeUncontrolled: true })
+    .then((clients) => {
+      clients.forEach((client) => {
+        client.postMessage({
+          type: "TASK_UPDATE",
+          notificationType: data?.type,
+          itemId: data?.item_id,
+        });
+      });
+    });
+
+  event.waitUntil(
+    Promise.all([
+      self.registration.showNotification(title, options),
+      notifyClients,
+    ]),
+  );
 });
 
 /**
