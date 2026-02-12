@@ -118,7 +118,7 @@ final class McpServerTest extends TestCase
         $response->assertJsonFragment([
             'serverInfo' => [
                 'name' => 'Ballistic Social',
-                'version' => '0.16.0',
+                'version' => '0.16.1',
             ],
         ]);
     }
