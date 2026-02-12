@@ -1,8 +1,10 @@
 <?php
 
+use App\Http\Middleware\EnsureAiAssistantEnabled;
 use App\Http\Middleware\EnsureUserIsAdmin;
 use App\Http\Middleware\HandleAppearance;
 use App\Http\Middleware\HandleInertiaRequests;
+use App\Mcp\Middleware\McpAuthMiddleware;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -14,6 +16,8 @@ return Application::configure(basePath: dirname(__DIR__))
         api: __DIR__.'/../routes/api.php',
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
+        // MCP routes are loaded automatically by Laravel\Mcp\Server\McpServiceProvider
+        // from routes/ai.php with prefix 'mcp', making the endpoint available at POST /mcp
     )
     ->withMiddleware(function (Middleware $middleware) {
         $middleware->encryptCookies(except: ['appearance', 'sidebar_state']);
@@ -28,6 +32,8 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->alias([
             'admin' => EnsureUserIsAdmin::class,
+            'mcp.auth' => McpAuthMiddleware::class,
+            'feature.ai' => EnsureAiAssistantEnabled::class,
         ]);
     })
     ->withProviders([

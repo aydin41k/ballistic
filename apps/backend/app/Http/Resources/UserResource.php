@@ -22,7 +22,10 @@ final class UserResource extends JsonResource
             'email' => $this->email,
             'phone' => $this->phone,
             'notes' => $this->notes,
-            'feature_flags' => $this->feature_flags ?? ['dates' => false, 'delegation' => false],
+            'feature_flags' => array_merge(
+                ['dates' => false, 'delegation' => false, 'ai_assistant' => false],
+                $this->feature_flags ?? []
+            ),
             'email_verified_at' => $this->email_verified_at?->toIso8601String(),
             'is_admin' => $this->is_admin,
             'created_at' => $this->created_at?->toIso8601String(),

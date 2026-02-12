@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Providers;
 
 use App\Contracts\NotificationServiceInterface;
+use App\Mcp\Services\McpAuthContext;
+use App\Mcp\Services\SchemaReflector;
 use App\Services\NotificationService;
 use App\Services\WebPushService;
 use App\Services\WebPushServiceInterface;
@@ -22,6 +24,10 @@ final class AppServiceProvider extends ServiceProvider
     {
         $this->app->bind(NotificationServiceInterface::class, NotificationService::class);
         $this->app->bind(WebPushServiceInterface::class, WebPushService::class);
+
+        // MCP Services - scoped to request lifecycle
+        $this->app->scoped(McpAuthContext::class);
+        $this->app->singleton(SchemaReflector::class);
     }
 
     /**
@@ -59,6 +65,13 @@ final class AppServiceProvider extends ServiceProvider
         // 60 requests per minute for normal operations
         RateLimiter::for('api', function (Request $request) {
             return Limit::perMinute(60)->by($request->user()?->id ?: $request->ip());
+        });
+
+        // MCP rate limiting (by authenticated user)
+        // Higher limit for AI agents: 120 requests per minute
+        // Each tool call or resource read counts as one request
+        RateLimiter::for('mcp', function (Request $request) {
+            return Limit::perMinute(120)->by($request->user()?->id ?: $request->ip());
         });
     }
 }
