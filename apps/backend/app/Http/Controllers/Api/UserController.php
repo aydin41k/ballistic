@@ -51,6 +51,7 @@ final class UserController extends Controller
             'feature_flags' => ['nullable', 'array'],
             'feature_flags.dates' => ['sometimes', 'boolean'],
             'feature_flags.delegation' => ['sometimes', 'boolean'],
+            'feature_flags.ai_assistant' => ['sometimes', 'boolean'],
             'password' => ['sometimes', 'required', 'confirmed', Password::defaults()],
         ]);
 
