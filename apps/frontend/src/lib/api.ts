@@ -104,14 +104,17 @@ export async function fetchUser(): Promise<User> {
   return extractData(payload);
 }
 
+export type UserUpdatePayload = Partial<
+  Pick<User, "name" | "email" | "phone" | "notes"> & {
+    // feature_flags accepts a partial update — the server merges it with stored flags.
+    feature_flags: Partial<NonNullable<User["feature_flags"]>> | null;
+  }
+>;
+
 /**
  * Update the authenticated user's profile.
  */
-export async function updateUser(
-  data: Partial<
-    Pick<User, "name" | "email" | "phone" | "notes" | "feature_flags">
-  >,
-): Promise<User> {
+export async function updateUser(data: UserUpdatePayload): Promise<User> {
   const response = await fetch(buildUrl("/api/user"), {
     method: "PATCH",
     headers: getAuthHeaders(),

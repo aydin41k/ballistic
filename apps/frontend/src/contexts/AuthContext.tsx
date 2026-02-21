@@ -17,7 +17,7 @@ import {
   logout as authLogout,
   AuthError,
 } from "@/lib/auth";
-import { fetchUser, updateUser as apiUpdateUser } from "@/lib/api";
+import { fetchUser, updateUser as apiUpdateUser, type UserUpdatePayload } from "@/lib/api";
 
 interface AuthContextType {
   user: User | null;
@@ -32,11 +32,7 @@ interface AuthContextType {
   ) => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
-  updateUser: (
-    data: Partial<
-      Pick<User, "name" | "email" | "phone" | "notes" | "feature_flags">
-    >,
-  ) => Promise<void>;
+  updateUser: (data: UserUpdatePayload) => Promise<void>;
 }
 
 export const AuthContext = createContext<AuthContextType | null>(null);
@@ -101,12 +97,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setStoredUser(fetchedUser);
   }, []);
 
-  const updateUser = useCallback(
-    async (
-      data: Partial<
-        Pick<User, "name" | "email" | "phone" | "notes" | "feature_flags">
-      >,
-    ) => {
+  const updateUser = useCallback(async (data: UserUpdatePayload) => {
       const updatedUser = await apiUpdateUser(data);
       setUser(updatedUser);
       setStoredUser(updatedUser);
