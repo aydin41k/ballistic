@@ -9,8 +9,7 @@ export interface User {
   feature_flags?: {
     dates: boolean;
     delegation: boolean;
-    ai_assistant?: boolean;
-    [key: string]: boolean | undefined;
+    ai_assistant: boolean;
   } | null;
   email_verified_at: string | null;
   created_at: string;
@@ -93,7 +92,7 @@ export interface NotificationsResponse {
 export interface McpToken {
   id: string;
   name: string;
-  created_at: string;
+  created_at: string | null;
   last_used_at: string | null;
   is_legacy_wildcard: boolean;
 }

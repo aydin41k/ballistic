@@ -18,7 +18,7 @@ final class EnsureMcpTokenAbilityTest extends TestCase
     public function test_allows_mcp_scoped_token(): void
     {
         $user = User::factory()->create();
-        $accessToken = $user->createToken('mcp', [TokenAbility::MCP])->accessToken;
+        $accessToken = $user->createToken('mcp', [TokenAbility::Mcp->value])->accessToken;
         $request = $this->requestFor($user->withAccessToken($accessToken));
 
         $response = $this->middleware()->handle($request, fn () => response('ok'));
@@ -29,7 +29,7 @@ final class EnsureMcpTokenAbilityTest extends TestCase
     public function test_rejects_api_scoped_token(): void
     {
         $user = User::factory()->create();
-        $accessToken = $user->createToken('api', [TokenAbility::API])->accessToken;
+        $accessToken = $user->createToken('api', [TokenAbility::Api->value])->accessToken;
         $request = $this->requestFor($user->withAccessToken($accessToken));
 
         $response = $this->middleware()->handle($request, fn () => response('ok'));

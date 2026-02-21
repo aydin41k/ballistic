@@ -25,6 +25,8 @@ jest.mock("@/lib/api", () => ({
 
 describe("SettingsModal MCP token management", () => {
   beforeEach(() => {
+    jest.clearAllMocks();
+
     (fetchMcpTokens as jest.Mock).mockResolvedValue([
       {
         id: "tok-1",
@@ -45,7 +47,6 @@ describe("SettingsModal MCP token management", () => {
       },
     });
     (revokeMcpToken as jest.Mock).mockResolvedValue(undefined);
-    window.confirm = jest.fn(() => true);
   });
 
   test("loads existing MCP tokens and supports create/revoke", async () => {
@@ -69,9 +70,57 @@ describe("SettingsModal MCP token management", () => {
     });
     expect(screen.getByText("plain-token-value")).toBeInTheDocument();
 
+    // New token is prepended; click Revoke for the first one (tok-2 "Cursor")
     await user.click(screen.getAllByRole("button", { name: "Revoke" })[0]);
+    expect(screen.getByRole("button", { name: "Yes" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Yes" }));
     await waitFor(() => {
-      expect(revokeMcpToken).toHaveBeenCalled();
+      expect(revokeMcpToken).toHaveBeenCalledWith("tok-2");
+    });
+  });
+
+  test("cancelling revoke confirmation does not call revokeMcpToken", async () => {
+    const user = userEvent.setup();
+
+    render(<SettingsModal isOpen={true} onClose={jest.fn()} />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Claude Desktop")).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole("button", { name: "Revoke" }));
+    expect(screen.getByRole("button", { name: "Yes" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(revokeMcpToken).not.toHaveBeenCalled();
+    expect(
+      screen.queryByRole("button", { name: "Yes" }),
+    ).not.toBeInTheDocument();
+  });
+
+  test("shows retry button when token load fails", async () => {
+    (fetchMcpTokens as jest.Mock).mockRejectedValueOnce(
+      new Error("Network error"),
+    );
+
+    const user = userEvent.setup();
+    render(<SettingsModal isOpen={true} onClose={jest.fn()} />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Failed to load tokens.")).toBeInTheDocument();
+    });
+
+    expect(screen.getByRole("button", { name: "Retry" })).toBeInTheDocument();
+
+    // Successful retry
+    (fetchMcpTokens as jest.Mock).mockResolvedValueOnce([]);
+    await user.click(screen.getByRole("button", { name: "Retry" }));
+
+    await waitFor(() => {
+      expect(
+        screen.queryByText("Failed to load tokens."),
+      ).not.toBeInTheDocument();
     });
   });
 });

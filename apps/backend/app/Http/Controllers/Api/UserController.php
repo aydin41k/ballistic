@@ -60,9 +60,12 @@ final class UserController extends Controller
         }
 
         if (array_key_exists('feature_flags', $validated) && is_array($validated['feature_flags'])) {
+            $allowedFlagKeys = ['dates', 'delegation', 'ai_assistant'];
+            $incomingFlags = array_intersect_key($validated['feature_flags'], array_flip($allowedFlagKeys));
+
             $validated['feature_flags'] = array_merge(
                 $user->feature_flags ?? [],
-                $validated['feature_flags']
+                $incomingFlags
             );
         }
 

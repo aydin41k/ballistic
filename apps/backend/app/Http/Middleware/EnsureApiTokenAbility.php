@@ -25,7 +25,7 @@ final class EnsureApiTokenAbility
             return $next($request);
         }
 
-        if (TokenAbility::hasExplicitAbility($token, TokenAbility::API) || TokenAbility::isWildcardToken($token)) {
+        if (TokenAbility::hasExplicitAbility($token, TokenAbility::Api) || TokenAbility::isWildcardToken($token)) {
             return $next($request);
         }
 

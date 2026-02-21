@@ -49,7 +49,7 @@ class AuthenticationTest extends TestCase
 
         $token = PersonalAccessToken::findToken($response->json('token'));
         $this->assertNotNull($token);
-        $this->assertTrue($token->can(TokenAbility::API));
+        $this->assertTrue($token->can(TokenAbility::Api->value));
     }
 
     public function test_registration_requires_name(): void
@@ -160,7 +160,7 @@ class AuthenticationTest extends TestCase
 
         $token = PersonalAccessToken::findToken($response->json('token'));
         $this->assertNotNull($token);
-        $this->assertTrue($token->can(TokenAbility::API));
+        $this->assertTrue($token->can(TokenAbility::Api->value));
     }
 
     public function test_users_cannot_login_with_invalid_password(): void
@@ -239,7 +239,7 @@ class AuthenticationTest extends TestCase
     public function test_api_rejects_mcp_scoped_tokens(): void
     {
         $user = User::factory()->create();
-        $mcpToken = $user->createToken('mcp-token', [TokenAbility::MCP])->plainTextToken;
+        $mcpToken = $user->createToken('mcp-token', [TokenAbility::Mcp->value])->plainTextToken;
 
         $response = $this->withHeader('Authorization', 'Bearer '.$mcpToken)
             ->getJson('/api/user');

@@ -17,22 +17,20 @@ final class McpTokenService
      */
     public function listTokens(User $user): Collection
     {
-        $includeLegacyWildcard = TokenAbility::isLegacyWildcardAllowedForMcp();
+        $query = $user->tokens()->where(function ($q): void {
+            $q->whereJsonContains('abilities', TokenAbility::Mcp->value);
 
-        return $user->tokens
-            ->filter(function (PersonalAccessToken $token) use ($includeLegacyWildcard): bool {
-                if (TokenAbility::hasExplicitAbility($token, TokenAbility::MCP)) {
-                    return true;
-                }
+            if (TokenAbility::isLegacyWildcardAllowedForMcp()) {
+                $q->orWhereJsonContains('abilities', TokenAbility::Wildcard->value);
+            }
+        });
 
-                return $includeLegacyWildcard && TokenAbility::isWildcardToken($token);
-            })
-            ->values();
+        return $query->get();
     }
 
     public function createToken(User $user, string $name): NewAccessToken
     {
-        return $user->createToken($name, [TokenAbility::MCP]);
+        return $user->createToken($name, [TokenAbility::Mcp->value]);
     }
 
     public function revokeToken(User $user, string $tokenId): bool
@@ -43,28 +41,14 @@ final class McpTokenService
             return false;
         }
 
-        $includeLegacyWildcard = TokenAbility::isLegacyWildcardAllowedForMcp();
-        $isMcpToken = TokenAbility::hasExplicitAbility($token, TokenAbility::MCP);
-        $isLegacyWildcardToken = $includeLegacyWildcard && TokenAbility::isWildcardToken($token);
+        $isMcpToken = TokenAbility::hasExplicitAbility($token, TokenAbility::Mcp);
+        $isLegacyWildcardToken = TokenAbility::isLegacyWildcardAllowedForMcp()
+            && TokenAbility::isWildcardToken($token);
 
         if (! $isMcpToken && ! $isLegacyWildcardToken) {
             return false;
         }
 
-        return $token->delete();
-    }
-
-    /**
-     * @return array{id:string,name:string,created_at:string,last_used_at:string|null,is_legacy_wildcard:bool}
-     */
-    public function toPayload(PersonalAccessToken $token): array
-    {
-        return [
-            'id' => (string) $token->id,
-            'name' => $token->name,
-            'created_at' => $token->created_at?->toIso8601String() ?? now()->toIso8601String(),
-            'last_used_at' => $token->last_used_at?->toIso8601String(),
-            'is_legacy_wildcard' => TokenAbility::isWildcardToken($token) && ! TokenAbility::hasExplicitAbility($token, TokenAbility::MCP),
-        ];
+        return (bool) $token->delete();
     }
 }

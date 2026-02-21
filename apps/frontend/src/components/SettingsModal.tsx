@@ -21,16 +21,22 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const [error, setError] = useState<string | null>(null);
   const [mcpTokens, setMcpTokens] = useState<McpToken[]>([]);
   const [loadingTokens, setLoadingTokens] = useState(false);
+  const [tokenLoadError, setTokenLoadError] = useState(false);
   const [creatingToken, setCreatingToken] = useState(false);
   const [tokenName, setTokenName] = useState("");
   const [newToken, setNewToken] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [confirmRevokeId, setConfirmRevokeId] = useState<string | null>(null);
 
   // Close on escape key
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if (e.key === "Escape") {
-        onClose();
+        if (confirmRevokeId) {
+          setConfirmRevokeId(null);
+        } else {
+          onClose();
+        }
       }
     }
 
@@ -38,7 +44,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
       document.addEventListener("keydown", handleKeyDown);
       return () => document.removeEventListener("keydown", handleKeyDown);
     }
-  }, [isOpen, onClose]);
+  }, [isOpen, onClose, confirmRevokeId]);
 
   // Close on click outside
   function handleBackdropClick(e: React.MouseEvent) {
@@ -54,12 +60,13 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     }
 
     setLoadingTokens(true);
+    setTokenLoadError(false);
     try {
       const tokens = await fetchMcpTokens();
       setMcpTokens(tokens);
     } catch (err) {
       console.error("Failed to load MCP tokens:", err);
-      setError("Failed to load MCP tokens.");
+      setTokenLoadError(true);
     } finally {
       setLoadingTokens(false);
     }
@@ -111,14 +118,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   }
 
   async function handleRevokeToken(tokenId: string) {
-    if (
-      !confirm(
-        "Revoke this MCP token? Any AI assistant using it will lose access.",
-      )
-    ) {
-      return;
-    }
-
+    setConfirmRevokeId(null);
     setError(null);
     try {
       await revokeMcpToken(tokenId);
@@ -356,6 +356,19 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
 
                 {loadingTokens ? (
                   <p className="text-xs text-gray-500">Loading tokens...</p>
+                ) : tokenLoadError ? (
+                  <div className="flex items-center gap-2">
+                    <p className="text-xs text-red-600">
+                      Failed to load tokens.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => void loadMcpTokens()}
+                      className="text-xs text-blue-600 underline hover:no-underline"
+                    >
+                      Retry
+                    </button>
+                  </div>
                 ) : mcpTokens.length === 0 ? (
                   <p className="text-xs text-gray-500">No MCP tokens yet.</p>
                 ) : (
@@ -365,7 +378,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                         key={token.id}
                         className="flex items-start justify-between gap-2 p-3"
                       >
-                        <div>
+                        <div className="min-w-0">
                           <p className="text-sm font-medium text-gray-900">
                             {token.name}
                             {token.is_legacy_wildcard && (
@@ -376,7 +389,9 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                           </p>
                           <p className="text-xs text-gray-500">
                             Created{" "}
-                            {new Date(token.created_at).toLocaleDateString()}
+                            {token.created_at
+                              ? new Date(token.created_at).toLocaleDateString()
+                              : "—"}
                             {token.last_used_at
                               ? ` · Last used ${new Date(token.last_used_at).toLocaleDateString()}`
                               : ""}
@@ -388,13 +403,36 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                             </p>
                           )}
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => handleRevokeToken(token.id)}
-                          className="rounded-md border border-red-200 px-2 py-1 text-xs text-red-700 hover:bg-red-50"
-                        >
-                          Revoke
-                        </button>
+
+                        {confirmRevokeId === token.id ? (
+                          <div className="flex shrink-0 items-center gap-1">
+                            <span className="text-xs text-gray-600">
+                              Revoke?
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => void handleRevokeToken(token.id)}
+                              className="rounded-md bg-red-600 px-2 py-1 text-xs font-medium text-white hover:bg-red-700"
+                            >
+                              Yes
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setConfirmRevokeId(null)}
+                              className="rounded-md border border-gray-300 px-2 py-1 text-xs text-gray-700 hover:bg-gray-50"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => setConfirmRevokeId(token.id)}
+                            className="shrink-0 rounded-md border border-red-200 px-2 py-1 text-xs text-red-700 hover:bg-red-50"
+                          >
+                            Revoke
+                          </button>
+                        )}
                       </div>
                     ))}
                   </div>

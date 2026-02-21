@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Settings;
 
 use App\Http\Controllers\Controller;
+use App\Http\Resources\McpTokenResource;
 use App\Models\User;
 use App\Services\McpTokenService;
 use Illuminate\Http\RedirectResponse;
@@ -25,9 +26,7 @@ final class ApiTokenController extends Controller
     {
         /** @var User $user */
         $user = $request->user();
-        $tokens = $this->mcpTokens
-            ->listTokens($user)
-            ->map(fn ($token) => $this->mcpTokens->toPayload($token));
+        $tokens = McpTokenResource::collection($this->mcpTokens->listTokens($user));
 
         return Inertia::render('settings/api-tokens', [
             'tokens' => $tokens,

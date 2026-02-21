@@ -24,7 +24,7 @@ final class EnsureMcpTokenAbility
             return $this->mcpError('Authentication required. Provide a valid MCP Bearer token.', 401);
         }
 
-        if (TokenAbility::hasExplicitAbility($token, TokenAbility::MCP)) {
+        if (TokenAbility::hasExplicitAbility($token, TokenAbility::Mcp)) {
             return $next($request);
         }
 

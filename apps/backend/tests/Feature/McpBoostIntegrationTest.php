@@ -37,7 +37,7 @@ final class McpBoostIntegrationTest extends TestCase
         $this->user = User::factory()->create([
             'feature_flags' => ['ai_assistant' => true],
         ]);
-        $this->token = $this->user->createToken('boost-test', [TokenAbility::MCP])->plainTextToken;
+        $this->token = $this->user->createToken('boost-test', [TokenAbility::Mcp->value])->plainTextToken;
     }
 
     /**

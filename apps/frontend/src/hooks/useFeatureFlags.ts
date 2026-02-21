@@ -38,23 +38,17 @@ export function useFeatureFlags() {
 
   const setFlag = useCallback(
     async (flag: "dates" | "delegation" | "ai_assistant", value: boolean) => {
-      const currentFlags = user?.feature_flags ?? DEFAULTS;
-      const next = {
-        ...currentFlags,
-        dates: currentFlags.dates ?? false,
-        delegation: currentFlags.delegation ?? false,
-        ai_assistant: currentFlags.ai_assistant ?? false,
-        [flag]: value,
-      };
-
+      // Send only the changed key — the server merges it with the stored flags,
+      // which avoids a multi-tab race condition where two concurrent updates
+      // would overwrite each other's changes.
       try {
-        await updateUser({ feature_flags: next });
+        await updateUser({ feature_flags: { [flag]: value } });
       } catch (error) {
         console.error("Failed to save feature flags:", error);
         throw error;
       }
     },
-    [updateUser, user?.feature_flags],
+    [updateUser],
   );
 
   return {

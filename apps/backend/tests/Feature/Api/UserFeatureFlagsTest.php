@@ -20,10 +20,9 @@ final class UserFeatureFlagsTest extends TestCase
                 'dates' => false,
                 'delegation' => false,
                 'ai_assistant' => true,
-                'custom_flag' => true,
             ],
         ]);
-        $token = $user->createToken('api-client', [TokenAbility::API])->plainTextToken;
+        $token = $user->createToken('api-client', [TokenAbility::Api->value])->plainTextToken;
 
         $response = $this->withToken($token)->patchJson('/api/user', [
             'feature_flags' => [
@@ -33,8 +32,7 @@ final class UserFeatureFlagsTest extends TestCase
 
         $response->assertOk()
             ->assertJsonPath('data.feature_flags.dates', true)
-            ->assertJsonPath('data.feature_flags.ai_assistant', true)
-            ->assertJsonPath('data.feature_flags.custom_flag', true);
+            ->assertJsonPath('data.feature_flags.ai_assistant', true);
 
         $user->refresh();
 
@@ -42,7 +40,34 @@ final class UserFeatureFlagsTest extends TestCase
             'dates' => true,
             'delegation' => false,
             'ai_assistant' => true,
-            'custom_flag' => true,
         ], $user->feature_flags);
+    }
+
+    public function test_arbitrary_feature_flag_keys_are_not_persisted_from_request(): void
+    {
+        $user = User::factory()->create([
+            'feature_flags' => [
+                'dates' => false,
+                'delegation' => false,
+                'ai_assistant' => false,
+            ],
+        ]);
+        $token = $user->createToken('api-client', [TokenAbility::Api->value])->plainTextToken;
+
+        $this->withToken($token)->patchJson('/api/user', [
+            'feature_flags' => [
+                'dates' => true,
+                'malicious_flag' => true,
+            ],
+        ])->assertOk();
+
+        $user->refresh();
+
+        $this->assertSame([
+            'dates' => true,
+            'delegation' => false,
+            'ai_assistant' => false,
+        ], $user->feature_flags);
+        $this->assertArrayNotHasKey('malicious_flag', $user->feature_flags);
     }
 }

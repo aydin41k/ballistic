@@ -40,7 +40,7 @@ final class AuthController extends Controller
         event(new Registered($user));
 
         $deviceName = $validated['device_name'] ?? 'api-token';
-        $token = $user->createToken($deviceName, [TokenAbility::API])->plainTextToken;
+        $token = $user->createToken($deviceName, [TokenAbility::Api->value])->plainTextToken;
 
         return response()->json([
             'message' => 'User registered successfully',
@@ -79,7 +79,7 @@ final class AuthController extends Controller
         // Create a new token for this device without revoking existing tokens
         // This enables multi-device login support
         $deviceName = $request->input('device_name', 'api-token');
-        $token = $user->createToken($deviceName, [TokenAbility::API])->plainTextToken;
+        $token = $user->createToken($deviceName, [TokenAbility::Api->value])->plainTextToken;
 
         return response()->json([
             'message' => 'Login successful',

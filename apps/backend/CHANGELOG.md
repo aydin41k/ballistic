@@ -5,127 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.16.1] - 2026-02-12
-
-### Added
-- **AI Assistant Feature Flag**: MCP endpoint now requires `ai_assistant` feature flag to be enabled on user account
-  - Flag check implemented in `BallisticServer::boot()` for consistent enforcement
-  - Returns 404 when feature not enabled (prevents information disclosure)
-- **API Token Management**: Users can now generate and revoke API tokens for AI assistants via Settings → AI Assistant
-  - Protected by `feature.ai` middleware alias
-  - Routes: `GET/POST/DELETE /settings/api-tokens`
-- **Database Transactions**: Added `DB::transaction()` wrappers to MCP tools for data consistency
-  - `CreateItemTool`: Item creation + tag attachment are now atomic
-  - `UpdateItemTool`: Item update + tag sync are now atomic
-  - `AssignItemTool`: Item assignment updates are now atomic
-  - `CreateTagTool`: Uses `firstOrCreate` within transaction to prevent race conditions
+## [0.15.1] - 2026-02-21
 
 ### Changed
-- **Gate Facade Usage**: Replaced direct `ItemPolicy` instantiation with `Gate::forUser()->allows()` in `McpAuthContext`
-  - Follows Laravel best practices for policy authorization
-  - Enables proper mock/spy support in tests
+
+#### MCP/API Token Separation — Code Quality & Security Hardening
+
+- **`TokenAbility` converted to backed enum**: `TokenAbility::Api`, `TokenAbility::Mcp`, `TokenAbility::Wildcard` replace the `public const` strings, providing full PHP type safety on method signatures and exhaustive matching
+- **`McpTokenResource`**: New `JsonResource` for serialising MCP tokens — replaces the ad-hoc `toPayload()` method on `McpTokenService`; used by both `McpTokenController` and `Settings\ApiTokenController`
+- **`StoreMcpTokenRequest`**: Form Request class replaces inline validation in `McpTokenController::store`, consistent with project conventions
+- **DB-level token filtering in `McpTokenService::listTokens`**: Now uses `whereJsonContains` instead of loading all tokens into memory and filtering in PHP
+- **Feature flag key allowlist in `UserController::update`**: `array_intersect_key` strips unknown keys before merging, preventing arbitrary key injection through the `PATCH /api/user` endpoint
+- **`tokens:migrate-scopes` artisan command**: One-time operator tool to reassign legacy wildcard tokens to `api:*` or `mcp:*` before the MCP cutoff date. Dry-run by default; pass `--execute` to apply
 
 ### Fixed
-- **LIKE Pattern Injection**: Search queries now properly escape `%`, `_`, and `!` characters using `ESCAPE '!'` clause
-  - Affects `McpAuthContext::getItems()` search filter
-  - Affects `Admin\UserController` search functionality
-  - Prevents SQL pattern injection when users search for literal `%` or `_` characters
 
-### Security
-- MCP endpoint hidden (404) from users without `ai_assistant` feature flag
-- LIKE pattern injection vulnerability patched in search functionality
-
-### Documentation
-- Added user-facing MCP documentation in `README.md` with setup guide
-- Enhanced `docs/MCP.md` with step-by-step user instructions for Claude Desktop, Cursor, and VS Code
-
-## [0.16.0] - 2026-02-12
-
-### Added
-
-#### Model Context Protocol (MCP) Server
-- **Full MCP Compliance**: JSON-RPC 2.0 transport with proper error handling following the [Model Context Protocol specification](https://modelcontextprotocol.io/specification)
-- **Dual Transport Support**: HTTP endpoint (`POST /mcp`) and STDIO transport (`php artisan mcp:start ballistic`) for local development and CLI integration
-- **Sanctum Authentication**: Secure token-based access control for all MCP operations
-- **User Scoping**: All operations automatically scoped to the authenticated user, preventing cross-user data access
-- **Audit Logging**: All agent actions logged to `audit_logs` table for security and compliance
-
-#### MCP Tools (10 total)
-| Tool | Description | Annotations |
-|------|-------------|-------------|
-| `create_item` | Create a new todo item | Idempotent |
-| `update_item` | Update item fields | Idempotent |
-| `complete_item` | Mark item as done | Idempotent |
-| `delete_item` | Soft-delete an item | Destructive |
-| `assign_item` | Assign to connected user | Idempotent |
-| `search_items` | Search with filters | Read-only |
-| `create_project` | Create a new project | Idempotent |
-| `update_project` | Update or archive project | Idempotent |
-| `create_tag` | Create a categorisation tag | Idempotent |
-| `lookup_users` | Find connected users for assignment | Read-only |
-
-#### MCP Resources (7 total)
-| Resource URI | Description |
-|--------------|-------------|
-| `ballistic://users/me` | Current user profile with counts |
-| `ballistic://items` | List of accessible items |
-| `ballistic://items/{id}` | Single item details |
-| `ballistic://projects` | User's projects |
-| `ballistic://projects/{id}` | Project with item counts |
-| `ballistic://tags` | User's tags with usage counts |
-| `ballistic://connections` | Connected users |
-
-#### Security & Performance
-- **McpAuthContext Service**: Context-aware guard enforcing user scoping, ItemPolicy rules, and connection validation for task assignment
-- **SchemaReflector Service**: Dynamic schema generation that introspects database schema and caches for 5 minutes
-- **Rate Limiting**: 120 requests/minute per authenticated user via `throttle:mcp` middleware
-- **Handshake Performance**: Initialization < 100ms (typically ~10ms)
-- **Owner vs Assignee Permissions**: Owners can perform all operations; assignees can only update `status`, `assignee_notes`, or reject by clearing `assignee_id`
-- **UpdateItemTool Assignee Support**: Assignees can now use `update_item` to set `assignee_id` to null (self-unassignment/rejection), with proper policy enforcement
-
-#### Developer Tools
-- **Laravel Boost Integration**: `laravel/boost` v1.1 dev dependency for AI-assisted development testing
-- **MCP Inspector Script**: `mcp-verify.sh` for verifying server implementation
-  - `./mcp-verify.sh install` - Install MCP Inspector dependencies
-  - `./mcp-verify.sh stdio` - Test STDIO transport
-  - `./mcp-verify.sh http` - Test HTTP transport (requires `MCP_AUTH_TOKEN`)
-  - `./mcp-verify.sh all` - Run all verification tests
-- **Comprehensive Documentation**: `docs/MCP.md` with quick start guide, tool schemas, security model, and integration examples (Python, JavaScript, Claude Desktop)
+- **`McpTokenService::toPayload` fabricated `created_at`**: Removed the `?? now()` fallback — `created_at` is now `string|null`, matching the actual model state
+- **`McpTokenResource::toArray` `created_at`**: Returns `null` rather than fabricating a timestamp when the column is null
 
 ### Tests
-- Added **196 total MCP tests** across 5 test files:
-  - `McpServerTest` (87 feature tests) - HTTP endpoint integration tests
-  - `McpToolsTest` (32 unit tests) - Direct tool handle() method tests
-  - `McpResourcesTest` (19 unit tests) - Direct resource read() method tests
-  - `McpAuthContextTest` (40 unit tests) - Authorization and scoping service tests
-  - `McpBoostIntegrationTest` (18 integration tests) - Laravel Boost integration patterns
-- Added comprehensive `McpServerTest` with 87 tests covering:
-  - **Authentication & Authorisation**: Token validation, revoked tokens, user isolation
-  - **Initialization & Capabilities**: Server info, capability negotiation, handshake performance (< 100ms)
-  - **Tool Validation Edge Cases**:
-    - `create_item`: Missing title, invalid dates, date order validation, invalid/other users' tags, valid tags, recurrence rules, inbox items
-    - `update_item`: Non-existent items, project clearing, moving between projects, invalid dates, completed_at tracking, tag sync
-    - `complete_item`: Idempotent completion, non-existent items, with notes, as assignee
-    - `delete_item`: Non-existent items, already deleted (soft-delete idempotent)
-    - `assign_item`: Unassignment, pending connections rejected, reassignment, non-owner cannot assign, description updates
-    - `search_items`: Empty results, text search (case-insensitive), by project, by tag, with limit, assigned-to-me filter, delegated filter
-    - `create_project`: Without colour, invalid colour format
-    - `update_project`: Archive/restore, non-existent, other users' projects
-    - `create_tag`: Duplicate is idempotent, invalid colour, without colour
-    - `lookup_users`: No connections, with search, pending connections excluded
-  - **Resource Edge Cases**: Single item/project resources, tags with counts, connections, not-found handling, other users' items
-  - **Assignee Permissions**: Can update status/notes, cannot update title/description/project/due_date, can self-unassign (reject)
-  - **Protocol Compliance**: Invalid JSON-RPC version, missing method, unknown tool handling
-  - **Security**: User isolation between tokens, audit log creation
-  - **Laravel Boost Integration**: Server capabilities, tools/resources listing, database persistence, user scoping, validation, idempotency, connection enforcement, performance benchmarks
 
-### Technical Notes
-- Built on `laravel/mcp` package (v0.1.1)
-- Routes configured in `routes/ai.php`
-- Server implementation: `App\Mcp\Servers\BallisticServer`
-- Tools located in `App\Mcp\Tools\*`
-- Resources located in `App\Mcp\Resources\*`
-- Services: `McpAuthContext` (scoped), `SchemaReflector` (singleton)
+- **`EnsureApiTokenAbilityTest`** (5 tests): API-scoped token allowed; wildcard token allowed; MCP-scoped token rejected; session (TransientToken) passes through; unauthenticated request passes through
+- **`TokenAbilityTest`** (11 tests): `isLegacyWildcardAllowedForMcp` with cutoff before/after/empty/null/malformed; `hasExplicitAbility` matching/non-matching/empty; `isWildcardToken` true/false; enum values match Sanctum strings
+- **`UserFeatureFlagsTest`**: Added `test_arbitrary_feature_flag_keys_are_not_persisted_from_request`
+- **`McpTokenControllerTest`**: Added `test_create_mcp_token_requires_name`
+- All existing tests updated for `TokenAbility` enum syntax (`TokenAbility::Mcp->value` etc.)
 
 ## [0.15.0] - 2026-02-08
 

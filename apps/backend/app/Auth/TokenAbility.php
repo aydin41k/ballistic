@@ -7,13 +7,13 @@ namespace App\Auth;
 use Carbon\CarbonImmutable;
 use Laravel\Sanctum\PersonalAccessToken;
 
-final class TokenAbility
+enum TokenAbility: string
 {
-    public const API = 'api:*';
+    case Api = 'api:*';
 
-    public const MCP = 'mcp:*';
+    case Mcp = 'mcp:*';
 
-    public const WILDCARD = '*';
+    case Wildcard = '*';
 
     public static function isLegacyWildcardAllowedForMcp(): bool
     {
@@ -30,7 +30,7 @@ final class TokenAbility
         }
     }
 
-    public static function hasExplicitAbility(PersonalAccessToken $token, string $ability): bool
+    public static function hasExplicitAbility(PersonalAccessToken $token, self $ability): bool
     {
         $abilities = $token->abilities;
 
@@ -38,11 +38,11 @@ final class TokenAbility
             return false;
         }
 
-        return in_array($ability, $abilities, true);
+        return in_array($ability->value, $abilities, true);
     }
 
     public static function isWildcardToken(PersonalAccessToken $token): bool
     {
-        return self::hasExplicitAbility($token, self::WILDCARD);
+        return self::hasExplicitAbility($token, self::Wildcard);
     }
 }

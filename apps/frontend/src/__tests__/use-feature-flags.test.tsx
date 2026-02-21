@@ -15,7 +15,7 @@ function Harness() {
 }
 
 describe("useFeatureFlags", () => {
-  test("preserves ai_assistant when updating another feature flag", async () => {
+  test("sends only the changed flag key to avoid multi-tab race conditions", async () => {
     const updateUser = jest.fn().mockResolvedValue(undefined);
     const user = userEvent.setup();
 
@@ -55,12 +55,9 @@ describe("useFeatureFlags", () => {
     await user.click(screen.getByRole("button", { name: "Toggle dates" }));
 
     await waitFor(() => {
+      // Only the changed key is sent; server-side merge handles the rest.
       expect(updateUser).toHaveBeenCalledWith({
-        feature_flags: {
-          dates: true,
-          delegation: false,
-          ai_assistant: true,
-        },
+        feature_flags: { dates: true },
       });
     });
   });

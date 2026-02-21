@@ -21,11 +21,11 @@ final class McpTokenControllerTest extends TestCase
         $user = User::factory()->create([
             'feature_flags' => ['ai_assistant' => true],
         ]);
-        $apiToken = $user->createToken('api-client', [TokenAbility::API])->plainTextToken;
+        $apiToken = $user->createToken('api-client', [TokenAbility::Api->value])->plainTextToken;
 
-        $user->createToken('mcp-client', [TokenAbility::MCP]);
+        $user->createToken('mcp-client', [TokenAbility::Mcp->value]);
         $user->createToken('legacy-client'); // wildcard
-        $user->createToken('mobile-client', [TokenAbility::API]);
+        $user->createToken('mobile-client', [TokenAbility::Api->value]);
 
         $response = $this->withToken($apiToken)->getJson('/api/mcp/tokens');
 
@@ -42,9 +42,9 @@ final class McpTokenControllerTest extends TestCase
         $user = User::factory()->create([
             'feature_flags' => ['ai_assistant' => true],
         ]);
-        $apiToken = $user->createToken('api-client', [TokenAbility::API])->plainTextToken;
+        $apiToken = $user->createToken('api-client', [TokenAbility::Api->value])->plainTextToken;
 
-        $user->createToken('mcp-client', [TokenAbility::MCP]);
+        $user->createToken('mcp-client', [TokenAbility::Mcp->value]);
         $user->createToken('legacy-client'); // wildcard
 
         $response = $this->withToken($apiToken)->getJson('/api/mcp/tokens');
@@ -59,7 +59,7 @@ final class McpTokenControllerTest extends TestCase
         $user = User::factory()->create([
             'feature_flags' => ['ai_assistant' => true],
         ]);
-        $apiToken = $user->createToken('api-client', [TokenAbility::API])->plainTextToken;
+        $apiToken = $user->createToken('api-client', [TokenAbility::Api->value])->plainTextToken;
 
         $response = $this->withToken($apiToken)->postJson('/api/mcp/tokens', [
             'name' => 'Claude Desktop',
@@ -75,7 +75,20 @@ final class McpTokenControllerTest extends TestCase
 
         $accessToken = PersonalAccessToken::findToken($response->json('data.token'));
         $this->assertNotNull($accessToken);
-        $this->assertTrue($accessToken->can(TokenAbility::MCP));
+        $this->assertTrue($accessToken->can(TokenAbility::Mcp->value));
+    }
+
+    public function test_create_mcp_token_requires_name(): void
+    {
+        $user = User::factory()->create([
+            'feature_flags' => ['ai_assistant' => true],
+        ]);
+        $apiToken = $user->createToken('api-client', [TokenAbility::Api->value])->plainTextToken;
+
+        $this->withToken($apiToken)
+            ->postJson('/api/mcp/tokens', [])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['name']);
     }
 
     public function test_user_can_revoke_only_mcp_relevant_tokens(): void
@@ -85,9 +98,9 @@ final class McpTokenControllerTest extends TestCase
         $user = User::factory()->create([
             'feature_flags' => ['ai_assistant' => true],
         ]);
-        $apiToken = $user->createToken('api-client', [TokenAbility::API])->plainTextToken;
-        $mcpToken = $user->createToken('mcp-client', [TokenAbility::MCP])->accessToken;
-        $mobileToken = $user->createToken('mobile-client', [TokenAbility::API])->accessToken;
+        $apiToken = $user->createToken('api-client', [TokenAbility::Api->value])->plainTextToken;
+        $mcpToken = $user->createToken('mcp-client', [TokenAbility::Mcp->value])->accessToken;
+        $mobileToken = $user->createToken('mobile-client', [TokenAbility::Api->value])->accessToken;
 
         $this->withToken($apiToken)
             ->deleteJson('/api/mcp/tokens/'.$mcpToken->id)
@@ -111,7 +124,7 @@ final class McpTokenControllerTest extends TestCase
         $user = User::factory()->create([
             'feature_flags' => ['ai_assistant' => false],
         ]);
-        $apiToken = $user->createToken('api-client', [TokenAbility::API])->plainTextToken;
+        $apiToken = $user->createToken('api-client', [TokenAbility::Api->value])->plainTextToken;
 
         $this->withToken($apiToken)->getJson('/api/mcp/tokens')->assertStatus(404);
     }
@@ -121,7 +134,7 @@ final class McpTokenControllerTest extends TestCase
         $user = User::factory()->create([
             'feature_flags' => ['ai_assistant' => true],
         ]);
-        $mcpToken = $user->createToken('mcp-client', [TokenAbility::MCP])->plainTextToken;
+        $mcpToken = $user->createToken('mcp-client', [TokenAbility::Mcp->value])->plainTextToken;
 
         $this->withToken($mcpToken)
             ->getJson('/api/mcp/tokens')

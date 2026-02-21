@@ -1,3 +1,20 @@
+## 0.15.1 - 2026-02-21
+
+### Changed
+
+#### MCP Token UI — Quality & Reliability Hardening
+
+- **`useFeatureFlags` — race condition fix**: `setFlag` now sends only the changed key (e.g. `{ feature_flags: { dates: true } }`) rather than the full client-side flags object. The server merges the partial update, so concurrent changes from multiple tabs no longer overwrite each other.
+- **Inline revoke confirmation**: Replaced `window.confirm()` with an inline "Revoke? Yes / Cancel" control in the token list, consistent with the app's design language
+- **Retry on token load failure**: When the MCP token list fails to load, an error message with a "Retry" button is shown instead of a dead-end error state
+- **`McpToken.created_at` nullable**: Updated the TypeScript interface to `string | null` matching the API resource
+- **`User.feature_flags.ai_assistant` required**: Made `ai_assistant` a required (non-optional) property in the `feature_flags` shape; removed the unsafe `[key: string]: boolean | undefined` index signature
+
+### Tests
+
+- **`settings-modal-mcp.test.tsx`**: Updated revoke flow to use the inline confirmation; added cancel and retry tests; removed `window.confirm` mock
+- **`use-feature-flags.test.tsx`**: Updated to assert that only the changed key is sent to `updateUser`
+
 ## 0.15.0 - 2026-02-08
 
 ### Added
