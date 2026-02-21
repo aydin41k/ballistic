@@ -48,6 +48,8 @@ Once the AI Assistant feature is enabled:
 3. Click **Create Token**
 4. **Copy the token immediately** — you won't be able to see it again
 
+MCP tokens are issued with `mcp:*` scope and are separate from regular app/API tokens.
+
 #### Step 3: Configure Your AI Assistant
 
 **Claude Desktop:**
@@ -64,14 +66,14 @@ Once the AI Assistant feature is enabled:
        "ballistic": {
          "url": "https://your-ballistic-url.com/mcp",
          "headers": {
-           "Authorization": "Bearer YOUR_API_TOKEN_HERE"
+           "Authorization": "Bearer YOUR_MCP_TOKEN_HERE"
          }
        }
      }
    }
    ```
 
-3. Replace `YOUR_API_TOKEN_HERE` with the token you created
+3. Replace `YOUR_MCP_TOKEN_HERE` with the token you created
 
 4. Restart Claude Desktop
 
@@ -84,7 +86,7 @@ Add to your workspace or user settings:
     "ballistic": {
       "url": "https://your-ballistic-url.com/mcp",
       "headers": {
-        "Authorization": "Bearer YOUR_API_TOKEN"
+        "Authorization": "Bearer YOUR_MCP_TOKEN"
       }
     }
   }
@@ -188,7 +190,7 @@ MCP_AUTH_TOKEN='your-token' ./mcp-verify.sh http
 
 ```
 POST /mcp
-Authorization: Bearer <sanctum-token>
+Authorization: Bearer <mcp-scoped-sanctum-token>
 Content-Type: application/json
 ```
 
@@ -304,11 +306,22 @@ Content-Type: application/json
 
 ### Authentication
 
-All MCP requests require a valid Sanctum bearer token. Tokens should be created specifically for agent use:
+All MCP requests require a valid Sanctum bearer token with `mcp:*` ability.
+Regular login/register tokens are `api:*` scoped and are rejected by `/mcp`.
+
+Tokens should be created specifically for agent use:
 
 ```php
 $token = $user->createToken('claude-agent', ['mcp:*'])->plainTextToken;
 ```
+
+### Legacy wildcard migration
+
+Legacy wildcard tokens (`*`) can be temporarily accepted for MCP during migration.
+
+- Set `MCP_LEGACY_WILDCARD_CUTOFF_AT` (ISO-8601) to define the end of the grace period.
+- Leave it empty to disable wildcard-token grace immediately (secure default).
+- After cutoff, only `mcp:*` tokens are accepted by `/mcp`.
 
 ### Authorization Rules
 

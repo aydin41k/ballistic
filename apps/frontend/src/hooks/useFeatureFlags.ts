@@ -6,9 +6,14 @@ import { AuthContext } from "@/contexts/AuthContext";
 interface FeatureFlags {
   dates: boolean;
   delegation: boolean;
+  ai_assistant: boolean;
 }
 
-const DEFAULTS: FeatureFlags = { dates: false, delegation: false };
+const DEFAULTS: FeatureFlags = {
+  dates: false,
+  delegation: false,
+  ai_assistant: false,
+};
 
 export function useFeatureFlags() {
   // Use useContext directly instead of useAuth to avoid throwing in tests
@@ -27,12 +32,20 @@ export function useFeatureFlags() {
     return {
       dates: user.feature_flags.dates ?? false,
       delegation: user.feature_flags.delegation ?? false,
+      ai_assistant: user.feature_flags.ai_assistant ?? false,
     };
   }, [user?.feature_flags]);
 
   const setFlag = useCallback(
-    async (flag: "dates" | "delegation", value: boolean) => {
-      const next = { ...flags, [flag]: value };
+    async (flag: "dates" | "delegation" | "ai_assistant", value: boolean) => {
+      const currentFlags = user?.feature_flags ?? DEFAULTS;
+      const next = {
+        ...currentFlags,
+        dates: currentFlags.dates ?? false,
+        delegation: currentFlags.delegation ?? false,
+        ai_assistant: currentFlags.ai_assistant ?? false,
+        [flag]: value,
+      };
 
       try {
         await updateUser({ feature_flags: next });
@@ -41,12 +54,13 @@ export function useFeatureFlags() {
         throw error;
       }
     },
-    [flags, updateUser],
+    [updateUser, user?.feature_flags],
   );
 
   return {
     dates: flags.dates,
     delegation: flags.delegation,
+    aiAssistant: flags.ai_assistant,
     setFlag,
     loaded: user !== null,
   };

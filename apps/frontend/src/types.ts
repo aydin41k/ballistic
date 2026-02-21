@@ -9,6 +9,8 @@ export interface User {
   feature_flags?: {
     dates: boolean;
     delegation: boolean;
+    ai_assistant?: boolean;
+    [key: string]: boolean | undefined;
   } | null;
   email_verified_at: string | null;
   created_at: string;
@@ -86,6 +88,14 @@ export interface Notification {
 export interface NotificationsResponse {
   data: Notification[];
   unread_count: number;
+}
+
+export interface McpToken {
+  id: string;
+  name: string;
+  created_at: string;
+  last_used_at: string | null;
+  is_legacy_wildcard: boolean;
 }
 
 export type ItemScope = "active" | "planned" | "all";

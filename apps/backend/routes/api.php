@@ -6,6 +6,7 @@ use App\Http\Controllers\Admin\StatsController as AdminStatsController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\FavouriteController;
+use App\Http\Controllers\Api\McpTokenController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\ConnectionController;
 use App\Http\Controllers\ItemController;
@@ -25,13 +26,20 @@ Route::middleware(['throttle:auth'])->group(function () {
 });
 
 // Protected API routes (authentication required)
-Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
+Route::middleware(['auth:sanctum', 'token.api', 'throttle:api'])->group(function () {
     // Authentication
     Route::post('/logout', [AuthController::class, 'logout']);
 
     // User profile
     Route::get('/user', [UserController::class, 'show']);
     Route::patch('/user', [UserController::class, 'update']);
+
+    // MCP tokens for AI assistant clients (requires ai_assistant feature flag)
+    Route::middleware('feature.ai')->group(function () {
+        Route::get('/mcp/tokens', [McpTokenController::class, 'index']);
+        Route::post('/mcp/tokens', [McpTokenController::class, 'store']);
+        Route::delete('/mcp/tokens/{tokenId}', [McpTokenController::class, 'destroy']);
+    });
 
     // Favourite contacts (quick-pick for task assignment)
     Route::post('/favourites/{user}', [FavouriteController::class, 'toggle'])->middleware('throttle:user-search');

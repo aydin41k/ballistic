@@ -1,6 +1,7 @@
 import type {
   Item,
   ItemScope,
+  McpToken,
   Project,
   Status,
   User,
@@ -119,6 +120,50 @@ export async function updateUser(
 
   const payload = await handleResponse<User | { data?: User }>(response);
   return extractData(payload);
+}
+
+export async function fetchMcpTokens(): Promise<McpToken[]> {
+  const response = await fetch(buildUrl("/api/mcp/tokens"), {
+    method: "GET",
+    headers: getAuthHeaders(),
+    cache: "no-store",
+  });
+
+  const payload = await handleResponse<McpToken[] | { data?: McpToken[] }>(
+    response,
+  );
+  const tokens = extractData(payload);
+  return Array.isArray(tokens) ? tokens : [];
+}
+
+export async function createMcpToken(
+  name: string,
+): Promise<{ token: string; token_record: McpToken }> {
+  const response = await fetch(buildUrl("/api/mcp/tokens"), {
+    method: "POST",
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ name }),
+  });
+
+  const payload = await handleResponse<{
+    data?: { token: string; token_record: McpToken };
+  }>(response);
+
+  const data = extractData(payload);
+  if (!data || !data.token || !data.token_record) {
+    throw new Error("Invalid MCP token response");
+  }
+
+  return data;
+}
+
+export async function revokeMcpToken(tokenId: string): Promise<void> {
+  const response = await fetch(buildUrl(`/api/mcp/tokens/${tokenId}`), {
+    method: "DELETE",
+    headers: getAuthHeaders(),
+  });
+
+  await handleResponse<{ message: string }>(response);
 }
 
 /**

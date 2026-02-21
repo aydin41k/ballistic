@@ -35,22 +35,25 @@ Once connected, you can ask your AI assistant to:
 2. **Create an API token** at Settings → AI Assistant:
    - Enter a name (e.g., "Claude Desktop")
    - Click "Create Token" and copy it immediately
+   - This creates an MCP-scoped token (`mcp:*`) that only works with `/mcp`
 
 3. **Configure your AI assistant** (e.g., Claude Desktop):
    ```json
    {
      "mcpServers": {
        "ballistic": {
-         "url": "https://your-ballistic-instance.com/mcp",
-         "headers": {
-           "Authorization": "Bearer YOUR_API_TOKEN"
-         }
-       }
-     }
-   }
+        "url": "https://your-ballistic-instance.com/mcp",
+        "headers": {
+          "Authorization": "Bearer YOUR_MCP_TOKEN"
+        }
+      }
+    }
+  }
    ```
 
 4. **Restart your AI assistant** and start chatting about your tasks!
+
+Note: login/register session tokens are API-scoped (`api:*`) and are not accepted by `/mcp`.
 
 ### Example Conversations
 

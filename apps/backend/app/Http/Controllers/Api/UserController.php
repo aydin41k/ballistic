@@ -59,6 +59,13 @@ final class UserController extends Controller
             $validated['password'] = Hash::make($validated['password']);
         }
 
+        if (array_key_exists('feature_flags', $validated) && is_array($validated['feature_flags'])) {
+            $validated['feature_flags'] = array_merge(
+                $user->feature_flags ?? [],
+                $validated['feature_flags']
+            );
+        }
+
         DB::transaction(function () use ($user, $validated): void {
             $user->update($validated);
 

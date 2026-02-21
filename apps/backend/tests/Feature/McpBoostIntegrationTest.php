@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Auth\TokenAbility;
 use App\Models\Connection;
 use App\Models\Item;
 use App\Models\Project;
@@ -36,7 +37,7 @@ final class McpBoostIntegrationTest extends TestCase
         $this->user = User::factory()->create([
             'feature_flags' => ['ai_assistant' => true],
         ]);
-        $this->token = $this->user->createToken('boost-test')->plainTextToken;
+        $this->token = $this->user->createToken('boost-test', [TokenAbility::MCP])->plainTextToken;
     }
 
     /**

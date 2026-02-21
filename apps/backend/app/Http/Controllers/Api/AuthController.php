@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api;
 
+use App\Auth\TokenAbility;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Auth\Events\Lockout;
@@ -39,7 +40,7 @@ final class AuthController extends Controller
         event(new Registered($user));
 
         $deviceName = $validated['device_name'] ?? 'api-token';
-        $token = $user->createToken($deviceName)->plainTextToken;
+        $token = $user->createToken($deviceName, [TokenAbility::API])->plainTextToken;
 
         return response()->json([
             'message' => 'User registered successfully',
@@ -78,7 +79,7 @@ final class AuthController extends Controller
         // Create a new token for this device without revoking existing tokens
         // This enables multi-device login support
         $deviceName = $request->input('device_name', 'api-token');
-        $token = $user->createToken($deviceName)->plainTextToken;
+        $token = $user->createToken($deviceName, [TokenAbility::API])->plainTextToken;
 
         return response()->json([
             'message' => 'Login successful',
