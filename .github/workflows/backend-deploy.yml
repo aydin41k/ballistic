@@ -7,6 +7,8 @@ on:
     workflow_run:
         workflows: ["Backend Tester"]
         types: [completed]
+        branches:
+            - master
 
 concurrency:
     group: backend-tester-${{ github.event.workflow_run.head_sha }}

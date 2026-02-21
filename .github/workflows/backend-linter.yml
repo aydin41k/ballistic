@@ -1,11 +1,13 @@
 name: Backend Linter
 
 on:
-  push:
+  pull_request:
     paths:
       - "apps/backend/**"
       - ".github/workflows/backend-linter.yml"
-  pull_request:
+  push:
+    branches:
+      - master
     paths:
       - "apps/backend/**"
       - ".github/workflows/backend-linter.yml"

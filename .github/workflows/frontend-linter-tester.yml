@@ -1,11 +1,13 @@
 name: Frontend Linter Tester
 
 on:
-  push:
+  pull_request:
     paths:
       - "apps/frontend/**"
       - ".github/workflows/frontend-linter-tester.yml"
-  pull_request:
+  push:
+    branches:
+      - master
     paths:
       - "apps/frontend/**"
       - ".github/workflows/frontend-linter-tester.yml"
