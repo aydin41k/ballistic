@@ -5,6 +5,9 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Settings;
 
 use App\Http\Controllers\Controller;
+use App\Http\Resources\McpTokenResource;
+use App\Models\User;
+use App\Services\McpTokenService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -12,18 +15,21 @@ use Inertia\Response;
 
 final class ApiTokenController extends Controller
 {
+    public function __construct(
+        private readonly McpTokenService $mcpTokens
+    ) {}
+
     /**
      * Show the API tokens management page.
      */
     public function index(Request $request): Response
     {
+        /** @var User $user */
+        $user = $request->user();
+        $tokens = McpTokenResource::collection($this->mcpTokens->listTokens($user));
+
         return Inertia::render('settings/api-tokens', [
-            'tokens' => $request->user()->tokens->map(fn ($token) => [
-                'id' => $token->id,
-                'name' => $token->name,
-                'created_at' => $token->created_at->toIso8601String(),
-                'last_used_at' => $token->last_used_at?->toIso8601String(),
-            ]),
+            'tokens' => $tokens,
         ]);
     }
 
@@ -36,7 +42,9 @@ final class ApiTokenController extends Controller
             'name' => ['required', 'string', 'max:255'],
         ]);
 
-        $token = $request->user()->createToken($request->name);
+        /** @var User $user */
+        $user = $request->user();
+        $token = $this->mcpTokens->createToken($user, $request->name);
 
         return back()->with('newToken', $token->plainTextToken);
     }
@@ -46,8 +54,13 @@ final class ApiTokenController extends Controller
      */
     public function destroy(Request $request, string $tokenId): RedirectResponse
     {
-        $request->user()->tokens()->where('id', $tokenId)->delete();
+        /** @var User $user */
+        $user = $request->user();
 
-        return back()->with('status', 'Token revoked successfully.');
+        $revoked = $this->mcpTokens->revokeToken($user, $tokenId);
+
+        return $revoked
+            ? back()->with('status', 'Token revoked successfully.')
+            : back()->with('status', 'Token not found.');
     }
 }

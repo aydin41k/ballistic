@@ -7,6 +7,8 @@ on:
   workflow_run:
     workflows: ["Frontend Linter Tester"]
     types: [completed]
+    branches:
+      - master
 
 concurrency:
   group: frontend-tester-${{ github.event.workflow_run.head_sha }}

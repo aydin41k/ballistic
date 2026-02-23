@@ -14,6 +14,7 @@ interface Token {
     name: string;
     created_at: string;
     last_used_at: string | null;
+    is_legacy_wildcard: boolean;
 }
 
 interface Props {
@@ -78,9 +79,7 @@ export default function ApiTokens({ tokens, newToken }: Props) {
                                 Your new API token has been created. Copy it now — you won't be able to see it again.
                             </p>
                             <div className="flex items-center gap-2">
-                                <code className="flex-1 rounded bg-green-100 p-2 font-mono text-sm dark:bg-green-900">
-                                    {newToken}
-                                </code>
+                                <code className="flex-1 rounded bg-green-100 p-2 font-mono text-sm dark:bg-green-900">{newToken}</code>
                                 <Button variant="outline" size="sm" onClick={copyToken}>
                                     <Copy className="mr-1 h-4 w-4" />
                                     {copied ? 'Copied!' : 'Copy'}
@@ -116,21 +115,29 @@ export default function ApiTokens({ tokens, newToken }: Props) {
                     <div className="space-y-4">
                         <h3 className="text-lg font-medium">Your Tokens</h3>
                         {tokens.length === 0 ? (
-                            <p className="text-sm text-muted-foreground">
-                                No tokens yet. Create one to connect your AI assistant.
-                            </p>
+                            <p className="text-sm text-muted-foreground">No tokens yet. Create one to connect your AI assistant.</p>
                         ) : (
                             <div className="divide-y rounded-lg border">
                                 {tokens.map((token) => (
                                     <div key={token.id} className="flex items-center justify-between p-4">
                                         <div>
-                                            <p className="font-medium">{token.name}</p>
-                                            <p className="text-sm text-muted-foreground">
-                                                Created {new Date(token.created_at).toLocaleDateString()}
-                                                {token.last_used_at && (
-                                                    <> · Last used {new Date(token.last_used_at).toLocaleDateString()}</>
+                                            <p className="font-medium">
+                                                {token.name}
+                                                {token.is_legacy_wildcard && (
+                                                    <span className="ml-2 rounded bg-amber-100 px-2 py-0.5 text-xs font-normal text-amber-800">
+                                                        Legacy wildcard
+                                                    </span>
                                                 )}
                                             </p>
+                                            <p className="text-sm text-muted-foreground">
+                                                Created {new Date(token.created_at).toLocaleDateString()}
+                                                {token.last_used_at && <> · Last used {new Date(token.last_used_at).toLocaleDateString()}</>}
+                                            </p>
+                                            {token.is_legacy_wildcard && (
+                                                <p className="mt-1 text-xs text-amber-700">
+                                                    This token has broad access and should be replaced with an MCP-scoped token.
+                                                </p>
+                                            )}
                                         </div>
                                         <Button variant="ghost" size="sm" onClick={() => revokeToken(token.id)}>
                                             <Trash2 className="h-4 w-4 text-red-500" />
@@ -156,7 +163,7 @@ export default function ApiTokens({ tokens, newToken }: Props) {
                                             ballistic: {
                                                 url: `${window.location.origin}/mcp`,
                                                 headers: {
-                                                    Authorization: 'Bearer YOUR_TOKEN_HERE',
+                                                    Authorization: 'Bearer YOUR_MCP_TOKEN_HERE',
                                                 },
                                             },
                                         },
@@ -166,8 +173,7 @@ export default function ApiTokens({ tokens, newToken }: Props) {
                                 )}
                             </pre>
                             <p className="text-muted-foreground">
-                                Replace <code className="rounded bg-muted px-1">YOUR_TOKEN_HERE</code> with the token you
-                                created above.
+                                Replace <code className="rounded bg-muted px-1">YOUR_MCP_TOKEN_HERE</code> with the token you created above.
                             </p>
                         </div>
                     </div>

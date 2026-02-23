@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Api;
 
+use App\Auth\TokenAbility;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Laravel\Sanctum\PersonalAccessToken;
 use Tests\TestCase;
 
 class AuthenticationTest extends TestCase
@@ -44,6 +46,10 @@ class AuthenticationTest extends TestCase
         $this->assertDatabaseHas('users', [
             'email' => 'test@example.com',
         ]);
+
+        $token = PersonalAccessToken::findToken($response->json('token'));
+        $this->assertNotNull($token);
+        $this->assertTrue($token->can(TokenAbility::Api->value));
     }
 
     public function test_registration_requires_name(): void
@@ -151,6 +157,10 @@ class AuthenticationTest extends TestCase
             ->assertJson([
                 'message' => 'Login successful',
             ]);
+
+        $token = PersonalAccessToken::findToken($response->json('token'));
+        $this->assertNotNull($token);
+        $this->assertTrue($token->can(TokenAbility::Api->value));
     }
 
     public function test_users_cannot_login_with_invalid_password(): void
@@ -224,6 +234,20 @@ class AuthenticationTest extends TestCase
         $response = $this->postJson('/api/logout');
 
         $response->assertStatus(401);
+    }
+
+    public function test_api_rejects_mcp_scoped_tokens(): void
+    {
+        $user = User::factory()->create();
+        $mcpToken = $user->createToken('mcp-token', [TokenAbility::Mcp->value])->plainTextToken;
+
+        $response = $this->withHeader('Authorization', 'Bearer '.$mcpToken)
+            ->getJson('/api/user');
+
+        $response->assertStatus(403)
+            ->assertJson([
+                'message' => 'Token missing API scope.',
+            ]);
     }
 
     public function test_api_login_is_rate_limited(): void

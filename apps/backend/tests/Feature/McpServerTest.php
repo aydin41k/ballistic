@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Auth\TokenAbility;
 use App\Models\Connection;
 use App\Models\Item;
 use App\Models\Project;
@@ -28,7 +29,7 @@ final class McpServerTest extends TestCase
         $this->user = User::factory()->create([
             'feature_flags' => ['ai_assistant' => true],
         ]);
-        $this->token = $this->user->createToken('mcp-test')->plainTextToken;
+        $this->token = $this->user->createToken('mcp-test', [TokenAbility::Mcp->value])->plainTextToken;
     }
 
     // --- Authentication Tests ---
@@ -51,7 +52,7 @@ final class McpServerTest extends TestCase
         $userWithoutFlag = User::factory()->create([
             'feature_flags' => ['ai_assistant' => false],
         ]);
-        $tokenWithoutFlag = $userWithoutFlag->createToken('no-ai')->plainTextToken;
+        $tokenWithoutFlag = $userWithoutFlag->createToken('no-ai', [TokenAbility::Mcp->value])->plainTextToken;
 
         $response = $this->withToken($tokenWithoutFlag)->postJson('/mcp', [
             'jsonrpc' => '2.0',
@@ -2420,7 +2421,7 @@ final class McpServerTest extends TestCase
 
     public function test_revoked_token_returns_unauthorized(): void
     {
-        $newToken = $this->user->createToken('temp-token');
+        $newToken = $this->user->createToken('temp-token', [TokenAbility::Mcp->value]);
         $plainToken = $newToken->plainTextToken;
 
         // Revoke the token
@@ -2445,7 +2446,7 @@ final class McpServerTest extends TestCase
         $user2 = User::factory()->create([
             'feature_flags' => ['ai_assistant' => true],
         ]);
-        $token2 = $user2->createToken('test')->plainTextToken;
+        $token2 = $user2->createToken('test', [TokenAbility::Mcp->value])->plainTextToken;
 
         $item = Item::factory()->create(['user_id' => $this->user->id]);
 

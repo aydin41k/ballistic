@@ -30,6 +30,7 @@ use Laravel\Mcp\Server\Facades\Mcp;
 Mcp::web('', BallisticServer::class)
     ->middleware('auth:sanctum')
     ->middleware(EnsureAiAssistantEnabled::class)
+    ->middleware('token.mcp')
     ->middleware('throttle:mcp');
 
 // Local MCP server (STDIO transport)
