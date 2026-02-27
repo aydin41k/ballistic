@@ -16,7 +16,8 @@ interface SettingsModalProps {
  */
 export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const modalRef = useRef<HTMLDivElement>(null);
-  const { dates, delegation, aiAssistant, velocity, setFlag } = useFeatureFlags();
+  const { dates, delegation, aiAssistant, velocity, setFlag } =
+    useFeatureFlags();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [mcpTokens, setMcpTokens] = useState<McpToken[]>([]);

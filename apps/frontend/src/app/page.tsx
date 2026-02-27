@@ -851,17 +851,19 @@ export default function Home() {
               recurrence_strategy:
                 (v.recurrence_strategy as Item["recurrence_strategy"]) ?? null,
               assignee_id: v.assignee_id,
-            }).then(() => {
-              if (velocity) setForecastRefreshKey((k) => k + 1);
-            }).catch((error) => {
-              console.error("Failed to update item:", error);
-              const revert = (prev: Item[]) =>
-                prev.map((i) => (i.id === editingItem.id ? editingItem : i));
-              setItems(revert);
-              setAssignedItems(revert);
-              setDelegatedItems(revert);
-              showError("Failed to update task. Changes reverted.");
-            });
+            })
+              .then(() => {
+                if (velocity) setForecastRefreshKey((k) => k + 1);
+              })
+              .catch((error) => {
+                console.error("Failed to update item:", error);
+                const revert = (prev: Item[]) =>
+                  prev.map((i) => (i.id === editingItem.id ? editingItem : i));
+                setItems(revert);
+                setAssignedItems(revert);
+                setDelegatedItems(revert);
+                showError("Failed to update task. Changes reverted.");
+              });
           } else {
             // Create new item
             const tempId = `temp-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;

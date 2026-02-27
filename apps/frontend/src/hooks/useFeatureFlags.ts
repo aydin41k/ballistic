@@ -40,7 +40,10 @@ export function useFeatureFlags() {
   }, [user?.feature_flags]);
 
   const setFlag = useCallback(
-    async (flag: "dates" | "delegation" | "ai_assistant" | "velocity", value: boolean) => {
+    async (
+      flag: "dates" | "delegation" | "ai_assistant" | "velocity",
+      value: boolean,
+    ) => {
       // Send only the changed key — the server merges it with the stored flags,
       // which avoids a multi-tab race condition where two concurrent updates
       // would overwrite each other's changes.
