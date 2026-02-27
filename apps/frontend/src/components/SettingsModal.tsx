@@ -16,7 +16,8 @@ interface SettingsModalProps {
  */
 export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const modalRef = useRef<HTMLDivElement>(null);
-  const { dates, delegation, aiAssistant, setFlag } = useFeatureFlags();
+  const { dates, delegation, aiAssistant, userFlags, available, setFlag } =
+    useFeatureFlags();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [mcpTokens, setMcpTokens] = useState<McpToken[]>([]);
@@ -204,14 +205,16 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
               <div className="flex items-center gap-3">
                 <button
                   type="button"
-                  onClick={() => handleToggle("dates", !dates)}
-                  disabled={saving}
+                  onClick={() =>
+                    handleToggle("dates", !userFlags.dates)
+                  }
+                  disabled={saving || !available.dates}
                   className={`
                     relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full
                     border-2 border-transparent transition-colors duration-200 ease-in-out
                     focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
-                    ${dates ? "bg-blue-600" : "bg-gray-200"}
-                    ${saving ? "opacity-50 cursor-not-allowed" : ""}
+                    ${userFlags.dates && available.dates ? "bg-blue-600" : "bg-gray-200"}
+                    ${saving || !available.dates ? "opacity-50 cursor-not-allowed" : ""}
                   `}
                   role="switch"
                   aria-checked={dates}
@@ -221,7 +224,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                     className={`
                       pointer-events-none inline-block h-5 w-5 transform rounded-full
                       bg-white shadow ring-0 transition duration-200 ease-in-out
-                      ${dates ? "translate-x-5" : "translate-x-0"}
+                      ${userFlags.dates && available.dates ? "translate-x-5" : "translate-x-0"}
                     `}
                   />
                 </button>
@@ -230,7 +233,9 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                     Dates &amp; Scheduling
                   </span>
                   <span className="text-xs text-gray-500">
-                    Due dates, scheduled dates, and repeating tasks
+                    {available.dates
+                      ? "Due dates, scheduled dates, and repeating tasks"
+                      : "Coming soon"}
                   </span>
                 </div>
               </div>
@@ -239,14 +244,16 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
               <div className="flex items-center gap-3">
                 <button
                   type="button"
-                  onClick={() => handleToggle("delegation", !delegation)}
-                  disabled={saving}
+                  onClick={() =>
+                    handleToggle("delegation", !userFlags.delegation)
+                  }
+                  disabled={saving || !available.delegation}
                   className={`
                     relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full
                     border-2 border-transparent transition-colors duration-200 ease-in-out
                     focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
-                    ${delegation ? "bg-blue-600" : "bg-gray-200"}
-                    ${saving ? "opacity-50 cursor-not-allowed" : ""}
+                    ${userFlags.delegation && available.delegation ? "bg-blue-600" : "bg-gray-200"}
+                    ${saving || !available.delegation ? "opacity-50 cursor-not-allowed" : ""}
                   `}
                   role="switch"
                   aria-checked={delegation}
@@ -256,7 +263,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                     className={`
                       pointer-events-none inline-block h-5 w-5 transform rounded-full
                       bg-white shadow ring-0 transition duration-200 ease-in-out
-                      ${delegation ? "translate-x-5" : "translate-x-0"}
+                      ${userFlags.delegation && available.delegation ? "translate-x-5" : "translate-x-0"}
                     `}
                   />
                 </button>
@@ -265,7 +272,9 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                     Task Delegation
                   </span>
                   <span className="text-xs text-gray-500">
-                    Assign tasks to other users
+                    {available.delegation
+                      ? "Assign tasks to other users"
+                      : "Coming soon"}
                   </span>
                 </div>
               </div>
@@ -274,14 +283,16 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
               <div className="flex items-center gap-3">
                 <button
                   type="button"
-                  onClick={() => handleToggle("ai_assistant", !aiAssistant)}
-                  disabled={saving}
+                  onClick={() =>
+                    handleToggle("ai_assistant", !userFlags.ai_assistant)
+                  }
+                  disabled={saving || !available.ai_assistant}
                   className={`
                     relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full
                     border-2 border-transparent transition-colors duration-200 ease-in-out
                     focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
-                    ${aiAssistant ? "bg-blue-600" : "bg-gray-200"}
-                    ${saving ? "opacity-50 cursor-not-allowed" : ""}
+                    ${userFlags.ai_assistant && available.ai_assistant ? "bg-blue-600" : "bg-gray-200"}
+                    ${saving || !available.ai_assistant ? "opacity-50 cursor-not-allowed" : ""}
                   `}
                   role="switch"
                   aria-checked={aiAssistant}
@@ -291,7 +302,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                     className={`
                       pointer-events-none inline-block h-5 w-5 transform rounded-full
                       bg-white shadow ring-0 transition duration-200 ease-in-out
-                      ${aiAssistant ? "translate-x-5" : "translate-x-0"}
+                      ${userFlags.ai_assistant && available.ai_assistant ? "translate-x-5" : "translate-x-0"}
                     `}
                   />
                 </button>
@@ -300,7 +311,9 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                     AI Assistant (MCP)
                   </span>
                   <span className="text-xs text-gray-500">
-                    Enable MCP token management for agent integrations
+                    {available.ai_assistant
+                      ? "Enable MCP token management for agent integrations"
+                      : "Coming soon"}
                   </span>
                 </div>
               </div>

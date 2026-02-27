@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.16.0] - 2026-02-27
+
+### Added
+
+#### Admin-Controlled Global Feature Flags
+
+- **`app_settings` table**: New table for storing application-wide settings as key–value pairs with JSON values
+- **`AppSetting` model**: Final model with static `get()`/`set()` helpers using 60-second cache TTL, and `globalFeatureFlags()` returning safe defaults (all `true`) when no row exists
+- **`Admin\SettingsController`**: New controller with `showFeatures` (GET) and `updateFeatures` (PUT) endpoints for admin feature flag management; supports partial updates and rejects unknown keys
+- **Admin routes**: `GET /api/admin/settings/features` and `PUT /api/admin/settings/features` under admin middleware
+- **`available_feature_flags` in user API response**: `UserResource` now includes globally available flags alongside the user's own `feature_flags`, using the cached `AppSetting` lookup
+- **Global flag enforcement in `UserController::update`**: Returns 422 if a user attempts to enable a flag that the admin has globally disabled; disabling own flags is always permitted
+- **Global flag check in `EnsureAiAssistantEnabled` middleware**: Checks the global `ai_assistant` flag before the user-level flag, returning 404 when globally disabled
+
+### Tests
+
+- **`GlobalFeatureFlagsTest`**: 12 tests covering admin read/write, non-admin rejection, partial updates, arbitrary key rejection, user enable/disable, user response shape, middleware behaviour, and safe defaults
+
 ## [0.15.1] - 2026-02-21
 
 ### Changed

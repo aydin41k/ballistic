@@ -11,6 +11,11 @@ export interface User {
     delegation: boolean;
     ai_assistant: boolean;
   } | null;
+  available_feature_flags?: {
+    dates: boolean;
+    delegation: boolean;
+    ai_assistant: boolean;
+  } | null;
   email_verified_at: string | null;
   created_at: string;
   updated_at: string;

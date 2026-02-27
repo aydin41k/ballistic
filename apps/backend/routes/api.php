@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Http\Controllers\Admin\SettingsController as AdminSettingsController;
 use App\Http\Controllers\Admin\StatsController as AdminStatsController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
 use App\Http\Controllers\Api\AuthController;
@@ -90,5 +91,7 @@ Route::middleware(['auth:sanctum', 'token.api', 'throttle:api'])->group(function
         Route::apiResource('users', AdminUserController::class);
         Route::get('stats', [AdminStatsController::class, 'index']);
         Route::get('stats/user-activity', [AdminStatsController::class, 'userActivity']);
+        Route::get('settings/features', [AdminSettingsController::class, 'showFeatures']);
+        Route::put('settings/features', [AdminSettingsController::class, 'updateFeatures']);
     });
 });

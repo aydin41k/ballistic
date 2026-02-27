@@ -1,3 +1,18 @@
+## 0.16.0 - 2026-02-27
+
+### Added
+
+#### Admin-Controlled Global Feature Flags (Frontend)
+
+- **`available_feature_flags` on `User` type**: New optional field matching the `feature_flags` shape, sourced from admin settings
+- **`useFeatureFlags` — global availability support**: Hook now exposes `userFlags` (raw user preference), `available` (admin-set global availability), and effective booleans (`dates`, `delegation`, `aiAssistant`) that are `true` only when both the user preference and global flag are enabled. Defaults `available` to all `true` when the field is absent for backwards compatibility
+- **`SettingsModal` — disabled toggles with "Coming soon"**: Each feature toggle is disabled when the admin has globally disabled the feature; description text changes to "Coming soon" and the toggle appears greyed out. Toggle direction uses the raw user preference so the stored value is preserved for when the admin re-enables the feature
+
+### Tests
+
+- **`use-feature-flags.test.tsx`**: Added 5 tests — effective false when global disabled, effective false when user disabled, effective true when both true, available defaults to all true, userFlags reflects raw preference
+- **`settings-modal-mcp.test.tsx`**: Updated `useFeatureFlags` mock to include `userFlags` and `available`
+
 ## 0.15.2 - 2026-02-27
 
 ### Fixed

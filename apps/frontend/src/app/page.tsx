@@ -18,6 +18,7 @@ import { SplashScreen } from "@/components/SplashScreen";
 import { SettingsModal } from "@/components/SettingsModal";
 import { NotesModal } from "@/components/NotesModal";
 import { EditItemModal } from "@/components/EditItemModal";
+import { ProfileModal } from "@/components/ProfileModal";
 import { useAuth } from "@/contexts/AuthContext";
 
 function normaliseItemResponse(payload: Item | { data?: Item }): Item {
@@ -90,12 +91,15 @@ export default function Home() {
   const dragOverRef = useRef<string | null>(null);
   const dropHandledRef = useRef(false);
   const [viewScope, setViewScope] = useState<ItemScope>("active");
-  const [filterProjectId, setFilterProjectId] = useState<string | null>(null);
+  const [excludedProjectIds, setExcludedProjectIds] = useState<Set<string>>(
+    new Set(),
+  );
   const [showFilter, setShowFilter] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const toastTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [showNotes, setShowNotes] = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
   const { dates, delegation } = useFeatureFlags();
 
   const showError = useCallback((message: string) => {
@@ -232,15 +236,22 @@ export default function Home() {
   // Sort my tasks by urgency (only when dates feature is enabled)
   const sortedItems = dates ? sortByUrgency(items) : items;
 
-  // Apply project filter client-side
-  const filteredItems = filterProjectId
-    ? sortedItems.filter((i) => i.project_id === filterProjectId)
+  // Apply project filter client-side (exclusion model)
+  const hasProjectFilter = excludedProjectIds.size > 0;
+  const filteredItems = hasProjectFilter
+    ? sortedItems.filter(
+        (i) => !i.project_id || !excludedProjectIds.has(i.project_id),
+      )
     : sortedItems;
-  const filteredAssignedItems = filterProjectId
-    ? assignedItems.filter((i) => i.project_id === filterProjectId)
+  const filteredAssignedItems = hasProjectFilter
+    ? assignedItems.filter(
+        (i) => !i.project_id || !excludedProjectIds.has(i.project_id),
+      )
     : assignedItems;
-  const filteredDelegatedItems = filterProjectId
-    ? delegatedItems.filter((i) => i.project_id === filterProjectId)
+  const filteredDelegatedItems = hasProjectFilter
+    ? delegatedItems.filter(
+        (i) => !i.project_id || !excludedProjectIds.has(i.project_id),
+      )
     : delegatedItems;
 
   function onRowChange(itemOrUpdater: Item | ((current: Item) => Item)) {
@@ -584,8 +595,8 @@ export default function Home() {
                   <EmptyState
                     type="no-items"
                     message={
-                      filterProjectId
-                        ? "No tasks in this project."
+                      hasProjectFilter
+                        ? "No tasks match the selected projects."
                         : "Start your bullet journal journey by adding your first task!"
                     }
                   />
@@ -611,37 +622,56 @@ export default function Home() {
           <div className="fixed inset-x-0 bottom-[4.5rem] z-[21]">
             <div className="mx-auto max-w-sm px-4">
               <div className="rounded-xl bg-white shadow-xl border border-slate-200/50 p-4 space-y-4 animate-slide-in-up">
-                {/* Project filter */}
+                {/* Project filter (multi-select, exclusion model) */}
                 <div>
-                  <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">
-                    Project
-                  </h3>
-                  <div className="flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setFilterProjectId(null)}
-                      className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
-                        filterProjectId === null
-                          ? "bg-[var(--blue)] text-white"
-                          : "bg-slate-100 text-slate-700 hover:bg-slate-200"
-                      }`}
-                    >
-                      All
-                    </button>
-                    {projects.map((project) => (
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                      Projects
+                    </h3>
+                    {excludedProjectIds.size > 0 && (
                       <button
-                        key={project.id}
                         type="button"
-                        onClick={() => setFilterProjectId(project.id)}
-                        className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
-                          filterProjectId === project.id
-                            ? "bg-[var(--blue)] text-white"
-                            : "bg-slate-100 text-slate-700 hover:bg-slate-200"
-                        }`}
+                        onClick={() => setExcludedProjectIds(new Set())}
+                        className="text-xs text-[var(--blue)] hover:underline"
                       >
-                        {project.name}
+                        Show all
                       </button>
-                    ))}
+                    )}
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {projects.map((project) => {
+                      const isExcluded = excludedProjectIds.has(project.id);
+                      return (
+                        <button
+                          key={project.id}
+                          type="button"
+                          onClick={() =>
+                            setExcludedProjectIds((prev) => {
+                              const next = new Set(prev);
+                              if (next.has(project.id)) {
+                                next.delete(project.id);
+                              } else {
+                                next.add(project.id);
+                              }
+                              return next;
+                            })
+                          }
+                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                            isExcluded
+                              ? "bg-slate-100 text-slate-400 line-through"
+                              : "bg-[var(--blue)] text-white"
+                          }`}
+                        >
+                          {project.color && (
+                            <span
+                              className={`inline-block h-2 w-2 rounded-full ${isExcluded ? "opacity-40" : ""}`}
+                              style={{ backgroundColor: project.color }}
+                            />
+                          )}
+                          {project.name}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
 
@@ -750,12 +780,12 @@ export default function Home() {
             <span className="sr-only">Add new task...</span>
             <span className="text-2xl leading-none font-light">+</span>
           </button>
-          <div className="flex justify-end">
+          <div className="flex items-center justify-end gap-1">
             <button
               type="button"
               aria-label="Filter"
               onClick={() => setShowFilter((prev) => !prev)}
-              className={`tap-target grid h-11 w-11 place-items-center rounded-full shadow-sm hover:shadow-md active:scale-95 ${showFilter || filterProjectId !== null || (dates && viewScope === "planned") ? "bg-[var(--blue)]" : "bg-white"}`}
+              className={`tap-target grid h-10 w-10 place-items-center rounded-md hover:bg-slate-100 active:scale-95 transition-all duration-200 ${showFilter || excludedProjectIds.size > 0 || (dates && viewScope === "planned") ? "bg-[var(--blue)] rounded-full shadow-sm" : ""}`}
             >
               {/* funnel icon */}
               <svg
@@ -766,13 +796,36 @@ export default function Home() {
                 stroke="currentColor"
                 className={
                   showFilter ||
-                  filterProjectId !== null ||
+                  excludedProjectIds.size > 0 ||
                   (dates && viewScope === "planned")
                     ? "text-white"
                     : "text-[var(--navy)]"
                 }
               >
                 <path d="M3 5h18l-7 8v5l-4 2v-7L3 5z" strokeWidth="1.5" />
+              </svg>
+            </button>
+            <button
+              type="button"
+              aria-label="Profile"
+              onClick={() => setShowProfile(true)}
+              className="tap-target grid h-10 w-10 place-items-center rounded-md hover:bg-slate-100 active:scale-95 transition-all duration-200"
+            >
+              {/* person icon */}
+              <svg
+                viewBox="0 0 24 24"
+                width="20"
+                height="20"
+                fill="none"
+                stroke="currentColor"
+                className="text-[var(--navy)]"
+              >
+                <path
+                  d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z"
+                  strokeWidth="1.4"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
               </svg>
             </button>
           </div>
@@ -787,6 +840,12 @@ export default function Home() {
 
       {/* Notes Modal */}
       <NotesModal isOpen={showNotes} onClose={() => setShowNotes(false)} />
+
+      {/* Profile Modal */}
+      <ProfileModal
+        isOpen={showProfile}
+        onClose={() => setShowProfile(false)}
+      />
 
       {/* Edit/Create Item Modal */}
       <EditItemModal
