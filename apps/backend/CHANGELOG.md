@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.16.0] - 2026-02-27
+
+### Added
+
+#### Predictive Velocity & Burnout Forecaster
+
+- **`effort_score` column on items**: Fibonacci-scale effort points (1, 2, 3, 5, 8) with default of 1, enabling velocity tracking per task
+- **Composite index** `(user_id, status, completed_at)` for efficient velocity query performance
+- **`VelocityForecastingService`**: Core math engine implementing EMA-based velocity calculation, exponentially-weighted standard deviation, Abramowitz & Stegun normal CDF approximation, and burnout risk detection at the 90th percentile capacity threshold
+- **`GET /api/velocity/forecast`**: New endpoint returning velocity, capacity, demand, burnout risk flag, probability of success, and 12-week effort history — gated behind `velocity` feature flag
+- **`VelocityForecastResource`**: JSON resource with explicit rounding for display values
+- **`EnsureVelocityEnabled` middleware**: Feature flag gate following the `EnsureAiAssistantEnabled` pattern (404 when disabled)
+- **`velocity` feature flag**: Added to `UserController` allowlist and validation rules
+
+### Tests
+
+- **Unit**: `VelocityForecastingServiceTest` — EMA convergence, CDF accuracy (z=0 → 0.5, z=1.645 → 0.95), probability edge cases (zero std dev, demand > capacity), gap filling
+- **Feature**: `VelocityForecastTest` — authenticated/unauthenticated/flag-disabled access, burnout detection with 25-point demand vs ~10 velocity, no-burnout with low demand, new user empty state
+- **Feature**: `ItemEffortScoreTest` — default value, CRUD persistence, Fibonacci validation (rejects 0, 4, 9, -1), API response inclusion
+
 ## [0.15.1] - 2026-02-21
 
 ### Changed

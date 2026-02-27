@@ -16,6 +16,7 @@ use App\Http\Controllers\PushSubscriptionController;
 use App\Http\Controllers\TagController;
 use App\Http\Controllers\UserDiscoveryController;
 use App\Http\Controllers\UserLookupController;
+use App\Http\Controllers\VelocityController;
 use Illuminate\Support\Facades\Route;
 
 // Public API routes (no authentication required)
@@ -39,6 +40,11 @@ Route::middleware(['auth:sanctum', 'token.api', 'throttle:api'])->group(function
         Route::get('/mcp/tokens', [McpTokenController::class, 'index']);
         Route::post('/mcp/tokens', [McpTokenController::class, 'store']);
         Route::delete('/mcp/tokens/{tokenId}', [McpTokenController::class, 'destroy']);
+    });
+
+    // Velocity forecast (requires velocity feature flag)
+    Route::middleware('feature.velocity')->group(function () {
+        Route::get('/velocity/forecast', [VelocityController::class, 'forecast']);
     });
 
     // Favourite contacts (quick-pick for task assignment)

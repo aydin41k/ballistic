@@ -41,7 +41,7 @@ export function ItemRow({
   dragOverId,
   onError,
 }: Props) {
-  const { dates, delegation } = useFeatureFlags();
+  const { dates, delegation, velocity } = useFeatureFlags();
 
   const [optimisticItem, addOptimistic] = useOptimistic(
     item,
@@ -231,6 +231,13 @@ export function ItemRow({
               {tag.name}
             </span>
           ))}
+          {velocity && optimisticItem.effort_score > 1 && (
+            <span
+              className={`text-xs font-medium px-2 py-0.5 rounded-full transition-colors duration-200 ${isCompleted || isCancelled ? "bg-slate-100 text-slate-300" : "bg-sky-100 text-sky-700 border border-sky-200"}`}
+            >
+              {optimisticItem.effort_score} pts
+            </span>
+          )}
           {delegation &&
             optimisticItem.is_delegated &&
             optimisticItem.assignee && (

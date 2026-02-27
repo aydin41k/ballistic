@@ -18,6 +18,7 @@ import { SplashScreen } from "@/components/SplashScreen";
 import { SettingsModal } from "@/components/SettingsModal";
 import { NotesModal } from "@/components/NotesModal";
 import { EditItemModal } from "@/components/EditItemModal";
+import { CapacityDashboard } from "@/components/CapacityDashboard";
 import { useAuth } from "@/contexts/AuthContext";
 
 function normaliseItemResponse(payload: Item | { data?: Item }): Item {
@@ -96,7 +97,8 @@ export default function Home() {
   const toastTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [showNotes, setShowNotes] = useState(false);
-  const { dates, delegation } = useFeatureFlags();
+  const { dates, delegation, velocity } = useFeatureFlags();
+  const [forecastRefreshKey, setForecastRefreshKey] = useState(0);
 
   const showError = useCallback((message: string) => {
     if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
@@ -498,6 +500,9 @@ export default function Home() {
         </div>
       )}
 
+      {/* Capacity Dashboard */}
+      {velocity && <CapacityDashboard refreshKey={forecastRefreshKey} />}
+
       {/* List */}
       <div className="flex flex-col gap-2">
         {/* Render a single item as a row */}
@@ -817,6 +822,7 @@ export default function Home() {
                   : editingItem.assignee_notes,
               project_id: v.project_id ?? null,
               project: selectedProject ?? null,
+              effort_score: v.effort_score ?? editingItem.effort_score,
               scheduled_date: v.scheduled_date ?? null,
               due_date: v.due_date ?? null,
               recurrence_rule: v.recurrence_rule ?? null,
@@ -838,12 +844,15 @@ export default function Home() {
               description: v.description || null,
               assignee_notes: v.assignee_notes,
               project_id: v.project_id,
+              effort_score: v.effort_score,
               scheduled_date: v.scheduled_date,
               due_date: v.due_date,
               recurrence_rule: v.recurrence_rule,
               recurrence_strategy:
                 (v.recurrence_strategy as Item["recurrence_strategy"]) ?? null,
               assignee_id: v.assignee_id,
+            }).then(() => {
+              if (velocity) setForecastRefreshKey((k) => k + 1);
             }).catch((error) => {
               console.error("Failed to update item:", error);
               const revert = (prev: Item[]) =>
@@ -868,6 +877,7 @@ export default function Home() {
               description: v.description || null,
               status: "todo",
               position: items.length,
+              effort_score: v.effort_score ?? 1,
               scheduled_date: v.scheduled_date ?? null,
               due_date: v.due_date ?? null,
               completed_at: null,
@@ -909,6 +919,7 @@ export default function Home() {
               status: "todo",
               project_id: v.project_id,
               position: items.length,
+              effort_score: v.effort_score,
               scheduled_date: v.scheduled_date,
               due_date: v.due_date,
               recurrence_rule: v.recurrence_rule,
@@ -925,6 +936,7 @@ export default function Home() {
                     item.id === tempId ? resolvedItem : item,
                   );
                 });
+                if (velocity) setForecastRefreshKey((k) => k + 1);
               })
               .catch((error) => {
                 console.error("Failed to create item:", error);

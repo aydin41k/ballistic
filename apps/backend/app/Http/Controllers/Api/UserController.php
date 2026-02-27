@@ -52,6 +52,7 @@ final class UserController extends Controller
             'feature_flags.dates' => ['sometimes', 'boolean'],
             'feature_flags.delegation' => ['sometimes', 'boolean'],
             'feature_flags.ai_assistant' => ['sometimes', 'boolean'],
+            'feature_flags.velocity' => ['sometimes', 'boolean'],
             'password' => ['sometimes', 'required', 'confirmed', Password::defaults()],
         ]);
 
@@ -60,7 +61,7 @@ final class UserController extends Controller
         }
 
         if (array_key_exists('feature_flags', $validated) && is_array($validated['feature_flags'])) {
-            $allowedFlagKeys = ['dates', 'delegation', 'ai_assistant'];
+            $allowedFlagKeys = ['dates', 'delegation', 'ai_assistant', 'velocity'];
             $incomingFlags = array_intersect_key($validated['feature_flags'], array_flip($allowedFlagKeys));
 
             $validated['feature_flags'] = array_merge(

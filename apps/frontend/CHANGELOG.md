@@ -1,3 +1,28 @@
+## 0.16.0 - 2026-02-27
+
+### Added
+
+#### Predictive Velocity & Burnout Forecaster
+
+- **`CapacityDashboard` component**: Displays velocity forecast with probability gauge (green/amber/red), burnout risk badge, stats row (velocity/demand/capacity), and 12-week CSS bar chart — no chart libraries
+- **Effort score chip selector**: Fibonacci-scale (1, 2, 3, 5, 8) effort picker in `ItemForm`, gated behind `velocity` feature flag
+- **Effort badge in `ItemRow`**: Shows effort points for items with effort > 1 when velocity flag enabled
+- **`fetchVelocityForecast()` API function**: Fetches `GET /api/velocity/forecast` with standard response handling
+- **`VelocityForecast` TypeScript interface**: Full forecast type with weekly_totals array
+- **`velocity` feature flag**: Added to `useFeatureFlags` hook, `SettingsModal` toggle, `User` type, and `Item` type (`effort_score` field)
+
+### Changed
+
+- **`page.tsx`**: Renders `<CapacityDashboard>` when velocity enabled; passes `effort_score` through create/update flows; refreshes forecast after item changes
+- **`EditItemModal`**: Passes `effort_score` in submit values type
+- **`createItem`/`updateItem` API functions**: Accept `effort_score` parameter
+- **Version**: Bumped to v0.16.0
+
+### Tests
+
+- **`capacity-dashboard.test.tsx`**: Loading state, forecast rendering, burnout badge visibility, probability gauge percentage, API error handling
+- **`use-feature-flags.test.tsx`**: Added velocity flag toggle test
+
 ## 0.15.1 - 2026-02-21
 
 ### Changed

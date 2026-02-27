@@ -21,6 +21,7 @@ type Props = {
     title: string;
     description?: string;
     project_id?: string | null;
+    effort_score?: number;
     scheduled_date?: string | null;
     due_date?: string | null;
     recurrence_rule?: string | null;
@@ -48,7 +49,7 @@ export function ItemForm({
   favourites,
   onFavouriteToggled,
 }: Props) {
-  const { dates, delegation } = useFeatureFlags();
+  const { dates, delegation, velocity } = useFeatureFlags();
   const [title, setTitle] = useState(initial?.title ?? "");
   const [description, setDescription] = useState(initial?.description ?? "");
   const [projectId, setProjectId] = useState<string | null>(
@@ -70,6 +71,9 @@ export function ItemForm({
   const [assigneeNotes, setAssigneeNotes] = useState(
     initial?.assignee_notes ?? "",
   );
+  const [effortScore, setEffortScore] = useState<number>(
+    initial?.effort_score ?? 1,
+  );
   const [showMoreSettings, setShowMoreSettings] = useState(!!initial); // Open by default for edit mode
   const [showAssignModal, setShowAssignModal] = useState(false);
 
@@ -86,6 +90,7 @@ export function ItemForm({
           title,
           description: description || undefined,
           project_id: projectId,
+          effort_score: effortScore,
           scheduled_date: scheduledDate || null,
           due_date: dueDate || null,
           recurrence_rule: RECURRENCE_PRESET_RULES[recurrencePreset],
@@ -167,6 +172,33 @@ export function ItemForm({
                 onChange={(e) => setDescription(e.target.value)}
               />
             </div>
+
+            {velocity && (
+              <div>
+                <label className="block text-xs font-medium text-slate-500 mb-1">
+                  Effort
+                </label>
+                <div className="flex gap-2">
+                  {[1, 2, 3, 5, 8].map((value) => (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => setEffortScore(value)}
+                      className={`w-9 h-9 rounded-full text-sm font-medium transition-all duration-200 ${
+                        effortScore === value
+                          ? "bg-[var(--blue)] text-white shadow-sm"
+                          : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                      }`}
+                    >
+                      {value}
+                    </button>
+                  ))}
+                </div>
+                <p className="mt-1 text-xs text-slate-400">
+                  Fibonacci-scale effort points for velocity tracking.
+                </p>
+              </div>
+            )}
 
             {dates && (
               <>
