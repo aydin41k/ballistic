@@ -1,3 +1,9 @@
+## 0.15.2 - 2026-02-27
+
+### Fixed
+
+- **Settings modal scrollability**: Converted from a bottom sheet to a centred popup with `max-h-[90vh]` and `overflow-y-auto`, so all content is reachable when the modal exceeds viewport height
+
 ## 0.15.1 - 2026-02-21
 
 ### Changed
