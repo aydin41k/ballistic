@@ -6,7 +6,9 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Resources\UserResource;
+use App\Models\AppSetting;
 use App\Models\User;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -30,7 +32,7 @@ final class UserController extends Controller
     /**
      * Update the authenticated user's profile.
      */
-    public function update(Request $request): UserResource
+    public function update(Request $request): UserResource|JsonResponse
     {
         /** @var User $user */
         $user = $request->user();
@@ -62,6 +64,22 @@ final class UserController extends Controller
         if (array_key_exists('feature_flags', $validated) && is_array($validated['feature_flags'])) {
             $allowedFlagKeys = ['dates', 'delegation', 'ai_assistant'];
             $incomingFlags = array_intersect_key($validated['feature_flags'], array_flip($allowedFlagKeys));
+
+            // Reject enabling flags that are globally disabled by admin
+            $globalFlags = AppSetting::globalFeatureFlags();
+            $errors = [];
+            foreach ($incomingFlags as $flag => $value) {
+                if ($value === true && ($globalFlags[$flag] ?? true) === false) {
+                    $errors["feature_flags.{$flag}"] = ["The {$flag} feature is not currently available."];
+                }
+            }
+
+            if (! empty($errors)) {
+                return response()->json([
+                    'message' => 'One or more features are not currently available.',
+                    'errors' => $errors,
+                ], 422);
+            }
 
             $validated['feature_flags'] = array_merge(
                 $user->feature_flags ?? [],

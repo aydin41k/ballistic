@@ -15,6 +15,12 @@ const DEFAULTS: FeatureFlags = {
   ai_assistant: false,
 };
 
+const AVAILABLE_DEFAULTS: FeatureFlags = {
+  dates: true,
+  delegation: true,
+  ai_assistant: true,
+};
+
 export function useFeatureFlags() {
   // Use useContext directly instead of useAuth to avoid throwing in tests
   const auth = useContext(AuthContext);
@@ -26,8 +32,8 @@ export function useFeatureFlags() {
     [auth?.updateUser],
   );
 
-  // Get flags from user object (no separate fetch needed)
-  const flags = useMemo(() => {
+  // Get user-level flags (raw preference stored on the user)
+  const userFlags = useMemo(() => {
     if (!user?.feature_flags) return DEFAULTS;
     return {
       dates: user.feature_flags.dates ?? false,
@@ -35,6 +41,16 @@ export function useFeatureFlags() {
       ai_assistant: user.feature_flags.ai_assistant ?? false,
     };
   }, [user?.feature_flags]);
+
+  // Get globally available flags from admin settings (defaults all true when missing)
+  const available = useMemo(() => {
+    if (!user?.available_feature_flags) return AVAILABLE_DEFAULTS;
+    return {
+      dates: user.available_feature_flags.dates ?? true,
+      delegation: user.available_feature_flags.delegation ?? true,
+      ai_assistant: user.available_feature_flags.ai_assistant ?? true,
+    };
+  }, [user?.available_feature_flags]);
 
   const setFlag = useCallback(
     async (flag: "dates" | "delegation" | "ai_assistant", value: boolean) => {
@@ -52,9 +68,14 @@ export function useFeatureFlags() {
   );
 
   return {
-    dates: flags.dates,
-    delegation: flags.delegation,
-    aiAssistant: flags.ai_assistant,
+    // Effective state: only true when BOTH user preference AND global flag are true
+    dates: userFlags.dates && available.dates,
+    delegation: userFlags.delegation && available.delegation,
+    aiAssistant: userFlags.ai_assistant && available.ai_assistant,
+    // Raw user preferences (for toggle position)
+    userFlags,
+    // Global availability (for disabling toggles)
+    available,
     setFlag,
     loaded: user !== null,
   };

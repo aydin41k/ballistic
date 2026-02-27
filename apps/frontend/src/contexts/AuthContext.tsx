@@ -17,7 +17,11 @@ import {
   logout as authLogout,
   AuthError,
 } from "@/lib/auth";
-import { fetchUser, updateUser as apiUpdateUser, type UserUpdatePayload } from "@/lib/api";
+import {
+  fetchUser,
+  updateUser as apiUpdateUser,
+  type UserUpdatePayload,
+} from "@/lib/api";
 
 interface AuthContextType {
   user: User | null;
@@ -98,12 +102,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const updateUser = useCallback(async (data: UserUpdatePayload) => {
-      const updatedUser = await apiUpdateUser(data);
-      setUser(updatedUser);
-      setStoredUser(updatedUser);
-    },
-    [],
-  );
+    const updatedUser = await apiUpdateUser(data);
+    setUser(updatedUser);
+    setStoredUser(updatedUser);
+  }, []);
 
   const value: AuthContextType = {
     user,
