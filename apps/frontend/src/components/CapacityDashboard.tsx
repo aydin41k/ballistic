@@ -60,7 +60,7 @@ export function CapacityDashboard({ refreshKey }: CapacityDashboardProps) {
 
   const hasProbability = forecast.probability_of_success !== null;
   const pct = hasProbability
-    ? Math.round(forecast.probability_of_success * 100)
+    ? Math.round(forecast.probability_of_success! * 100)
     : null;
   const gaugeColour =
     pct === null

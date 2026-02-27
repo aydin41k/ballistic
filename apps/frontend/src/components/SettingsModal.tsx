@@ -80,7 +80,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   }, [isOpen, aiAssistant, loadMcpTokens]);
 
   async function handleToggle(
-    flag: "dates" | "delegation" | "ai_assistant",
+    flag: "dates" | "delegation" | "ai_assistant" | "velocity",
     value: boolean,
   ) {
     if (saving) return;

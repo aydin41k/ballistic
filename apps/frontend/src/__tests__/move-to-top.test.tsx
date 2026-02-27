@@ -28,6 +28,7 @@ describe("Move to Top functionality", () => {
     assignee_notes: null,
     is_assigned: false,
     is_delegated: false,
+    effort_score: 1,
     created_at: "2025-01-01T00:00:00Z",
     updated_at: "2025-01-01T00:00:00Z",
     deleted_at: null,
@@ -155,6 +156,7 @@ describe("Move to Top optimistic update", () => {
       assignee_notes: null,
       is_assigned: false,
       is_delegated: false,
+      effort_score: 1,
       deleted_at: null,
     };
 
@@ -247,6 +249,7 @@ describe("Move to Top optimistic update", () => {
       assignee_notes: null,
       is_assigned: false,
       is_delegated: false,
+      effort_score: 1,
       deleted_at: null,
     };
 
