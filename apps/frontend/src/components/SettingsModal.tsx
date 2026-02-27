@@ -205,9 +205,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
               <div className="flex items-center gap-3">
                 <button
                   type="button"
-                  onClick={() =>
-                    handleToggle("dates", !userFlags.dates)
-                  }
+                  onClick={() => handleToggle("dates", !userFlags.dates)}
                   disabled={saving || !available.dates}
                   className={`
                     relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full

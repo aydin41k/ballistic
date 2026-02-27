@@ -27,9 +27,7 @@ function FlagsDisplay() {
       <span data-testid="user-delegation">{String(userFlags.delegation)}</span>
       <span data-testid="user-ai">{String(userFlags.ai_assistant)}</span>
       <span data-testid="avail-dates">{String(available.dates)}</span>
-      <span data-testid="avail-delegation">
-        {String(available.delegation)}
-      </span>
+      <span data-testid="avail-delegation">{String(available.delegation)}</span>
       <span data-testid="avail-ai">{String(available.ai_assistant)}</span>
     </div>
   );
