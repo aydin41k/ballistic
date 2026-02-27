@@ -16,7 +16,8 @@ interface SettingsModalProps {
  */
 export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const modalRef = useRef<HTMLDivElement>(null);
-  const { dates, delegation, aiAssistant, setFlag } = useFeatureFlags();
+  const { dates, delegation, aiAssistant, velocity, setFlag } =
+    useFeatureFlags();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [mcpTokens, setMcpTokens] = useState<McpToken[]>([]);
@@ -79,7 +80,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   }, [isOpen, aiAssistant, loadMcpTokens]);
 
   async function handleToggle(
-    flag: "dates" | "delegation" | "ai_assistant",
+    flag: "dates" | "delegation" | "ai_assistant" | "velocity",
     value: boolean,
   ) {
     if (saving) return;
@@ -304,6 +305,41 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                   </span>
                 </div>
               </div>
+
+              {/* Velocity Forecaster toggle */}
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => handleToggle("velocity", !velocity)}
+                  disabled={saving}
+                  className={`
+                    relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full
+                    border-2 border-transparent transition-colors duration-200 ease-in-out
+                    focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
+                    ${velocity ? "bg-blue-600" : "bg-gray-200"}
+                    ${saving ? "opacity-50 cursor-not-allowed" : ""}
+                  `}
+                  role="switch"
+                  aria-checked={velocity}
+                  aria-label="Velocity Forecaster"
+                >
+                  <span
+                    className={`
+                      pointer-events-none inline-block h-5 w-5 transform rounded-full
+                      bg-white shadow ring-0 transition duration-200 ease-in-out
+                      ${velocity ? "translate-x-5" : "translate-x-0"}
+                    `}
+                  />
+                </button>
+                <div className="flex flex-col">
+                  <span className="text-sm font-medium text-gray-900">
+                    Velocity Forecaster
+                  </span>
+                  <span className="text-xs text-gray-500">
+                    Predictive burnout detection and capacity planning
+                  </span>
+                </div>
+              </div>
             </div>
           </section>
 
@@ -476,7 +512,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
           {/* Version Info */}
           <section className="pt-4 border-t border-gray-100">
             <p className="text-xs text-gray-400 text-center">
-              Ballistic v0.15.0
+              Ballistic v0.16.0
             </p>
           </section>
         </div>

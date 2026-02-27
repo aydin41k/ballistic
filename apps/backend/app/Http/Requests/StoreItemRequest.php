@@ -37,6 +37,7 @@ final class StoreItemRequest extends FormRequest
                 }),
             ],
             'position' => ['integer', 'min:0'],
+            'effort_score' => ['sometimes', 'integer', Rule::in([1, 2, 3, 5, 8])],
             'scheduled_date' => ['nullable', 'date'],
             'due_date' => ['nullable', 'date', 'after_or_equal:scheduled_date'],
             'recurrence_rule' => ['nullable', 'string', 'max:255'],

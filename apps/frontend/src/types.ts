@@ -10,6 +10,7 @@ export interface User {
     dates: boolean;
     delegation: boolean;
     ai_assistant: boolean;
+    velocity: boolean;
   } | null;
   email_verified_at: string | null;
   created_at: string;
@@ -53,6 +54,7 @@ export interface Item {
   assignee_notes: string | null;
   status: Status;
   position: number;
+  effort_score: number;
   scheduled_date: string | null;
   due_date: string | null;
   completed_at: string | null;
@@ -125,3 +127,15 @@ export const RECURRENCE_PRESET_RULES: Record<RecurrencePreset, string | null> =
     weekly: "FREQ=WEEKLY",
     monthly: "FREQ=MONTHLY",
   };
+
+export interface VelocityForecast {
+  velocity: number;
+  std_dev: number;
+  capacity: number;
+  demand: number;
+  demand_task_count: number;
+  burnout_risk: boolean;
+  probability_of_success: number | null;
+  data_points: number;
+  weekly_totals: { week_label: string; total_effort: number }[];
+}

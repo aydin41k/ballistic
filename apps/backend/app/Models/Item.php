@@ -31,6 +31,7 @@ final class Item extends Model
         'assignee_notes',
         'status',
         'position',
+        'effort_score',
         'scheduled_date',
         'due_date',
         'completed_at',
@@ -41,6 +42,7 @@ final class Item extends Model
 
     protected $casts = [
         'position' => 'integer',
+        'effort_score' => 'integer',
         'scheduled_date' => 'date',
         'due_date' => 'date',
         'completed_at' => 'datetime',
@@ -67,6 +69,7 @@ final class Item extends Model
             if (empty($model->id)) {
                 $model->id = Str::uuid();
             }
+            $model->effort_score ??= 1;
         });
     }
 

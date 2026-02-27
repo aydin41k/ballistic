@@ -164,6 +164,7 @@ final class ItemController extends Controller
                 ...$validated,
                 'user_id' => Auth::id(),
                 'position' => $validated['position'] ?? 0,
+                'effort_score' => $validated['effort_score'] ?? 1,
             ]);
 
             if (! empty($tagIds)) {

@@ -4,6 +4,7 @@ use App\Http\Middleware\EnsureAiAssistantEnabled;
 use App\Http\Middleware\EnsureApiTokenAbility;
 use App\Http\Middleware\EnsureMcpTokenAbility;
 use App\Http\Middleware\EnsureUserIsAdmin;
+use App\Http\Middleware\EnsureVelocityEnabled;
 use App\Http\Middleware\HandleAppearance;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Mcp\Middleware\McpAuthMiddleware;
@@ -36,6 +37,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'admin' => EnsureUserIsAdmin::class,
             'mcp.auth' => McpAuthMiddleware::class,
             'feature.ai' => EnsureAiAssistantEnabled::class,
+            'feature.velocity' => EnsureVelocityEnabled::class,
             'token.mcp' => EnsureMcpTokenAbility::class,
             'token.api' => EnsureApiTokenAbility::class,
         ]);

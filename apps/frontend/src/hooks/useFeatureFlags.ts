@@ -7,12 +7,14 @@ interface FeatureFlags {
   dates: boolean;
   delegation: boolean;
   ai_assistant: boolean;
+  velocity: boolean;
 }
 
 const DEFAULTS: FeatureFlags = {
   dates: false,
   delegation: false,
   ai_assistant: false,
+  velocity: false,
 };
 
 export function useFeatureFlags() {
@@ -33,11 +35,15 @@ export function useFeatureFlags() {
       dates: user.feature_flags.dates ?? false,
       delegation: user.feature_flags.delegation ?? false,
       ai_assistant: user.feature_flags.ai_assistant ?? false,
+      velocity: user.feature_flags.velocity ?? false,
     };
   }, [user?.feature_flags]);
 
   const setFlag = useCallback(
-    async (flag: "dates" | "delegation" | "ai_assistant", value: boolean) => {
+    async (
+      flag: "dates" | "delegation" | "ai_assistant" | "velocity",
+      value: boolean,
+    ) => {
       // Send only the changed key — the server merges it with the stored flags,
       // which avoids a multi-tab race condition where two concurrent updates
       // would overwrite each other's changes.
@@ -55,6 +61,7 @@ export function useFeatureFlags() {
     dates: flags.dates,
     delegation: flags.delegation,
     aiAssistant: flags.ai_assistant,
+    velocity: flags.velocity,
     setFlag,
     loaded: user !== null,
   };
