@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\AuditLogController;
+use App\Http\Controllers\Admin\FeatureFlagController;
 use App\Http\Controllers\Admin\HealthController;
 use App\Http\Controllers\Admin\UserController;
 use Illuminate\Support\Facades\Route;
@@ -29,6 +30,12 @@ Route::middleware(['auth', 'verified', 'admin'])->group(function () {
 
         // Audit logs
         Route::get('audit-logs', AuditLogController::class)->name('audit-logs.index');
+
+        // Global feature flags
+        Route::get('feature-flags', [FeatureFlagController::class, 'index'])->name('feature-flags.index');
+        Route::patch('feature-flags/{key}', [FeatureFlagController::class, 'update'])
+            ->where('key', '[a-z][a-z0-9_]{0,63}')
+            ->name('feature-flags.update');
     });
 });
 

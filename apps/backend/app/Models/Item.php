@@ -174,4 +174,15 @@ final class Item extends Model
             ->whereDate('due_date', '<', now())
             ->whereNotIn('status', ['done', 'wontdo']);
     }
+
+    /**
+     * Scope for the activity log feed: items the user has closed out
+     * (done or won't do). Pairs with the composite index
+     * items_user_status_updated_idx (user_id, status, updated_at) so the
+     * query planner can serve both the filter and the ORDER BY from the index.
+     */
+    public function scopeClosed(Builder $query): Builder
+    {
+        return $query->whereIn('status', ['done', 'wontdo']);
+    }
 }

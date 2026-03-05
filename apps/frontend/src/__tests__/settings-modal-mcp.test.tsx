@@ -17,11 +17,36 @@ jest.mock("@/components/PushNotificationToggle", () => ({
   PushNotificationToggle: () => <div>Push stub</div>,
 }));
 
+// The Profile tab calls useAuth() for name/email/avatar. Stub it so the modal
+// mounts without an AuthProvider wrapper (this test suite only cares about
+// the Integrations tab).
+jest.mock("@/contexts/AuthContext", () => ({
+  useAuth: () => ({
+    user: {
+      id: "u1",
+      name: "Test User",
+      email: "test@example.com",
+      excluded_project_ids: [],
+    },
+    updateUser: jest.fn().mockResolvedValue(undefined),
+    refreshUser: jest.fn().mockResolvedValue(undefined),
+  }),
+}));
+
 jest.mock("@/lib/api", () => ({
   fetchMcpTokens: jest.fn(),
   createMcpToken: jest.fn(),
   revokeMcpToken: jest.fn(),
+  uploadAvatar: jest.fn(),
 }));
+
+/**
+ * The modal now opens on the Profile tab; token management lives under
+ * Integrations. Helper to navigate there in each test.
+ */
+async function openIntegrationsTab(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(screen.getByRole("tab", { name: "Integrations" }));
+}
 
 describe("SettingsModal MCP token management", () => {
   beforeEach(() => {
@@ -53,6 +78,7 @@ describe("SettingsModal MCP token management", () => {
     const user = userEvent.setup();
 
     render(<SettingsModal isOpen={true} onClose={jest.fn()} />);
+    await openIntegrationsTab(user);
 
     await waitFor(() => {
       expect(fetchMcpTokens).toHaveBeenCalledTimes(1);
@@ -84,6 +110,7 @@ describe("SettingsModal MCP token management", () => {
     const user = userEvent.setup();
 
     render(<SettingsModal isOpen={true} onClose={jest.fn()} />);
+    await openIntegrationsTab(user);
 
     await waitFor(() => {
       expect(screen.getByText("Claude Desktop")).toBeInTheDocument();
@@ -106,6 +133,7 @@ describe("SettingsModal MCP token management", () => {
 
     const user = userEvent.setup();
     render(<SettingsModal isOpen={true} onClose={jest.fn()} />);
+    await openIntegrationsTab(user);
 
     await waitFor(() => {
       expect(screen.getByText("Failed to load tokens.")).toBeInTheDocument();

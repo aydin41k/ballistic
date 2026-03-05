@@ -7,11 +7,12 @@ namespace App\Http\Resources;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
+/**
+ * @mixin \App\Models\User
+ */
 final class UserResource extends JsonResource
 {
     /**
-     * Transform the resource into an array.
-     *
      * @return array<string, mixed>
      */
     public function toArray(Request $request): array
@@ -22,9 +23,18 @@ final class UserResource extends JsonResource
             'email' => $this->email,
             'phone' => $this->phone,
             'notes' => $this->notes,
+            'avatar_url' => $this->avatarUrl(),
             'feature_flags' => array_merge(
                 ['dates' => false, 'delegation' => false, 'ai_assistant' => false],
                 $this->feature_flags ?? []
+            ),
+            // Surface the IDs so the client can hydrate its exclusion set
+            // without an extra request. Relationship is eager-loaded in
+            // UserController to avoid N+1.
+            'excluded_project_ids' => $this->whenLoaded(
+                'excludedProjects',
+                fn () => $this->excludedProjects->pluck('id')->all(),
+                []
             ),
             'email_verified_at' => $this->email_verified_at?->toIso8601String(),
             'is_admin' => $this->is_admin,

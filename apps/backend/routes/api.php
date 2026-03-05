@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 use App\Http\Controllers\Admin\StatsController as AdminStatsController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
+use App\Http\Controllers\Api\ActivityLogController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\FavouriteController;
+use App\Http\Controllers\Api\FeatureFlagController;
 use App\Http\Controllers\Api\McpTokenController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\ConnectionController;
@@ -24,6 +26,10 @@ Route::middleware(['throttle:auth'])->group(function () {
     Route::post('/register', [AuthController::class, 'register']);
     Route::post('/login', [AuthController::class, 'login']);
 });
+
+// Global feature flags — public & cache-backed so the frontend can gate UI
+// before auth completes and unauthenticated screens can still honour flags.
+Route::get('/feature-flags', FeatureFlagController::class)->middleware('throttle:api');
 
 // Protected API routes (authentication required)
 Route::middleware(['auth:sanctum', 'token.api', 'throttle:api'])->group(function () {
@@ -52,10 +58,14 @@ Route::middleware(['auth:sanctum', 'token.api', 'throttle:api'])->group(function
     // Extra rate limiting to prevent enumeration attacks
     Route::post('/users/discover', UserDiscoveryController::class)->middleware('throttle:user-search');
 
-    // Notifications (poll-based)
+    // Notifications (cursor-paginated history + bulk actions)
     Route::get('/notifications', [NotificationController::class, 'index']);
     Route::post('/notifications/{notification}/read', [NotificationController::class, 'markAsRead']);
     Route::post('/notifications/read-all', [NotificationController::class, 'markAllAsRead']);
+    Route::delete('/notifications/read', [NotificationController::class, 'clearRead']);
+
+    // Activity log: chronological feed of done / won't-do items.
+    Route::get('/activity-log', ActivityLogController::class);
 
     // Push notifications (Web Push subscriptions)
     Route::get('/push/vapid-key', [PushSubscriptionController::class, 'vapidKey']);

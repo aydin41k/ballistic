@@ -7,6 +7,7 @@ namespace App\Http\Controllers;
 use App\Contracts\NotificationServiceInterface;
 use App\Http\Resources\NotificationResource;
 use App\Models\Notification;
+use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -19,22 +20,42 @@ final class NotificationController extends Controller
     ) {}
 
     /**
-     * Get all notifications for the authenticated user.
-     * Use ?unread_only=true to get only unread notifications.
+     * Notification feed for the authenticated user.
+     *
+     * Cursor-paginated so the Notification Centre can load history
+     * indefinitely without OFFSET scans. The existing composite index
+     * (user_id, read_at) covers the unread_only filter, and the created_at
+     * index covers the ordering.
+     *
+     * Query params:
+     *   ?unread_only=1    — limit to unread
+     *   ?cursor=...       — infinite-scroll continuation
+     *   ?per_page=n       — page size (clamped to 100)
+     *
+     * Back-compat: clients that don't pass a cursor get a simple first page,
+     * so existing poll-based callers continue to work unchanged.
      */
     public function index(Request $request): JsonResponse
     {
+        /** @var User $user */
         $user = Auth::user();
-        $query = $user->taskNotifications()->orderBy('created_at', 'desc');
+
+        $perPage = min((int) $request->integer('per_page', 50), 100);
+
+        $query = $user->taskNotifications()
+            ->orderByDesc('created_at')
+            ->orderByDesc('id');
 
         if ($request->boolean('unread_only')) {
             $query->whereNull('read_at');
         }
 
-        $notifications = $query->limit(50)->get();
+        $paginated = $query->cursorPaginate($perPage);
 
         return response()->json([
-            'data' => NotificationResource::collection($notifications),
+            'data' => NotificationResource::collection($paginated->items()),
+            'next_cursor' => $paginated->nextCursor()?->encode(),
+            'has_more' => $paginated->hasMorePages(),
             'unread_count' => $this->notificationService->getUnreadCount($user),
         ]);
     }
@@ -44,8 +65,6 @@ final class NotificationController extends Controller
      */
     public function markAsRead(Notification $notification): JsonResponse
     {
-        // Ensure the notification belongs to the authenticated user
-        // Cast to string for reliable UUID comparison
         if ((string) $notification->user_id !== (string) Auth::id()) {
             return response()->json(['message' => 'Forbidden'], Response::HTTP_FORBIDDEN);
         }
@@ -68,6 +87,28 @@ final class NotificationController extends Controller
         return response()->json([
             'message' => 'All notifications marked as read.',
             'marked_count' => $count,
+            'unread_count' => 0,
+        ]);
+    }
+
+    /**
+     * Permanently delete all *read* notifications for the authenticated user.
+     * Unread notifications are untouched so the user can't accidentally lose
+     * unseen alerts via this bulk action.
+     */
+    public function clearRead(): JsonResponse
+    {
+        /** @var User $user */
+        $user = Auth::user();
+
+        $deleted = $user->taskNotifications()
+            ->whereNotNull('read_at')
+            ->delete();
+
+        return response()->json([
+            'message' => 'Read notifications cleared.',
+            'deleted_count' => $deleted,
+            'unread_count' => $this->notificationService->getUnreadCount($user),
         ]);
     }
 }

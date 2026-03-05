@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Laravel\Sanctum\HasApiTokens;
 
@@ -31,6 +32,7 @@ final class User extends Authenticatable
         'email',
         'phone',
         'notes',
+        'avatar_path',
         'feature_flags',
         'password',
         'is_admin',
@@ -210,5 +212,26 @@ final class User extends Authenticatable
     {
         return $this->belongsToMany(User::class, 'user_favourites', 'user_id', 'favourite_id')
             ->orderByPivot('created_at', 'desc');
+    }
+
+    /**
+     * Projects this user has hidden from their main feed.
+     * Backed by the project_user_exclusions pivot so the relationship is
+     * queryable, cascades on delete, and syncs cleanly.
+     */
+    public function excludedProjects(): BelongsToMany
+    {
+        return $this->belongsToMany(Project::class, 'project_user_exclusions')
+            ->withTimestamps();
+    }
+
+    /**
+     * Public URL for the user's avatar, or null if none uploaded.
+     */
+    public function avatarUrl(): ?string
+    {
+        return $this->avatar_path !== null
+            ? Storage::disk('public')->url($this->avatar_path)
+            : null;
     }
 }

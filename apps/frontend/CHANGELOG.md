@@ -1,3 +1,44 @@
+## 0.17.0 - 2026-03-05
+
+### Added
+
+#### Global Feature Flags (zero-flicker SSR)
+
+- **`GlobalFeatureFlagsProvider`** + **`useGlobalFeatureFlags()`**: Site-wide, admin-controlled feature flags (distinct from per-user `User.feature_flags`). The provider is **seeded from server-fetched `initialFlags`** so `loaded` starts `true` and gated UI renders correctly from the very first paint — no client round trip, no post-hydration pop-in. After hydration a background `refresh()` is scheduled via `requestIdleCallback` (Safari fallback: 1 s timeout) to reconcile with admin toggles that landed while the SSR output was cached; on failure the refresh preserves the current map so a transient network blip can never revoke a feature the user is already seeing. Outside a provider (e.g. unit tests) the hook returns a no-op stub where every flag resolves to its fallback.
+- **`getGlobalFeatureFlags()`** (server-only, `src/lib/server/featureFlags.ts`): Called from the root layout during SSR. Resolves the backend URL via `API_BASE_URL` → `NEXT_PUBLIC_API_BASE_URL` (the server-only var lets Docker/K8s deployments use an internal service hostname). Mirrors the 5-minute Laravel cache TTL with `next.revalidate: 300` so Next's data cache absorbs repeat hits. Returns `{}` on any failure — the safe default, since every gated feature stays off.
+- **`layout.tsx` is now an async server component** with `export const revalidate = 300`. The explicit revalidate keeps the route on the ISR path even when no API base URL is available at `next build` time — without it, `getGlobalFeatureFlags()` short-circuits before calling `fetch()`, Next sees no data dependency, and the empty flag map would be baked into static HTML forever. With it the cached shell is served and revalidated in the background every 5 min (~12 backend hits/hour from SSR under any load).
+- **`GlobalFeatureFlags` type** (`Record<string, boolean>`) + `fetchGlobalFeatureFlags()` client API wrapper.
+
+#### Activity Log
+
+- **`ActivityLogModal`**: Centre-screen, infinite-scroll timeline of closed items (done / won't-do) grouped by calendar day with "Today" / "Yesterday" headings. Gated behind the `activity_log` global flag — the bottom-bar history button only renders when the flag is on.
+- **`useCursorPagination<T>` hook**: Generic cursor-paginated feed primitive with a generation guard (incremented on `reset()` so stale in-flight responses for an earlier generation are discarded instead of clobbering fresh state), single-inflight-request gate, and `enabled` param to defer the first fetch until a modal opens.
+- **`ActivityLogEntry` / `CursorPage<T>` types** + `fetchActivityLog()` API wrapper.
+
+#### Notification Centre
+
+- **`NotificationCentre`**: Centre-screen modal with infinite scroll, unread-count badge (surfaced on the bottom-bar bell via an `onUnreadCountChange` callback), and two bulk actions: "Mark all as read" (optimistic — paints all loaded rows as read before the server confirms) and "Clear read" (deletes read rows, then `reset()`s the paginator for a consistent view since we don't hold the full set locally). Gated behind the `notification_centre` global flag.
+- **`clearReadNotifications()`** API wrapper + `fetchNotifications()` extended with `cursor` / `perPage` options.
+
+#### Project Exclusion Filtering
+
+- **Hidden-projects filter in `page.tsx`**: `user.excluded_project_ids` is lifted into a `Set` and applied client-side alongside the existing project-chip filter. An explicit chip selection wins over an exclusion — if the user drills into a hidden project via the filter panel we honour that rather than show an always-empty list with no explanation.
+- **Hidden-projects multi-select in Settings → Profile**: Checkbox list of active projects; checked projects are synced to the `project_user_exclusions` pivot via `PATCH /api/user { excluded_project_ids }` (full-replace semantics — omit the key to leave unchanged, send `[]` to clear).
+
+#### Tabbed, Scrollable Settings Modal
+
+- **SettingsModal rewritten**: Now a four-tab bottom sheet (Profile / Features / Integrations / Notifications) constrained to `max-h-[85vh]` with a sticky header/tab-bar and an internally scrolling body — long sections (MCP token lists, project checklists) no longer push the close button off-screen.
+- **Profile tab**: Edit name and email (changing the email warns that re-verification will be required), upload an avatar (client-side size/type guard — under 2 MB, must be `image/*`), and manage hidden projects. Form state is dirty-tracked so the Save button is disabled until something actually changes.
+- **`uploadAvatar()` API wrapper**: Multipart upload via Laravel form-method spoofing (`POST` + `_method=PATCH`); strips the `Content-Type` header so the browser sets the correct multipart boundary.
+
+### Fixed
+
+- **Infinite-loop hazard in form-seed effect**: The Profile tab's `useEffect` that re-seeds local form state from `user` now depends on primitive values (`user?.name`, `user?.email`, joined exclusion IDs) rather than the `user` object reference — object identity isn't guaranteed stable across renders if a consumer (or test mock) constructs a fresh user each time, and depending on `[user]` triggered a `setState → render → effect` loop.
+
+### Tests
+
+- **`settings-modal-mcp.test.tsx`**: Updated for the new tabbed layout — each test clicks the Integrations tab before asserting on token UI; added `useAuth` and `uploadAvatar` mock stubs since the Profile tab (now the default) calls both.
+
 ## 0.15.1 - 2026-02-21
 
 ### Changed

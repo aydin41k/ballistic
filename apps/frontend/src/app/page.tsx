@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useFeatureFlags } from "@/hooks/useFeatureFlags";
+import { useGlobalFeatureFlags } from "@/contexts/GlobalFeatureFlagsContext";
 import { useRouter } from "next/navigation";
 import type { Item, ItemScope, Project } from "@/types";
 import {
@@ -17,6 +18,8 @@ import { EmptyState } from "@/components/EmptyState";
 import { SplashScreen } from "@/components/SplashScreen";
 import { SettingsModal } from "@/components/SettingsModal";
 import { NotesModal } from "@/components/NotesModal";
+import { ActivityLogModal } from "@/components/ActivityLogModal";
+import { NotificationCentre } from "@/components/NotificationCentre";
 import { EditItemModal } from "@/components/EditItemModal";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -96,7 +99,13 @@ export default function Home() {
   const toastTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [showNotes, setShowNotes] = useState(false);
+  const [showActivityLog, setShowActivityLog] = useState(false);
+  const [showNotificationCentre, setShowNotificationCentre] = useState(false);
+  const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
   const { dates, delegation } = useFeatureFlags();
+  const { enabled: globalFeatureEnabled } = useGlobalFeatureFlags();
+  const activityLogEnabled = globalFeatureEnabled("activity_log");
+  const notificationCentreEnabled = globalFeatureEnabled("notification_centre");
 
   const showError = useCallback((message: string) => {
     if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
@@ -232,16 +241,33 @@ export default function Home() {
   // Sort my tasks by urgency (only when dates feature is enabled)
   const sortedItems = dates ? sortByUrgency(items) : items;
 
-  // Apply project filter client-side
-  const filteredItems = filterProjectId
-    ? sortedItems.filter((i) => i.project_id === filterProjectId)
-    : sortedItems;
-  const filteredAssignedItems = filterProjectId
-    ? assignedItems.filter((i) => i.project_id === filterProjectId)
-    : assignedItems;
-  const filteredDelegatedItems = filterProjectId
-    ? delegatedItems.filter((i) => i.project_id === filterProjectId)
-    : delegatedItems;
+  // Projects the user has hidden from their feed (persisted server-side on
+  // project_user_exclusions). A Set makes the hot-path .has() check O(1) and
+  // keeps the filter callback stable across renders where the underlying array
+  // identity changes but its contents don't.
+  const excludedProjectIds = useMemo(
+    () => new Set(user?.excluded_project_ids ?? []),
+    [user?.excluded_project_ids],
+  );
+
+  // Compose a single predicate covering both the ad-hoc project chip filter
+  // and the persistent exclusion list. Note the exclusion list intentionally
+  // loses to an explicit chip selection — if the user drills into a hidden
+  // project via the filter panel we honour that request (filterProjectId ===
+  // i.project_id wins), otherwise we'd show an always-empty list with no
+  // indication why.
+  const passesProjectFilters = useCallback(
+    (i: Item): boolean => {
+      if (filterProjectId) return i.project_id === filterProjectId;
+      if (i.project_id && excludedProjectIds.has(i.project_id)) return false;
+      return true;
+    },
+    [filterProjectId, excludedProjectIds],
+  );
+
+  const filteredItems = sortedItems.filter(passesProjectFilters);
+  const filteredAssignedItems = assignedItems.filter(passesProjectFilters);
+  const filteredDelegatedItems = delegatedItems.filter(passesProjectFilters);
 
   function onRowChange(itemOrUpdater: Item | ((current: Item) => Item)) {
     const updater = (prev: Item[]) => {
@@ -737,6 +763,65 @@ export default function Home() {
                 />
               </svg>
             </button>
+            {/* Activity Log — global-flag-gated so the bar stays compact for
+                users on instances where the feature isn't rolled out yet. */}
+            {activityLogEnabled && (
+              <button
+                type="button"
+                aria-label="Recent activity"
+                onClick={() => setShowActivityLog(true)}
+                className="tap-target grid h-10 w-10 place-items-center rounded-md hover:bg-slate-100 active:scale-95 transition-all duration-200"
+              >
+                {/* history/clock icon */}
+                <svg
+                  viewBox="0 0 24 24"
+                  width="20"
+                  height="20"
+                  fill="none"
+                  stroke="currentColor"
+                  className="text-[var(--navy)]"
+                >
+                  <path
+                    d="M3 12a9 9 0 1 0 2.6-6.4M3 3v5h5M12 7v5l3 2"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </button>
+            )}
+            {notificationCentreEnabled && (
+              <button
+                type="button"
+                aria-label="Notifications"
+                onClick={() => setShowNotificationCentre(true)}
+                className="tap-target relative grid h-10 w-10 place-items-center rounded-md hover:bg-slate-100 active:scale-95 transition-all duration-200"
+              >
+                {/* bell icon */}
+                <svg
+                  viewBox="0 0 24 24"
+                  width="20"
+                  height="20"
+                  fill="none"
+                  stroke="currentColor"
+                  className="text-[var(--navy)]"
+                >
+                  <path
+                    d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+                {unreadNotificationCount > 0 && (
+                  <span className="absolute right-1 top-1 grid min-w-[1.1rem] place-items-center rounded-full bg-red-500 px-1 text-[10px] font-semibold leading-4 text-white">
+                    {unreadNotificationCount > 99
+                      ? "99+"
+                      : unreadNotificationCount}
+                  </span>
+                )}
+              </button>
+            )}
           </div>
           <button
             type="button"
@@ -783,10 +868,28 @@ export default function Home() {
       <SettingsModal
         isOpen={showSettings}
         onClose={() => setShowSettings(false)}
+        projects={projects}
       />
 
       {/* Notes Modal */}
       <NotesModal isOpen={showNotes} onClose={() => setShowNotes(false)} />
+
+      {/* Activity Log Modal — gated on global flag */}
+      {activityLogEnabled && (
+        <ActivityLogModal
+          isOpen={showActivityLog}
+          onClose={() => setShowActivityLog(false)}
+        />
+      )}
+
+      {/* Notification Centre — gated on global flag */}
+      {notificationCentreEnabled && (
+        <NotificationCentre
+          isOpen={showNotificationCentre}
+          onClose={() => setShowNotificationCentre(false)}
+          onUnreadCountChange={setUnreadNotificationCount}
+        />
+      )}
 
       {/* Edit/Create Item Modal */}
       <EditItemModal

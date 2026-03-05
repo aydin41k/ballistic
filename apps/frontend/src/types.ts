@@ -6,11 +6,18 @@ export interface User {
   email: string;
   phone: string | null;
   notes: string | null;
+  avatar_url?: string | null;
   feature_flags?: {
     dates: boolean;
     delegation: boolean;
     ai_assistant: boolean;
   } | null;
+  /**
+   * Project IDs the user has hidden from their main feed. Persisted server-side
+   * via the project_user_exclusions pivot. Always present on GET /api/user;
+   * may be absent on legacy cached payloads, hence optional.
+   */
+  excluded_project_ids?: string[];
   email_verified_at: string | null;
   created_at: string;
   updated_at: string;
@@ -87,6 +94,34 @@ export interface Notification {
 export interface NotificationsResponse {
   data: Notification[];
   unread_count: number;
+  /** Cursor for the next page. null when no more pages. */
+  next_cursor?: string | null;
+  /** True if more pages are available. */
+  has_more?: boolean;
+}
+
+/**
+ * Site-wide feature flags controlled by admins (distinct from per-user
+ * User.feature_flags). Fetched once at app hydration via GET /api/feature-flags.
+ * Keys are flag identifiers, values indicate whether the feature is enabled.
+ */
+export type GlobalFeatureFlags = Record<string, boolean>;
+
+/** A single closed (done/wontdo) item in the activity log feed. */
+export interface ActivityLogEntry {
+  id: string;
+  title: string;
+  status: Extract<Status, "done" | "wontdo">;
+  project_id: string | null;
+  project?: Pick<Project, "id" | "name" | "color"> | null;
+  completed_at: string | null;
+  updated_at: string;
+}
+
+export interface CursorPage<T> {
+  data: T[];
+  next_cursor: string | null;
+  has_more: boolean;
 }
 
 export interface McpToken {

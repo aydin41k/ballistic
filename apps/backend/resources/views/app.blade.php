@@ -39,7 +39,15 @@
         <link href="https://fonts.bunny.net/css?family=instrument-sans:400,500,600" rel="stylesheet" />
 
         @viteReactRefresh
-        @vite(['resources/js/app.tsx', "resources/js/pages/{$page['component']}.tsx"])
+        {{--
+            Do NOT add per-page entries (e.g. "resources/js/pages/{$page['component']}.tsx") here.
+            In production, @vite() resolves assets via public/build/manifest.json. Only files listed
+            under laravel({ input: [...] }) in vite.config.ts are manifest entry points. Page components
+            are dynamic chunks (import.meta.glob in app.tsx) — not entries — so referencing them here
+            throws "Unable to locate file in Vite manifest" in prod. It only worked in dev because the
+            Vite dev server transforms any file on-the-fly without consulting the manifest.
+        --}}
+        @vite(['resources/js/app.tsx'])
         @inertiaHead
     </head>
     <body class="font-sans antialiased">

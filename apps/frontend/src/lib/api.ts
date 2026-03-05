@@ -1,4 +1,7 @@
 import type {
+  ActivityLogEntry,
+  CursorPage,
+  GlobalFeatureFlags,
   Item,
   ItemScope,
   McpToken,
@@ -108,6 +111,9 @@ export type UserUpdatePayload = Partial<
   Pick<User, "name" | "email" | "phone" | "notes"> & {
     // feature_flags accepts a partial update — the server merges it with stored flags.
     feature_flags: Partial<NonNullable<User["feature_flags"]>> | null;
+    // Full-replace semantics: the server syncs the pivot to exactly this set.
+    // Omit the key to leave exclusions unchanged; send [] to clear all.
+    excluded_project_ids: string[];
   }
 >;
 
@@ -119,6 +125,35 @@ export async function updateUser(data: UserUpdatePayload): Promise<User> {
     method: "PATCH",
     headers: getAuthHeaders(),
     body: JSON.stringify(data),
+  });
+
+  const payload = await handleResponse<User | { data?: User }>(response);
+  return extractData(payload);
+}
+
+/**
+ * Upload a new avatar image. Uses multipart/form-data because the backend
+ * reads the file from `$request->file('avatar')`. Returns the updated user
+ * (with `avatar_url` populated).
+ *
+ * Laravel's FormRequest only sees file uploads on multipart requests, so this
+ * cannot go through the JSON `updateUser()` path above.
+ */
+export async function uploadAvatar(file: File): Promise<User> {
+  const form = new FormData();
+  form.append("avatar", file);
+  // Laravel form-method spoofing: PATCH routes don't accept multipart bodies
+  // natively, so we POST with _method=PATCH and let the framework re-route.
+  form.append("_method", "PATCH");
+
+  // Strip Content-Type so the browser sets the correct multipart boundary.
+  const headers = getAuthHeaders();
+  delete headers["Content-Type"];
+
+  const response = await fetch(buildUrl("/api/user"), {
+    method: "POST",
+    headers,
+    body: form,
   });
 
   const payload = await handleResponse<User | { data?: User }>(response);
@@ -436,13 +471,18 @@ export async function toggleFavourite(
 /**
  * Fetch notifications for the authenticated user.
  * Use unreadOnly=true to get only unread notifications.
+ * Pass `cursor` to fetch the next page (from a previous response's next_cursor).
  */
-export async function fetchNotifications(
-  unreadOnly?: boolean,
-): Promise<NotificationsResponse> {
+export async function fetchNotifications(options?: {
+  unreadOnly?: boolean;
+  cursor?: string;
+  perPage?: number;
+}): Promise<NotificationsResponse> {
   const response = await fetch(
     buildUrl("/api/notifications", {
-      unread_only: unreadOnly ? "true" : undefined,
+      unread_only: options?.unreadOnly ? "true" : undefined,
+      cursor: options?.cursor,
+      per_page: options?.perPage?.toString(),
     }),
     {
       method: "GET",
@@ -477,13 +517,88 @@ export async function markNotificationAsRead(
 export async function markAllNotificationsAsRead(): Promise<{
   message: string;
   marked_count: number;
+  unread_count: number;
 }> {
   const response = await fetch(buildUrl("/api/notifications/read-all"), {
     method: "POST",
     headers: getAuthHeaders(),
   });
 
-  return handleResponse<{ message: string; marked_count: number }>(response);
+  return handleResponse<{
+    message: string;
+    marked_count: number;
+    unread_count: number;
+  }>(response);
+}
+
+/**
+ * Delete all notifications the user has already read. Unread notifications
+ * are preserved. Returns the number of rows deleted and the remaining
+ * unread count.
+ */
+export async function clearReadNotifications(): Promise<{
+  message: string;
+  deleted_count: number;
+  unread_count: number;
+}> {
+  const response = await fetch(buildUrl("/api/notifications/read"), {
+    method: "DELETE",
+    headers: getAuthHeaders(),
+  });
+
+  return handleResponse<{
+    message: string;
+    deleted_count: number;
+    unread_count: number;
+  }>(response);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Global Feature Flags (admin-controlled, site-wide)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Fetch the site-wide feature flag map. Public endpoint (no auth required).
+ * Unlike per-user feature_flags on the User model, these are admin-toggled
+ * and apply to all users. Cached server-side so this is cheap to call.
+ */
+export async function fetchGlobalFeatureFlags(): Promise<GlobalFeatureFlags> {
+  const response = await fetch(buildUrl("/api/feature-flags"), {
+    method: "GET",
+    headers: { Accept: "application/json" },
+    cache: "no-store",
+  });
+
+  const payload = await handleResponse<{ data: GlobalFeatureFlags }>(response);
+  return payload.data ?? {};
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Activity Log (closed items: done / wontdo)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Fetch a cursor-paginated feed of closed items (status done or wontdo),
+ * sorted by updated_at desc. Uses the composite index on
+ * (user_id, status, updated_at).
+ */
+export async function fetchActivityLog(options?: {
+  cursor?: string;
+  perPage?: number;
+}): Promise<CursorPage<ActivityLogEntry>> {
+  const response = await fetch(
+    buildUrl("/api/activity-log", {
+      cursor: options?.cursor,
+      per_page: options?.perPage?.toString(),
+    }),
+    {
+      method: "GET",
+      headers: getAuthHeaders(),
+      cache: "no-store",
+    },
+  );
+
+  return handleResponse<CursorPage<ActivityLogEntry>>(response);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

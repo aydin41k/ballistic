@@ -5,6 +5,53 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.17.0] - 2026-03-05
+
+### Added
+
+#### Admin-Toggled Global Feature Flags
+
+- **`feature_flags` table + model**: Key/value store for site-wide flags, distinct from per-user `users.feature_flags`. Final `FeatureFlag` model with `HasUuids` trait.
+- **`FeatureFlagService`**: Read-through-cache service backed by `Cache::remember()` (key `feature_flags:all`, TTL 5 min). `all()` returns the full flag map; `enabled()` checks a single key; `set()` and `delete()` invalidate the cache.
+- **`GET /api/feature-flags`** (public): Returns the cached `{ key: boolean }` map for frontend hydration. Served via `FeatureFlagController`.
+- **Admin dashboard toggle grid**: New Inertia page at `/admin/feature-flags` with a toggle grid for admins to flip flags without a deploy. Writes go through `Admin\FeatureFlagController` which delegates to `FeatureFlagService::set()` and busts the cache.
+- **`FeatureFlagSeeder`**: Seeds `activity_log` and `notification_centre` flags (default off).
+
+#### Activity Log
+
+- **`GET /api/activity-log`**: Cursor-paginated feed of closed items (`status IN ('done','wontdo')`) ordered by `updated_at DESC`. Uses `cursorPaginate()` to avoid `OFFSET` scans on large histories.
+- **Composite index `items_user_id_status_updated_at_index`**: New migration adds `(user_id, status, updated_at)` covering index — the activity feed query is fully index-backed.
+- **`ActivityLogResource`**: Projects `id`, `title`, `status`, `project_id`, `completed_at`, `updated_at` and a slim nested `project{id,name,color}` (eager-loaded via `with('project:id,name,color')` to prevent N+1).
+
+#### Notification Centre (backend)
+
+- **Cursor pagination for `GET /api/notifications`**: Adds optional `cursor` and `per_page` params; response now includes `next_cursor` and `has_more` alongside the existing `data` and `unread_count`.
+- **`DELETE /api/notifications/read`**: Bulk-delete all already-read notifications for the authenticated user. Returns `{ deleted_count, unread_count }`.
+
+#### Project Exclusion Filtering
+
+- **`project_user_exclusions` pivot table**: New migration with `(user_id, project_id)` composite PK, cascade-delete FKs to both parents. Referential integrity over a JSON column so exclusions vanish automatically when a project is deleted.
+- **`User::excludedProjects()` belongsToMany**: Pivot relationship; `PATCH /api/user` accepts `excluded_project_ids[]` and runs `sync()` inside the existing profile-update transaction.
+- **`UserResource` returns `excluded_project_ids`**: Always present on `GET /api/user` for client-side filter hydration.
+
+#### Profile Management
+
+- **Avatar upload**: `PATCH /api/user` now accepts a multipart `avatar` file (max 2 MB, must be an image). Stored on the `public` disk at `avatars/{uuid}.{ext}`; old avatar deleted on replacement. The endpoint uses Laravel form-method spoofing (`POST` + `_method=PATCH`) for multipart compatibility.
+- **Avatar rollback on DB failure**: Uploaded file is deleted from disk if the enclosing transaction throws.
+
+### Fixed
+
+- **Admin Dashboard production 500**: `resources/views/app.blade.php` called `@vite(['resources/js/app.tsx'])` but only `resources/js/app.tsx` existed in the manifest — per-page entrypoints like `resources/js/Pages/Dashboard.tsx` weren't registered, causing a `ViteManifestNotFoundException` in production. Fixed by including the page-component glob in `vite.config.ts` inputs; regression test added.
+- **`email_verified_at` not reset on email change**: `UserController::update()` compared against `$user->getOriginal('email')` *after* calling `$user->update()`, which syncs the `original` attribute snapshot. Now captures `$emailWillChange` before the update call.
+
+### Tests
+
+- **`FeatureFlagTest`** (8 tests): public endpoint returns cached map; admin can toggle/create/delete; non-admin forbidden; cache busted on write; validation rejects unknown keys.
+- **`ActivityLogTest`** (6 tests): returns only done/wontdo; ordered by `updated_at` desc; cursor pagination walks pages without gaps or overlaps; scoped to authenticated user; N+1 guard via `assertQueryCountLessThan`.
+- **`NotificationCentreTest`** (5 tests): cursor pagination; `DELETE /api/notifications/read` deletes only read rows; unread preserved; `deleted_count` accurate; auth required.
+- **`UserProfileTest`** (12 tests): avatar upload happy path; oversize rejected; non-image rejected; old avatar cleaned up; exclusion sync adds/removes/clears; omitting `excluded_project_ids` leaves pivot untouched; email change resets verification; name/email validation.
+- **`AdminDashboardRegressionTest`**: production-mode `@vite` render with per-page entrypoint asserts no `ViteManifestNotFoundException`.
+
 ## [0.15.1] - 2026-02-21
 
 ### Changed
