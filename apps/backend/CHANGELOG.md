@@ -20,7 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### Activity Log
 
 - **`GET /api/activity-log`**: Cursor-paginated feed of closed items (`status IN ('done','wontdo')`) ordered by `updated_at DESC`. Uses `cursorPaginate()` to avoid `OFFSET` scans on large histories.
-- **Composite index `items_user_id_status_updated_at_index`**: New migration adds `(user_id, status, updated_at)` covering index — the activity feed query is fully index-backed.
+- **Composite index `items_user_status_updated_idx`**: New migration adds `(user_id, status, updated_at)` covering index — the activity feed query is fully index-backed.
 - **`ActivityLogResource`**: Projects `id`, `title`, `status`, `project_id`, `completed_at`, `updated_at` and a slim nested `project{id,name,color}` (eager-loaded via `with('project:id,name,color')` to prevent N+1).
 
 #### Notification Centre (backend)
