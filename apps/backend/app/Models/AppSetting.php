@@ -4,11 +4,14 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Traits\Auditable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Cache;
 
 final class AppSetting extends Model
 {
+    use Auditable;
+
     protected $fillable = ['key', 'value'];
 
     /**
