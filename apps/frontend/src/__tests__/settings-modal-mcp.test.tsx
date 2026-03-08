@@ -8,6 +8,8 @@ jest.mock("@/hooks/useFeatureFlags", () => ({
     dates: false,
     delegation: false,
     aiAssistant: true,
+    userFlags: { dates: false, delegation: false, ai_assistant: true },
+    available: { dates: true, delegation: true, ai_assistant: true },
     setFlag: jest.fn(),
     loaded: true,
   }),

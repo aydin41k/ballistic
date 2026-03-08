@@ -6,12 +6,14 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Resources\UserResource;
+use App\Models\AppSetting;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
+use Illuminate\Validation\ValidationException;
 
 final class UserController extends Controller
 {
@@ -62,6 +64,19 @@ final class UserController extends Controller
         if (array_key_exists('feature_flags', $validated) && is_array($validated['feature_flags'])) {
             $allowedFlagKeys = ['dates', 'delegation', 'ai_assistant'];
             $incomingFlags = array_intersect_key($validated['feature_flags'], array_flip($allowedFlagKeys));
+
+            // Reject enabling flags that are globally disabled by admin
+            $globalFlags = AppSetting::globalFeatureFlags();
+            $errors = [];
+            foreach ($incomingFlags as $flag => $value) {
+                if ($value === true && ($globalFlags[$flag] ?? true) === false) {
+                    $errors["feature_flags.{$flag}"] = ["The {$flag} feature is not currently available."];
+                }
+            }
+
+            if (! empty($errors)) {
+                throw ValidationException::withMessages($errors);
+            }
 
             $validated['feature_flags'] = array_merge(
                 $user->feature_flags ?? [],

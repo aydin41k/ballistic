@@ -1,3 +1,57 @@
+## 0.16.2 - 2026-03-08
+
+### Changed
+
+#### Pre-Merge Bulletproofing
+
+- **`SettingsModal` — version string**: Updated hardcoded version label from `v0.15.0` to `v0.16.2`
+- **`SettingsModal` — MCP URL**: Wrapped URL computation in `useMemo` to avoid recomputation on every render; added SSR guard for `window.location.origin`
+- **`ProfileModal` — error surfacing**: `handleSave` now surfaces the server's error message instead of a generic fallback, consistent with `SettingsModal.handleToggle`
+- **`ProfileModal` — save guard**: Close button, Escape key, and backdrop click are all blocked while a save is in progress to prevent lost feedback
+- **`ProfileModal` — input locking**: Name, email, and phone inputs are disabled with reduced opacity during save
+- **`useModal` hook**: New shared hook that locks body scroll (`document.body.style.overflow = "hidden"`) while any modal is open, restoring the previous value on cleanup; applied to all five modals (`SettingsModal`, `ProfileModal`, `NotesModal`, `EditItemModal`, `AssignModal`)
+- **Focus trapping**: Added `focus-trap-react` (v12) to all five modals via a `<FocusTrap focusTrapOptions={{ allowOutsideClick: true }}>` wrapper — satisfies WCAG 2.1 AA modal focus requirements while allowing backdrop-click-to-close
+- **`User` type**: `feature_flags` is now non-optional (always provided by `UserResource` with defaults merged); `available_feature_flags` remains optional for backwards compatibility
+
+### Tests
+
+- **`profile-modal.test.tsx`**: Updated "shows error message on save failure" to test the generic fallback path (error without message); added backdrop-click test; added cannot-close-while-saving test; added server-error-message surfacing test
+- **`jest.config.ts`**: Added `moduleNameMapper` entry for `focus-trap-react` → jsdom-compatible stub to allow modal tests to run without layout computation
+
+## 0.16.1 - 2026-03-08
+
+### Changed
+
+#### Pre-Merge Hardening
+
+- **`SettingsModal` — server error messages**: `handleToggle` now surfaces the server's error message (e.g. "One or more features are not currently available") instead of a generic fallback
+- **Modal accessibility**: Added `role="dialog"` and `aria-modal="true"` to `SettingsModal`, `ProfileModal`, `EditItemModal`, `NotesModal`, and `AssignModal`
+
+### Tests
+
+- **`profile-modal.test.tsx`**: 10 tests covering render, close, escape, submit with correct payload, name editing, empty phone sends null, save failure, logout, and success feedback
+
+## 0.16.0 - 2026-02-27
+
+### Added
+
+#### Admin-Controlled Global Feature Flags (Frontend)
+
+- **`available_feature_flags` on `User` type**: New optional field matching the `feature_flags` shape, sourced from admin settings
+- **`useFeatureFlags` — global availability support**: Hook now exposes `userFlags` (raw user preference), `available` (admin-set global availability), and effective booleans (`dates`, `delegation`, `aiAssistant`) that are `true` only when both the user preference and global flag are enabled. Defaults `available` to all `true` when the field is absent for backwards compatibility
+- **`SettingsModal` — disabled toggles with "Coming soon"**: Each feature toggle is disabled when the admin has globally disabled the feature; description text changes to "Coming soon" and the toggle appears greyed out. Toggle direction uses the raw user preference so the stored value is preserved for when the admin re-enables the feature
+
+### Tests
+
+- **`use-feature-flags.test.tsx`**: Added 5 tests — effective false when global disabled, effective false when user disabled, effective true when both true, available defaults to all true, userFlags reflects raw preference
+- **`settings-modal-mcp.test.tsx`**: Updated `useFeatureFlags` mock to include `userFlags` and `available`
+
+## 0.15.2 - 2026-02-27
+
+### Fixed
+
+- **Settings modal scrollability**: Converted from a bottom sheet to a centred popup with `max-h-[90vh]` and `overflow-y-auto`, so all content is reachable when the modal exceeds viewport height
+
 ## 0.15.1 - 2026-02-21
 
 ### Changed

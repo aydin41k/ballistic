@@ -6,7 +6,12 @@ export interface User {
   email: string;
   phone: string | null;
   notes: string | null;
-  feature_flags?: {
+  feature_flags: {
+    dates: boolean;
+    delegation: boolean;
+    ai_assistant: boolean;
+  };
+  available_feature_flags?: {
     dates: boolean;
     delegation: boolean;
     ai_assistant: boolean;
