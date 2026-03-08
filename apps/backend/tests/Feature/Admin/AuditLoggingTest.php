@@ -330,4 +330,42 @@ final class AuditLoggingTest extends TestCase
 
         $this->assertEquals($initialCount, AuditLog::count());
     }
+
+    // ── Sensitive field redaction ────────────────────────────────
+
+    public function test_user_created_audit_log_does_not_contain_password(): void
+    {
+        $this->postJson('/api/register', [
+            'name' => 'Redact Test',
+            'email' => 'redact-test@example.com',
+            'password' => 'password123!',
+            'password_confirmation' => 'password123!',
+        ]);
+
+        $log = AuditLog::where('action', 'user_created')->first();
+        $this->assertNotNull($log);
+
+        // The 'after' metadata should never contain password or remember_token
+        $after = $log->metadata['after'] ?? [];
+        $this->assertArrayNotHasKey('password', $after);
+        $this->assertArrayNotHasKey('remember_token', $after);
+    }
+
+    public function test_user_deleted_audit_log_does_not_contain_password(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $target = User::factory()->create();
+
+        $this->actingAs($admin)->deleteJson("/api/admin/users/{$target->id}");
+
+        $log = AuditLog::where('action', 'user_deleted')
+            ->where('resource_id', $target->id)
+            ->first();
+
+        $this->assertNotNull($log);
+
+        $before = $log->metadata['before'] ?? [];
+        $this->assertArrayNotHasKey('password', $before);
+        $this->assertArrayNotHasKey('remember_token', $before);
+    }
 }

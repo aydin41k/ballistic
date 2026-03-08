@@ -9,6 +9,18 @@ use Illuminate\Support\Facades\Auth;
 
 trait Auditable
 {
+    /**
+     * Attributes that must never appear in audit log metadata.
+     *
+     * @var list<string>
+     */
+    private static array $redactedFields = [
+        'password',
+        'remember_token',
+        'two_factor_secret',
+        'two_factor_recovery_codes',
+    ];
+
     public static function bootAuditable(): void
     {
         static::created(function ($model): void {
@@ -21,7 +33,7 @@ trait Auditable
                 (string) $model->getKey(),
                 $userId,
                 [],
-                $model->getAttributes(),
+                self::redactAttributes($model->getAttributes()),
                 [],
                 request()?->ip(),
                 request()?->userAgent(),
@@ -42,8 +54,15 @@ trait Auditable
             $before = [];
             $after = [];
             foreach ($meaningfulChanges as $key => $newValue) {
+                if (in_array($key, self::$redactedFields, true)) {
+                    continue;
+                }
                 $before[$key] = $model->getOriginal($key);
                 $after[$key] = $newValue;
+            }
+
+            if (empty($after)) {
+                return;
             }
 
             ModelChanged::dispatch(
@@ -68,13 +87,24 @@ trait Auditable
                 $resourceType,
                 (string) $model->getKey(),
                 $userId,
-                $model->getAttributes(),
+                self::redactAttributes($model->getAttributes()),
                 [],
                 [],
                 request()?->ip(),
                 request()?->userAgent(),
             );
         });
+    }
+
+    /**
+     * Remove sensitive fields from an attribute array before audit logging.
+     *
+     * @param  array<string, mixed>  $attributes
+     * @return array<string, mixed>
+     */
+    private static function redactAttributes(array $attributes): array
+    {
+        return array_diff_key($attributes, array_flip(self::$redactedFields));
     }
 
     private static function resolveAuditUserId(mixed $model): ?string

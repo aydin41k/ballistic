@@ -78,6 +78,7 @@ final class AuditAuthEvents
             'user_id' => null,
             'action' => 'auth_failed',
             'resource_type' => 'user',
+            'resource_id' => null,
             'ip_address' => request()?->ip(),
             'user_agent' => request()?->userAgent(),
             'status' => 'failed',

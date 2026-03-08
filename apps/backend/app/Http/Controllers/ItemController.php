@@ -89,12 +89,10 @@ final class ItemController extends Controller
             $query->active();
         }
 
-        if ($request->has('project_id')) {
-            $query->where('project_id', $request->project_id);
-        }
-
         if ($request->boolean('no_project')) {
             $query->whereNull('project_id');
+        } elseif ($request->has('project_id')) {
+            $query->where('project_id', $request->project_id);
         }
 
         // Allow specific status filter (overrides the default exclusion)
