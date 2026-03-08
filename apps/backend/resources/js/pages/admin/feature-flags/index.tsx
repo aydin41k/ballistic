@@ -63,8 +63,8 @@ export default function FeatureFlagsIndex({ flags }: Props) {
                     <div>
                         <h1 className="text-2xl font-bold">Feature Flags</h1>
                         <p className="text-sm text-muted-foreground">
-                            Control which features are available globally. Disabling a flag here prevents all users from using that feature, regardless of their
-                            personal settings.
+                            Control which features are available globally. Disabling a flag here prevents all users from using that feature,
+                            regardless of their personal settings.
                         </p>
                     </div>
                 </div>
