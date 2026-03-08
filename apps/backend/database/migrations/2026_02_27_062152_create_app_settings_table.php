@@ -22,16 +22,18 @@ return new class extends Migration
         });
 
         // Seed the default feature flags so existing behaviour is preserved
-        DB::table('app_settings')->insert([
-            'key' => 'feature_flags',
-            'value' => json_encode([
-                'dates' => true,
-                'delegation' => true,
-                'ai_assistant' => true,
-            ]),
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
+        DB::table('app_settings')->updateOrInsert(
+            ['key' => 'feature_flags'],
+            [
+                'value' => json_encode([
+                    'dates' => true,
+                    'delegation' => true,
+                    'ai_assistant' => true,
+                ]),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]
+        );
     }
 
     /**

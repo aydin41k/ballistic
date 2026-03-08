@@ -1,3 +1,16 @@
+## 0.16.1 - 2026-03-08
+
+### Changed
+
+#### Pre-Merge Hardening
+
+- **`SettingsModal` — server error messages**: `handleToggle` now surfaces the server's error message (e.g. "One or more features are not currently available") instead of a generic fallback
+- **Modal accessibility**: Added `role="dialog"` and `aria-modal="true"` to `SettingsModal`, `ProfileModal`, `EditItemModal`, `NotesModal`, and `AssignModal`
+
+### Tests
+
+- **`profile-modal.test.tsx`**: 10 tests covering render, close, escape, submit with correct payload, name editing, empty phone sends null, save failure, logout, and success feedback
+
 ## 0.16.0 - 2026-02-27
 
 ### Added

@@ -94,7 +94,11 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
       setSaving(false);
     } catch (err) {
       console.error("Failed to save feature flag:", err);
-      setError("Failed to save settings. Please try again.");
+      const message =
+        err instanceof Error && err.message
+          ? err.message
+          : "Failed to save settings. Please try again.";
+      setError(message);
       setSaving(false);
     }
   }
@@ -145,6 +149,8 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
 
   return (
     <div
+      role="dialog"
+      aria-modal="true"
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm animate-fade-in p-4"
       onClick={handleBackdropClick}
     >

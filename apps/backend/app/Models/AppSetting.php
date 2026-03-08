@@ -12,7 +12,7 @@ final class AppSetting extends Model
     protected $fillable = ['key', 'value'];
 
     /**
-     * @return array<string, string>
+     * @return array{value: string}
      */
     #[\Override]
     protected function casts(): array

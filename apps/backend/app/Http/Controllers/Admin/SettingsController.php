@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\UpdateFeatureFlagsRequest;
 use App\Models\AppSetting;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 
 final class SettingsController extends Controller
 {
@@ -24,17 +24,9 @@ final class SettingsController extends Controller
     /**
      * Update one or more global feature flags (partial update).
      */
-    public function updateFeatures(Request $request): JsonResponse
+    public function updateFeatures(UpdateFeatureFlagsRequest $request): JsonResponse
     {
-        $allowedKeys = ['dates', 'delegation', 'ai_assistant'];
-
-        $validated = $request->validate([
-            'dates' => ['sometimes', 'boolean'],
-            'delegation' => ['sometimes', 'boolean'],
-            'ai_assistant' => ['sometimes', 'boolean'],
-        ]);
-
-        $incoming = array_intersect_key($validated, array_flip($allowedKeys));
+        $incoming = $request->featureFlags();
 
         if (empty($incoming)) {
             return response()->json([

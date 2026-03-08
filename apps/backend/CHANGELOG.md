@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.16.1] - 2026-03-08
+
+### Changed
+
+#### Pre-Merge Hardening
+
+- **`Admin\SettingsController`**: Refactored to use `UpdateFeatureFlagsRequest` Form Request class instead of inline validation, consistent with project conventions
+- **`UpdateFeatureFlagsRequest`**: New Form Request with `featureFlags()` accessor that validates and filters to known keys
+- **`AppSetting` model**: Fixed `casts()` PHPDoc return type from `array<string, string>` to `array{value: string}`
+- **Migration idempotency**: Changed `DB::table()->insert()` to `updateOrInsert()` in the `app_settings` seed to prevent unique constraint failures on re-run
+- **`EnsureAiAssistantEnabled` middleware**: Added `aria-modal` and `role="dialog"` attributes to all modal containers for accessibility (frontend)
+
 ## [0.16.0] - 2026-02-27
 
 ### Added
