@@ -8,12 +8,12 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\UserResource;
 use App\Models\AppSetting;
 use App\Models\User;
-use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
+use Illuminate\Validation\ValidationException;
 
 final class UserController extends Controller
 {
@@ -32,7 +32,7 @@ final class UserController extends Controller
     /**
      * Update the authenticated user's profile.
      */
-    public function update(Request $request): UserResource|JsonResponse
+    public function update(Request $request): UserResource
     {
         /** @var User $user */
         $user = $request->user();
@@ -75,10 +75,7 @@ final class UserController extends Controller
             }
 
             if (! empty($errors)) {
-                return response()->json([
-                    'message' => 'One or more features are not currently available.',
-                    'errors' => $errors,
-                ], 422);
+                throw ValidationException::withMessages($errors);
             }
 
             $validated['feature_flags'] = array_merge(

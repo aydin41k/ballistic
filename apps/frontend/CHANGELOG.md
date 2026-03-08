@@ -1,3 +1,23 @@
+## 0.16.2 - 2026-03-08
+
+### Changed
+
+#### Pre-Merge Bulletproofing
+
+- **`SettingsModal` — version string**: Updated hardcoded version label from `v0.15.0` to `v0.16.2`
+- **`SettingsModal` — MCP URL**: Wrapped URL computation in `useMemo` to avoid recomputation on every render; added SSR guard for `window.location.origin`
+- **`ProfileModal` — error surfacing**: `handleSave` now surfaces the server's error message instead of a generic fallback, consistent with `SettingsModal.handleToggle`
+- **`ProfileModal` — save guard**: Close button, Escape key, and backdrop click are all blocked while a save is in progress to prevent lost feedback
+- **`ProfileModal` — input locking**: Name, email, and phone inputs are disabled with reduced opacity during save
+- **`useModal` hook**: New shared hook that locks body scroll (`document.body.style.overflow = "hidden"`) while any modal is open, restoring the previous value on cleanup; applied to all five modals (`SettingsModal`, `ProfileModal`, `NotesModal`, `EditItemModal`, `AssignModal`)
+- **Focus trapping**: Added `focus-trap-react` (v12) to all five modals via a `<FocusTrap focusTrapOptions={{ allowOutsideClick: true }}>` wrapper — satisfies WCAG 2.1 AA modal focus requirements while allowing backdrop-click-to-close
+- **`User` type**: `feature_flags` is now non-optional (always provided by `UserResource` with defaults merged); `available_feature_flags` remains optional for backwards compatibility
+
+### Tests
+
+- **`profile-modal.test.tsx`**: Updated "shows error message on save failure" to test the generic fallback path (error without message); added backdrop-click test; added cannot-close-while-saving test; added server-error-message surfacing test
+- **`jest.config.ts`**: Added `moduleNameMapper` entry for `focus-trap-react` → jsdom-compatible stub to allow modal tests to run without layout computation
+
 ## 0.16.1 - 2026-03-08
 
 ### Changed

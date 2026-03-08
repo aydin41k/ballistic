@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.16.2] - 2026-03-08
+
+### Changed
+
+#### Pre-Merge Bulletproofing
+
+- **`UpdateFeatureFlagsRequest::authorize()`**: Changed from unconditional `return true` to `$this->user()?->is_admin === true` — adds defence-in-depth so the admin restriction is enforced at the Form Request level as well as the route middleware
+- **`UserController::update`**: Replaced manual `response()->json([...], 422)` with `throw ValidationException::withMessages($errors)` for idiomatic Laravel error handling; removed `JsonResponse` from the union return type leaving a clean `UserResource` return
+- **`AppSetting` migration**: Changed seed from `updateOrInsert` (which overwrites `created_at` on conflict) to `insertOrIgnore` — re-running the migration never overwrites admin-configured values
+- **Backend changelog 0.16.1**: Removed stray frontend accessibility note that was incorrectly attributed to the `EnsureAiAssistantEnabled` middleware
+
+### Tests
+
+- **`GlobalFeatureFlagsTest`**: Added `test_non_boolean_flag_value_is_rejected` and `test_integer_flag_value_is_rejected` to verify validation rules reject non-boolean flag values with 422
+
 ## [0.16.1] - 2026-03-08
 
 ### Changed
@@ -15,7 +30,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`UpdateFeatureFlagsRequest`**: New Form Request with `featureFlags()` accessor that validates and filters to known keys
 - **`AppSetting` model**: Fixed `casts()` PHPDoc return type from `array<string, string>` to `array{value: string}`
 - **Migration idempotency**: Changed `DB::table()->insert()` to `updateOrInsert()` in the `app_settings` seed to prevent unique constraint failures on re-run
-- **`EnsureAiAssistantEnabled` middleware**: Added `aria-modal` and `role="dialog"` attributes to all modal containers for accessibility (frontend)
 
 ## [0.16.0] - 2026-02-27
 

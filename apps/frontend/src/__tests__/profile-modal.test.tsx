@@ -122,8 +122,9 @@ describe("ProfileModal", () => {
     expect(call.phone).toBeNull();
   });
 
-  test("shows error message on save failure", async () => {
-    (updateUser as jest.Mock).mockRejectedValueOnce(new Error("Server error"));
+  test("shows generic fallback message when error has no message", async () => {
+    // Error() with no message → falls back to the generic string
+    (updateUser as jest.Mock).mockRejectedValueOnce(new Error());
     const user = userEvent.setup();
 
     render(<ProfileModal isOpen={true} onClose={jest.fn()} />);
@@ -156,6 +157,64 @@ describe("ProfileModal", () => {
 
     await waitFor(() => {
       expect(screen.getByText("Profile updated.")).toBeInTheDocument();
+    });
+  });
+
+  test("calls onClose when backdrop is clicked", async () => {
+    const onClose = jest.fn();
+    const user = userEvent.setup();
+
+    render(<ProfileModal isOpen={true} onClose={onClose} />);
+
+    // Click the outer backdrop (the dialog element itself)
+    await user.click(screen.getByRole("dialog"));
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  test("does not call onClose while save is in progress", async () => {
+    let resolveUpdate!: () => void;
+    (updateUser as jest.Mock).mockImplementation(
+      () =>
+        new Promise<Record<string, never>>((res) => {
+          resolveUpdate = () => res({});
+        }),
+    );
+
+    const onClose = jest.fn();
+    const user = userEvent.setup();
+
+    render(<ProfileModal isOpen={true} onClose={onClose} />);
+
+    // Start a save that won't resolve yet
+    await user.click(screen.getByRole("button", { name: "Save changes" }));
+
+    // Try Escape and close button while saving — both should be no-ops
+    document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+    await user.click(screen.getByRole("button", { name: "Close" }));
+
+    expect(onClose).not.toHaveBeenCalled();
+
+    // Resolve the save to clean up
+    resolveUpdate();
+    await waitFor(() => {
+      expect(screen.getByText("Profile updated.")).toBeInTheDocument();
+    });
+  });
+
+  test("surfaces server error message from API", async () => {
+    (updateUser as jest.Mock).mockRejectedValueOnce(
+      new Error("The email has already been taken."),
+    );
+    const user = userEvent.setup();
+
+    render(<ProfileModal isOpen={true} onClose={jest.fn()} />);
+
+    await user.click(screen.getByRole("button", { name: "Save changes" }));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText("The email has already been taken."),
+      ).toBeInTheDocument();
     });
   });
 });

@@ -49,6 +49,8 @@ final class AppSetting extends Model
 
     /**
      * Get the global feature flags, merged with safe defaults (all true).
+     * Results are cached for 60 seconds via the application cache, so
+     * repeated calls within a request hit only the cache, not the database.
      *
      * @return array<string, bool>
      */

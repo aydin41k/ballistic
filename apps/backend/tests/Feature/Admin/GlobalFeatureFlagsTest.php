@@ -247,4 +247,30 @@ final class GlobalFeatureFlagsTest extends TestCase
         $this->assertTrue($flags['delegation']);
         $this->assertTrue($flags['ai_assistant']);
     }
+
+    // ── Validation — non-boolean values rejected ──────────────────
+
+    public function test_non_boolean_flag_value_is_rejected(): void
+    {
+        $admin = User::factory()->admin()->create();
+
+        $response = $this->actingAs($admin)->putJson('/api/admin/settings/features', [
+            'dates' => 'not_a_boolean',
+        ]);
+
+        $response->assertUnprocessable()
+            ->assertJsonValidationErrors(['dates']);
+    }
+
+    public function test_integer_flag_value_is_rejected(): void
+    {
+        $admin = User::factory()->admin()->create();
+
+        $response = $this->actingAs($admin)->putJson('/api/admin/settings/features', [
+            'delegation' => 42,
+        ]);
+
+        $response->assertUnprocessable()
+            ->assertJsonValidationErrors(['delegation']);
+    }
 }

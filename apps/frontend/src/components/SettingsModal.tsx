@@ -1,8 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { FocusTrap } from "focus-trap-react";
 import { PushNotificationToggle } from "./PushNotificationToggle";
 import { useFeatureFlags } from "@/hooks/useFeatureFlags";
+import { useModal } from "@/hooks/useModal";
 import { createMcpToken, fetchMcpTokens, revokeMcpToken } from "@/lib/api";
 import type { McpToken } from "@/types";
 
@@ -18,6 +20,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const modalRef = useRef<HTMLDivElement>(null);
   const { dates, delegation, aiAssistant, userFlags, available, setFlag } =
     useFeatureFlags();
+  useModal(isOpen);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [mcpTokens, setMcpTokens] = useState<McpToken[]>([]);
@@ -141,11 +144,14 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     setTimeout(() => setCopied(false), 2000);
   }
 
-  if (!isOpen) return null;
+  const mcpUrl = useMemo(() => {
+    const base =
+      process.env.NEXT_PUBLIC_API_BASE_URL ||
+      (typeof window !== "undefined" ? window.location.origin : "");
+    return new URL("/mcp", base).toString();
+  }, []);
 
-  const mcpBase =
-    process.env.NEXT_PUBLIC_API_BASE_URL || window.location.origin;
-  const mcpUrl = new URL("/mcp", mcpBase).toString();
+  if (!isOpen) return null;
 
   return (
     <div
@@ -154,350 +160,354 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm animate-fade-in p-4"
       onClick={handleBackdropClick}
     >
-      <div
-        ref={modalRef}
-        className="w-full max-w-md max-h-[90vh] overflow-y-auto rounded-2xl bg-white p-6 shadow-xl animate-slide-in-up"
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-lg font-semibold text-gray-900">Settings</h2>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-full p-2 hover:bg-gray-100 transition-colors"
-            aria-label="Close"
-          >
-            <svg
-              viewBox="0 0 24 24"
-              width="20"
-              height="20"
-              fill="none"
-              stroke="currentColor"
-              className="text-gray-500"
+      <FocusTrap focusTrapOptions={{ allowOutsideClick: true }}>
+        <div
+          ref={modalRef}
+          className="w-full max-w-md max-h-[90vh] overflow-y-auto rounded-2xl bg-white p-6 shadow-xl animate-slide-in-up"
+        >
+          {/* Header */}
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-lg font-semibold text-gray-900">Settings</h2>
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-full p-2 hover:bg-gray-100 transition-colors"
+              aria-label="Close"
             >
-              <path
-                d="M18 6 6 18M6 6l12 12"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </button>
-        </div>
-
-        {/* Error message */}
-        {error && (
-          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md text-sm text-red-700">
-            {error}
+              <svg
+                viewBox="0 0 24 24"
+                width="20"
+                height="20"
+                fill="none"
+                stroke="currentColor"
+                className="text-gray-500"
+              >
+                <path
+                  d="M18 6 6 18M6 6l12 12"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </button>
           </div>
-        )}
 
-        {/* Saving indicator */}
-        {saving && (
-          <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md text-sm text-blue-700">
-            Saving...
-          </div>
-        )}
+          {/* Error message */}
+          {error && (
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md text-sm text-red-700">
+              {error}
+            </div>
+          )}
 
-        {/* Settings Content */}
-        <div className="space-y-6">
-          {/* Features Section */}
-          <section>
-            <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wider mb-3">
-              Features
-            </h3>
-            <div className="bg-gray-50 rounded-lg p-4 space-y-4">
-              {/* Dates & Scheduling toggle */}
-              <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => handleToggle("dates", !userFlags.dates)}
-                  disabled={saving || !available.dates}
-                  className={`
+          {/* Saving indicator */}
+          {saving && (
+            <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md text-sm text-blue-700">
+              Saving...
+            </div>
+          )}
+
+          {/* Settings Content */}
+          <div className="space-y-6">
+            {/* Features Section */}
+            <section>
+              <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wider mb-3">
+                Features
+              </h3>
+              <div className="bg-gray-50 rounded-lg p-4 space-y-4">
+                {/* Dates & Scheduling toggle */}
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => handleToggle("dates", !userFlags.dates)}
+                    disabled={saving || !available.dates}
+                    className={`
                     relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full
                     border-2 border-transparent transition-colors duration-200 ease-in-out
                     focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
                     ${userFlags.dates && available.dates ? "bg-blue-600" : "bg-gray-200"}
                     ${saving || !available.dates ? "opacity-50 cursor-not-allowed" : ""}
                   `}
-                  role="switch"
-                  aria-checked={dates}
-                  aria-label="Dates & Scheduling"
-                >
-                  <span
-                    className={`
+                    role="switch"
+                    aria-checked={dates}
+                    aria-label="Dates & Scheduling"
+                  >
+                    <span
+                      className={`
                       pointer-events-none inline-block h-5 w-5 transform rounded-full
                       bg-white shadow ring-0 transition duration-200 ease-in-out
                       ${userFlags.dates && available.dates ? "translate-x-5" : "translate-x-0"}
                     `}
-                  />
-                </button>
-                <div className="flex flex-col">
-                  <span className="text-sm font-medium text-gray-900">
-                    Dates &amp; Scheduling
-                  </span>
-                  <span className="text-xs text-gray-500">
-                    {available.dates
-                      ? "Due dates, scheduled dates, and repeating tasks"
-                      : "Coming soon"}
-                  </span>
+                    />
+                  </button>
+                  <div className="flex flex-col">
+                    <span className="text-sm font-medium text-gray-900">
+                      Dates &amp; Scheduling
+                    </span>
+                    <span className="text-xs text-gray-500">
+                      {available.dates
+                        ? "Due dates, scheduled dates, and repeating tasks"
+                        : "Coming soon"}
+                    </span>
+                  </div>
                 </div>
-              </div>
 
-              {/* Task Delegation toggle */}
-              <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={() =>
-                    handleToggle("delegation", !userFlags.delegation)
-                  }
-                  disabled={saving || !available.delegation}
-                  className={`
+                {/* Task Delegation toggle */}
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      handleToggle("delegation", !userFlags.delegation)
+                    }
+                    disabled={saving || !available.delegation}
+                    className={`
                     relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full
                     border-2 border-transparent transition-colors duration-200 ease-in-out
                     focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
                     ${userFlags.delegation && available.delegation ? "bg-blue-600" : "bg-gray-200"}
                     ${saving || !available.delegation ? "opacity-50 cursor-not-allowed" : ""}
                   `}
-                  role="switch"
-                  aria-checked={delegation}
-                  aria-label="Task Delegation"
-                >
-                  <span
-                    className={`
+                    role="switch"
+                    aria-checked={delegation}
+                    aria-label="Task Delegation"
+                  >
+                    <span
+                      className={`
                       pointer-events-none inline-block h-5 w-5 transform rounded-full
                       bg-white shadow ring-0 transition duration-200 ease-in-out
                       ${userFlags.delegation && available.delegation ? "translate-x-5" : "translate-x-0"}
                     `}
-                  />
-                </button>
-                <div className="flex flex-col">
-                  <span className="text-sm font-medium text-gray-900">
-                    Task Delegation
-                  </span>
-                  <span className="text-xs text-gray-500">
-                    {available.delegation
-                      ? "Assign tasks to other users"
-                      : "Coming soon"}
-                  </span>
+                    />
+                  </button>
+                  <div className="flex flex-col">
+                    <span className="text-sm font-medium text-gray-900">
+                      Task Delegation
+                    </span>
+                    <span className="text-xs text-gray-500">
+                      {available.delegation
+                        ? "Assign tasks to other users"
+                        : "Coming soon"}
+                    </span>
+                  </div>
                 </div>
-              </div>
 
-              {/* AI Assistant toggle */}
-              <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={() =>
-                    handleToggle("ai_assistant", !userFlags.ai_assistant)
-                  }
-                  disabled={saving || !available.ai_assistant}
-                  className={`
+                {/* AI Assistant toggle */}
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      handleToggle("ai_assistant", !userFlags.ai_assistant)
+                    }
+                    disabled={saving || !available.ai_assistant}
+                    className={`
                     relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full
                     border-2 border-transparent transition-colors duration-200 ease-in-out
                     focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
                     ${userFlags.ai_assistant && available.ai_assistant ? "bg-blue-600" : "bg-gray-200"}
                     ${saving || !available.ai_assistant ? "opacity-50 cursor-not-allowed" : ""}
                   `}
-                  role="switch"
-                  aria-checked={aiAssistant}
-                  aria-label="AI Assistant"
-                >
-                  <span
-                    className={`
+                    role="switch"
+                    aria-checked={aiAssistant}
+                    aria-label="AI Assistant"
+                  >
+                    <span
+                      className={`
                       pointer-events-none inline-block h-5 w-5 transform rounded-full
                       bg-white shadow ring-0 transition duration-200 ease-in-out
                       ${userFlags.ai_assistant && available.ai_assistant ? "translate-x-5" : "translate-x-0"}
                     `}
-                  />
-                </button>
-                <div className="flex flex-col">
-                  <span className="text-sm font-medium text-gray-900">
-                    AI Assistant (MCP)
-                  </span>
-                  <span className="text-xs text-gray-500">
-                    {available.ai_assistant
-                      ? "Enable MCP token management for agent integrations"
-                      : "Coming soon"}
-                  </span>
-                </div>
-              </div>
-            </div>
-          </section>
-
-          {aiAssistant && (
-            <section>
-              <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wider mb-3">
-                AI Assistant Tokens
-              </h3>
-              <div className="bg-gray-50 rounded-lg p-4 space-y-4">
-                {newToken && (
-                  <div className="p-3 bg-green-50 border border-green-200 rounded-md">
-                    <p className="text-xs text-green-800 mb-2">
-                      New token created. Copy it now, you won&apos;t be able to
-                      view it again.
-                    </p>
-                    <div className="flex gap-2 items-center">
-                      <code className="flex-1 text-xs rounded bg-green-100 p-2 break-all">
-                        {newToken}
-                      </code>
-                      <button
-                        type="button"
-                        onClick={copyNewToken}
-                        className="px-3 py-1 text-xs rounded bg-white border border-green-300 hover:bg-green-100"
-                      >
-                        {copied ? "Copied!" : "Copy"}
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                <form
-                  onSubmit={handleCreateToken}
-                  className="flex items-center gap-2"
-                >
-                  <input
-                    type="text"
-                    value={tokenName}
-                    onChange={(e) => setTokenName(e.target.value)}
-                    placeholder="Token name (e.g. Claude Desktop)"
-                    className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm"
-                  />
-                  <button
-                    type="submit"
-                    disabled={creatingToken || tokenName.trim().length === 0}
-                    className="rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
-                  >
-                    {creatingToken ? "Creating..." : "Create"}
+                    />
                   </button>
-                </form>
-
-                {loadingTokens ? (
-                  <p className="text-xs text-gray-500">Loading tokens...</p>
-                ) : tokenLoadError ? (
-                  <div className="flex items-center gap-2">
-                    <p className="text-xs text-red-600">
-                      Failed to load tokens.
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => void loadMcpTokens()}
-                      className="text-xs text-blue-600 underline hover:no-underline"
-                    >
-                      Retry
-                    </button>
+                  <div className="flex flex-col">
+                    <span className="text-sm font-medium text-gray-900">
+                      AI Assistant (MCP)
+                    </span>
+                    <span className="text-xs text-gray-500">
+                      {available.ai_assistant
+                        ? "Enable MCP token management for agent integrations"
+                        : "Coming soon"}
+                    </span>
                   </div>
-                ) : mcpTokens.length === 0 ? (
-                  <p className="text-xs text-gray-500">No MCP tokens yet.</p>
-                ) : (
-                  <div className="divide-y rounded-md border border-gray-200 bg-white">
-                    {mcpTokens.map((token) => (
-                      <div
-                        key={token.id}
-                        className="flex items-start justify-between gap-2 p-3"
-                      >
-                        <div className="min-w-0">
-                          <p className="text-sm font-medium text-gray-900">
-                            {token.name}
-                            {token.is_legacy_wildcard && (
-                              <span className="ml-2 rounded bg-amber-100 px-2 py-0.5 text-xs font-normal text-amber-800">
-                                Legacy wildcard
-                              </span>
-                            )}
-                          </p>
-                          <p className="text-xs text-gray-500">
-                            Created{" "}
-                            {token.created_at
-                              ? new Date(token.created_at).toLocaleDateString()
-                              : "—"}
-                            {token.last_used_at
-                              ? ` · Last used ${new Date(token.last_used_at).toLocaleDateString()}`
-                              : ""}
-                          </p>
-                          {token.is_legacy_wildcard && (
-                            <p className="mt-1 text-xs text-amber-700">
-                              Replace this broad token with a dedicated MCP
-                              token.
-                            </p>
-                          )}
-                        </div>
-
-                        {confirmRevokeId === token.id ? (
-                          <div className="flex shrink-0 items-center gap-1">
-                            <span className="text-xs text-gray-600">
-                              Revoke?
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => void handleRevokeToken(token.id)}
-                              className="rounded-md bg-red-600 px-2 py-1 text-xs font-medium text-white hover:bg-red-700"
-                            >
-                              Yes
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setConfirmRevokeId(null)}
-                              className="rounded-md border border-gray-300 px-2 py-1 text-xs text-gray-700 hover:bg-gray-50"
-                            >
-                              Cancel
-                            </button>
-                          </div>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => setConfirmRevokeId(token.id)}
-                            className="shrink-0 rounded-md border border-red-200 px-2 py-1 text-xs text-red-700 hover:bg-red-50"
-                          >
-                            Revoke
-                          </button>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                <div className="p-3 rounded-md border border-gray-200 bg-white">
-                  <p className="text-xs text-gray-700 mb-2">
-                    MCP config (header auth):
-                  </p>
-                  <pre className="text-[11px] overflow-x-auto rounded bg-gray-100 p-2 text-gray-800">
-                    {JSON.stringify(
-                      {
-                        mcpServers: {
-                          ballistic: {
-                            url: mcpUrl,
-                            headers: {
-                              Authorization: "Bearer YOUR_MCP_TOKEN",
-                            },
-                          },
-                        },
-                      },
-                      null,
-                      2,
-                    )}
-                  </pre>
                 </div>
               </div>
             </section>
-          )}
 
-          {/* Notifications Section */}
-          <section>
-            <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wider mb-3">
-              Notifications
-            </h3>
-            <div className="bg-gray-50 rounded-lg p-4">
-              <PushNotificationToggle />
-            </div>
-          </section>
+            {aiAssistant && (
+              <section>
+                <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wider mb-3">
+                  AI Assistant Tokens
+                </h3>
+                <div className="bg-gray-50 rounded-lg p-4 space-y-4">
+                  {newToken && (
+                    <div className="p-3 bg-green-50 border border-green-200 rounded-md">
+                      <p className="text-xs text-green-800 mb-2">
+                        New token created. Copy it now, you won&apos;t be able
+                        to view it again.
+                      </p>
+                      <div className="flex gap-2 items-center">
+                        <code className="flex-1 text-xs rounded bg-green-100 p-2 break-all">
+                          {newToken}
+                        </code>
+                        <button
+                          type="button"
+                          onClick={copyNewToken}
+                          className="px-3 py-1 text-xs rounded bg-white border border-green-300 hover:bg-green-100"
+                        >
+                          {copied ? "Copied!" : "Copy"}
+                        </button>
+                      </div>
+                    </div>
+                  )}
 
-          {/* Version Info */}
-          <section className="pt-4 border-t border-gray-100">
-            <p className="text-xs text-gray-400 text-center">
-              Ballistic v0.15.0
-            </p>
-          </section>
+                  <form
+                    onSubmit={handleCreateToken}
+                    className="flex items-center gap-2"
+                  >
+                    <input
+                      type="text"
+                      value={tokenName}
+                      onChange={(e) => setTokenName(e.target.value)}
+                      placeholder="Token name (e.g. Claude Desktop)"
+                      className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm"
+                    />
+                    <button
+                      type="submit"
+                      disabled={creatingToken || tokenName.trim().length === 0}
+                      className="rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+                    >
+                      {creatingToken ? "Creating..." : "Create"}
+                    </button>
+                  </form>
+
+                  {loadingTokens ? (
+                    <p className="text-xs text-gray-500">Loading tokens...</p>
+                  ) : tokenLoadError ? (
+                    <div className="flex items-center gap-2">
+                      <p className="text-xs text-red-600">
+                        Failed to load tokens.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => void loadMcpTokens()}
+                        className="text-xs text-blue-600 underline hover:no-underline"
+                      >
+                        Retry
+                      </button>
+                    </div>
+                  ) : mcpTokens.length === 0 ? (
+                    <p className="text-xs text-gray-500">No MCP tokens yet.</p>
+                  ) : (
+                    <div className="divide-y rounded-md border border-gray-200 bg-white">
+                      {mcpTokens.map((token) => (
+                        <div
+                          key={token.id}
+                          className="flex items-start justify-between gap-2 p-3"
+                        >
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium text-gray-900">
+                              {token.name}
+                              {token.is_legacy_wildcard && (
+                                <span className="ml-2 rounded bg-amber-100 px-2 py-0.5 text-xs font-normal text-amber-800">
+                                  Legacy wildcard
+                                </span>
+                              )}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              Created{" "}
+                              {token.created_at
+                                ? new Date(
+                                    token.created_at,
+                                  ).toLocaleDateString()
+                                : "—"}
+                              {token.last_used_at
+                                ? ` · Last used ${new Date(token.last_used_at).toLocaleDateString()}`
+                                : ""}
+                            </p>
+                            {token.is_legacy_wildcard && (
+                              <p className="mt-1 text-xs text-amber-700">
+                                Replace this broad token with a dedicated MCP
+                                token.
+                              </p>
+                            )}
+                          </div>
+
+                          {confirmRevokeId === token.id ? (
+                            <div className="flex shrink-0 items-center gap-1">
+                              <span className="text-xs text-gray-600">
+                                Revoke?
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => void handleRevokeToken(token.id)}
+                                className="rounded-md bg-red-600 px-2 py-1 text-xs font-medium text-white hover:bg-red-700"
+                              >
+                                Yes
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setConfirmRevokeId(null)}
+                                className="rounded-md border border-gray-300 px-2 py-1 text-xs text-gray-700 hover:bg-gray-50"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => setConfirmRevokeId(token.id)}
+                              className="shrink-0 rounded-md border border-red-200 px-2 py-1 text-xs text-red-700 hover:bg-red-50"
+                            >
+                              Revoke
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="p-3 rounded-md border border-gray-200 bg-white">
+                    <p className="text-xs text-gray-700 mb-2">
+                      MCP config (header auth):
+                    </p>
+                    <pre className="text-[11px] overflow-x-auto rounded bg-gray-100 p-2 text-gray-800">
+                      {JSON.stringify(
+                        {
+                          mcpServers: {
+                            ballistic: {
+                              url: mcpUrl,
+                              headers: {
+                                Authorization: "Bearer YOUR_MCP_TOKEN",
+                              },
+                            },
+                          },
+                        },
+                        null,
+                        2,
+                      )}
+                    </pre>
+                  </div>
+                </div>
+              </section>
+            )}
+
+            {/* Notifications Section */}
+            <section>
+              <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wider mb-3">
+                Notifications
+              </h3>
+              <div className="bg-gray-50 rounded-lg p-4">
+                <PushNotificationToggle />
+              </div>
+            </section>
+
+            {/* Version Info */}
+            <section className="pt-4 border-t border-gray-100">
+              <p className="text-xs text-gray-400 text-center">
+                Ballistic v0.16.2
+              </p>
+            </section>
+          </div>
         </div>
-      </div>
+      </FocusTrap>
     </div>
   );
 }

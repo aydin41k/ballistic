@@ -21,19 +21,18 @@ return new class extends Migration
             $table->timestamps();
         });
 
-        // Seed the default feature flags so existing behaviour is preserved
-        DB::table('app_settings')->updateOrInsert(
-            ['key' => 'feature_flags'],
-            [
-                'value' => json_encode([
-                    'dates' => true,
-                    'delegation' => true,
-                    'ai_assistant' => true,
-                ]),
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]
-        );
+        // Seed the default feature flags only if no row exists yet,
+        // so re-running the migration never overwrites admin-configured values.
+        DB::table('app_settings')->insertOrIgnore([
+            'key' => 'feature_flags',
+            'value' => json_encode([
+                'dates' => true,
+                'delegation' => true,
+                'ai_assistant' => true,
+            ]),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
     }
 
     /**
