@@ -486,6 +486,23 @@ export async function markAllNotificationsAsRead(): Promise<{
   return handleResponse<{ message: string; marked_count: number }>(response);
 }
 
+/**
+ * Dismiss (delete) a specific notification.
+ */
+export async function dismissNotification(
+  notificationId: string,
+): Promise<{ message: string; unread_count: number }> {
+  const response = await fetch(
+    buildUrl(`/api/notifications/${notificationId}`),
+    {
+      method: "DELETE",
+      headers: getAuthHeaders(),
+    },
+  );
+
+  return handleResponse<{ message: string; unread_count: number }>(response);
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Activity Log
 // ─────────────────────────────────────────────────────────────────────────────

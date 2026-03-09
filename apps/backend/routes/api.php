@@ -58,6 +58,7 @@ Route::middleware(['auth:sanctum', 'token.api', 'throttle:api'])->group(function
     Route::get('/notifications', [NotificationController::class, 'index']);
     Route::post('/notifications/{notification}/read', [NotificationController::class, 'markAsRead']);
     Route::post('/notifications/read-all', [NotificationController::class, 'markAllAsRead']);
+    Route::delete('/notifications/{notification}', [NotificationController::class, 'dismiss']);
 
     // Push notifications (Web Push subscriptions)
     Route::get('/push/vapid-key', [PushSubscriptionController::class, 'vapidKey']);

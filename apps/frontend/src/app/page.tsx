@@ -20,6 +20,7 @@ import { NotesModal } from "@/components/NotesModal";
 import { EditItemModal } from "@/components/EditItemModal";
 import { ProfileModal } from "@/components/ProfileModal";
 import { ActivityLogModal } from "@/components/ActivityLogModal";
+import { NotificationCentre } from "@/components/NotificationCentre";
 import { useAuth } from "@/contexts/AuthContext";
 
 function normaliseItemResponse(payload: Item | { data?: Item }): Item {
@@ -836,6 +837,7 @@ export default function Home() {
                 <path d="M3 5h18l-7 8v5l-4 2v-7L3 5z" strokeWidth="1.5" />
               </svg>
             </button>
+            <NotificationCentre delegation={delegation} />
             <button
               type="button"
               aria-label="Profile"
