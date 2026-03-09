@@ -105,7 +105,7 @@ export async function fetchUser(): Promise<User> {
 }
 
 export type UserUpdatePayload = Partial<
-  Pick<User, "name" | "email" | "phone" | "notes"> & {
+  Pick<User, "name" | "email" | "phone" | "notes" | "bio" | "avatar_url"> & {
     // feature_flags accepts a partial update — the server merges it with stored flags.
     feature_flags: Partial<NonNullable<User["feature_flags"]>> | null;
   }

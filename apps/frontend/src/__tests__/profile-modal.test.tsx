@@ -12,6 +12,8 @@ const mockUser = {
   email: "jane@example.com",
   phone: "0412345678",
   notes: null,
+  bio: null,
+  avatar_url: null,
   feature_flags: { dates: false, delegation: false, ai_assistant: false },
   email_verified_at: "2026-01-01T00:00:00Z",
   created_at: "2026-01-01T00:00:00Z",
@@ -83,6 +85,8 @@ describe("ProfileModal", () => {
     expect(call.name).toBe("Jane Doe");
     expect(call.email).toBe("jane@example.com");
     expect(call.phone).toBe("0412345678");
+    expect(call.bio).toBeNull();
+    expect(call.avatar_url).toBeNull();
 
     expect(refreshUserMock).toHaveBeenCalledTimes(1);
   });

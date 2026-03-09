@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\UpdateProfileRequest;
 use App\Http\Resources\UserResource;
 use App\Models\AppSetting;
 use App\Models\User;
@@ -50,6 +51,8 @@ final class UserController extends Controller
             ],
             'phone' => ['nullable', 'string', 'max:20'],
             'notes' => ['nullable', 'string', 'max:10000'],
+            'bio' => ['nullable', 'string', 'max:500'],
+            'avatar_url' => ['nullable', 'string', 'url', 'max:500'],
             'feature_flags' => ['nullable', 'array'],
             'feature_flags.dates' => ['sometimes', 'boolean'],
             'feature_flags.delegation' => ['sometimes', 'boolean'],
@@ -88,6 +91,30 @@ final class UserController extends Controller
             $user->update($validated);
 
             if (isset($validated['email']) && $validated['email'] !== $user->getOriginal('email')) {
+                $user->email_verified_at = null;
+                $user->save();
+            }
+        });
+
+        return new UserResource($user);
+    }
+
+    /**
+     * Update the authenticated user's profile fields only.
+     *
+     * This is a focused endpoint for profile editing (name, email, phone, bio, avatar_url).
+     */
+    public function updateProfile(UpdateProfileRequest $request): UserResource
+    {
+        /** @var User $user */
+        $user = $request->user();
+        $validated = $request->validated();
+        $originalEmail = $user->email;
+
+        DB::transaction(function () use ($user, $validated, $originalEmail): void {
+            $user->update($validated);
+
+            if (isset($validated['email']) && $validated['email'] !== $originalEmail) {
                 $user->email_verified_at = null;
                 $user->save();
             }
