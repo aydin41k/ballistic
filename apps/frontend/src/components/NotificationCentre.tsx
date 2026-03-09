@@ -94,7 +94,10 @@ export function NotificationCentre({ delegation }: NotificationCentreProps) {
     try {
       await markAllNotificationsAsRead();
       setNotifications((prev) =>
-        prev.map((n) => ({ ...n, read_at: n.read_at || new Date().toISOString() })),
+        prev.map((n) => ({
+          ...n,
+          read_at: n.read_at || new Date().toISOString(),
+        })),
       );
       setUnreadCount(0);
     } catch (err) {
@@ -175,9 +178,7 @@ export function NotificationCentre({ delegation }: NotificationCentreProps) {
 
           {/* Loading */}
           {loading && notifications.length === 0 && (
-            <p className="text-sm text-gray-500 text-center py-6">
-              Loading...
-            </p>
+            <p className="text-sm text-gray-500 text-center py-6">Loading...</p>
           )}
 
           {/* Empty */}
@@ -194,9 +195,7 @@ export function NotificationCentre({ delegation }: NotificationCentreProps) {
                 <div
                   key={notification.id}
                   className={`flex items-start gap-3 px-4 py-3 transition-colors ${
-                    !notification.read_at
-                      ? "bg-blue-50/50"
-                      : "hover:bg-gray-50"
+                    !notification.read_at ? "bg-blue-50/50" : "hover:bg-gray-50"
                   }`}
                 >
                   <div className="min-w-0 flex-1">

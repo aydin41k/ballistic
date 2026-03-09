@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Image from "next/image";
 import { FocusTrap } from "focus-trap-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useModal } from "@/hooks/useModal";
@@ -148,9 +149,12 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
           {/* Avatar */}
           <div className="flex justify-center mb-6">
             {user.avatar_url ? (
-              <img
+              <Image
                 src={user.avatar_url}
                 alt={user.name}
+                width={64}
+                height={64}
+                unoptimized
                 className="h-16 w-16 rounded-full object-cover"
               />
             ) : (

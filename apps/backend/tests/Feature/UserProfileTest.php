@@ -145,7 +145,7 @@ final class UserProfileTest extends TestCase
             'email_verified_at' => now(),
         ]);
 
-        $newEmail = 'newemail' . time() . '@example.com';
+        $newEmail = 'newemail'.time().'@example.com';
 
         $response = $this->actingAs($user)
             ->putJson('/api/user/profile', [
