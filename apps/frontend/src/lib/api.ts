@@ -487,6 +487,50 @@ export async function markAllNotificationsAsRead(): Promise<{
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Activity Log
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface ActivityLogItem {
+  id: string;
+  title: string;
+  status: string;
+  project: { id: string; name: string; color: string | null } | null;
+  completed_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CursorPaginatedResponse<T> {
+  data: T[];
+  meta: {
+    next_cursor: string | null;
+    prev_cursor: string | null;
+    per_page: number;
+    path: string;
+  };
+}
+
+/**
+ * Fetch cursor-paginated activity log (item history) for the authenticated user.
+ */
+export async function fetchActivityLog(
+  cursor?: string,
+): Promise<CursorPaginatedResponse<ActivityLogItem>> {
+  const params: Record<string, string | undefined> = {
+    per_page: "20",
+    cursor,
+  };
+
+  const response = await fetch(buildUrl("/api/activity-log", params), {
+    method: "GET",
+    headers: getAuthHeaders(),
+    cache: "no-store",
+  });
+
+  return handleResponse<CursorPaginatedResponse<ActivityLogItem>>(response);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Push Notifications (Web Push)
 // ─────────────────────────────────────────────────────────────────────────────
 

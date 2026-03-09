@@ -19,6 +19,7 @@ import { SettingsModal } from "@/components/SettingsModal";
 import { NotesModal } from "@/components/NotesModal";
 import { EditItemModal } from "@/components/EditItemModal";
 import { ProfileModal } from "@/components/ProfileModal";
+import { ActivityLogModal } from "@/components/ActivityLogModal";
 import { useAuth } from "@/contexts/AuthContext";
 
 function normaliseItemResponse(payload: Item | { data?: Item }): Item {
@@ -100,6 +101,7 @@ export default function Home() {
   const [showSettings, setShowSettings] = useState(false);
   const [showNotes, setShowNotes] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
+  const [showActivityLog, setShowActivityLog] = useState(false);
   const { dates, delegation } = useFeatureFlags();
 
   const showError = useCallback((message: string) => {
@@ -767,6 +769,35 @@ export default function Home() {
                 />
               </svg>
             </button>
+            <button
+              type="button"
+              aria-label="Activity Log"
+              onClick={() => setShowActivityLog(true)}
+              className="tap-target grid h-10 w-10 place-items-center rounded-md hover:bg-slate-100 active:scale-95 transition-all duration-200"
+            >
+              {/* clock/history icon */}
+              <svg
+                viewBox="0 0 24 24"
+                width="20"
+                height="20"
+                fill="none"
+                stroke="currentColor"
+                className="text-[var(--navy)]"
+              >
+                <path
+                  d="M12 8v4l3 3M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"
+                  strokeWidth="1.4"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                <path
+                  d="M3 3v5h5"
+                  strokeWidth="1.4"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </button>
           </div>
           <button
             type="button"
@@ -845,6 +876,12 @@ export default function Home() {
       <ProfileModal
         isOpen={showProfile}
         onClose={() => setShowProfile(false)}
+      />
+
+      {/* Activity Log Modal */}
+      <ActivityLogModal
+        isOpen={showActivityLog}
+        onClose={() => setShowActivityLog(false)}
       />
 
       {/* Edit/Create Item Modal */}

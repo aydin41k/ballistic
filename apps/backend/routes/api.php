@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Http\Controllers\Admin\SettingsController as AdminSettingsController;
 use App\Http\Controllers\Admin\StatsController as AdminStatsController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
+use App\Http\Controllers\ActivityLogController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\FavouriteController;
 use App\Http\Controllers\Api\McpTokenController;
@@ -85,6 +86,9 @@ Route::middleware(['auth:sanctum', 'token.api', 'throttle:api'])->group(function
 
     // Tags
     Route::apiResource('tags', TagController::class);
+
+    // Activity log
+    Route::get('/activity-log', [ActivityLogController::class, 'index']);
 
     // Admin routes
     Route::prefix('admin')->middleware(['admin'])->group(function () {
