@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Image from "next/image";
 import { FocusTrap } from "focus-trap-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useModal } from "@/hooks/useModal";
@@ -18,6 +19,8 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  const [bio, setBio] = useState("");
+  const [avatarUrl, setAvatarUrl] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -28,6 +31,8 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
       setName(user.name);
       setEmail(user.email);
       setPhone(user.phone ?? "");
+      setBio(user.bio ?? "");
+      setAvatarUrl(user.avatar_url ?? "");
       setError(null);
       setSuccess(false);
     }
@@ -70,6 +75,8 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
         name: name.trim(),
         email: email.trim(),
         phone: phone.trim() || null,
+        bio: bio.trim() || null,
+        avatar_url: avatarUrl.trim() || null,
       });
       await refreshUser();
       setSuccess(true);
@@ -141,9 +148,20 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
 
           {/* Avatar */}
           <div className="flex justify-center mb-6">
-            <div className="h-16 w-16 rounded-full bg-[var(--blue)] flex items-center justify-center text-white text-xl font-semibold">
-              {initials}
-            </div>
+            {user.avatar_url ? (
+              <Image
+                src={user.avatar_url}
+                alt={user.name}
+                width={64}
+                height={64}
+                unoptimized
+                className="h-16 w-16 rounded-full object-cover"
+              />
+            ) : (
+              <div className="h-16 w-16 rounded-full bg-[var(--blue)] flex items-center justify-center text-white text-xl font-semibold">
+                {initials}
+              </div>
+            )}
           </div>
 
           {/* Feedback */}
@@ -209,6 +227,46 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 placeholder="Optional"
+                disabled={saving}
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
+              />
+            </div>
+
+            <div>
+              <label
+                htmlFor="profile-bio"
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
+                Bio
+              </label>
+              <textarea
+                id="profile-bio"
+                value={bio}
+                onChange={(e) => setBio(e.target.value)}
+                placeholder="Tell us about yourself"
+                maxLength={500}
+                rows={3}
+                disabled={saving}
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50 resize-none"
+              />
+              <p className="text-xs text-gray-400 mt-1 text-right">
+                {bio.length}/500
+              </p>
+            </div>
+
+            <div>
+              <label
+                htmlFor="profile-avatar"
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
+                Avatar URL
+              </label>
+              <input
+                id="profile-avatar"
+                type="url"
+                value={avatarUrl}
+                onChange={(e) => setAvatarUrl(e.target.value)}
+                placeholder="https://example.com/avatar.jpg"
                 disabled={saving}
                 className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
               />

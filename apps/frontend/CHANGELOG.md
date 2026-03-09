@@ -1,3 +1,41 @@
+## 0.17.0 - 2026-03-10
+
+### Added
+
+#### Activity Log (#15)
+
+- **`ActivityLogModal`**: New modal displaying cursor-paginated item history, ordered by most recently updated. Shows item title, status badge, project with colour dot, and formatted timestamp. Supports infinite scroll via "Load more" button
+- **`useCursorPagination` hook**: Reusable generic hook for cursor-paginated API endpoints with `loadInitial`, `loadMore`, and `reset` capabilities
+- **`fetchActivityLog` API function**: Fetches `/api/activity-log` with cursor and per_page support
+- **`ActivityLogController`**: Backend endpoint returning cursor-paginated items scoped to the authenticated user, with project eager-loaded. Per-page capped at 50
+- **`ActivityLogItemResource`**: API resource transforming items for the activity log response
+- **Activity log database index**: Composite index on `(user_id, updated_at)` for efficient activity log queries
+
+#### Notification Centre (#15)
+
+- **`NotificationCentre` component**: Dropdown notification panel in the bottom bar with bell icon, unread badge (capped at 99+), polling every 30 seconds when delegation is enabled. Supports mark as read, mark all as read, and dismiss (delete) actions
+- **`NotificationController`**: Backend endpoints for listing notifications (with optional unread-only filter), marking individual/all as read, and dismissing. Includes ownership checks via string-cast UUID comparison
+- **Notification API functions**: `fetchNotifications`, `markNotificationAsRead`, `markAllNotificationsAsRead`, `dismissNotification`
+
+#### Profile Management (#15)
+
+- **`ProfileModal` — bio and avatar fields**: Added textarea for bio (max 500 chars with counter) and URL input for avatar. Avatar displays as a rounded image when set, falling back to initials
+- **`PUT /api/user/profile` endpoint**: Dedicated profile update endpoint using `UpdateProfileRequest` form request with validation for name, email, phone, bio (max 500), and avatar_url (valid URL, max 500)
+- **User model**: Added `bio` and `avatar_url` to fillable fields
+- **Database migration**: Added `bio` (text, nullable) and `avatar_url` (string 500, nullable) columns to users table
+
+### Fixed
+
+- **`ProfileModal` — avatar `<img>` → `next/image`**: Replaced raw `<img>` tag with Next.js `Image` component (unoptimised) to satisfy `@next/next/no-img-element` lint rule
+- **Pint style fixes**: Corrected import ordering in `routes/api.php` and concat spacing in `UserProfileTest.php`
+- **Prettier formatting**: Fixed line-length issues in `NotificationCentre.tsx`
+
+### Tests
+
+- **`ActivityLogTest`**: 7 tests — cursor pagination, ordering, per_page, cap at 50, user scoping, cursor navigation, auth requirement
+- **`NotificationCentreTest`**: 6 tests — dismiss own, cannot dismiss others', unread count after dismiss, mark as read count, human-readable timestamp, auth requirement
+- **`UserProfileTest`**: 9 tests — view profile, update bio, update avatar, bio max length, avatar URL validation, clear fields, patch includes new fields, email change resets verification, auth requirement
+
 ## 0.16.2 - 2026-03-08
 
 ### Changed

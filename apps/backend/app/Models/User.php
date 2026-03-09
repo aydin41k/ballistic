@@ -32,6 +32,8 @@ final class User extends Authenticatable
         'email',
         'phone',
         'notes',
+        'bio',
+        'avatar_url',
         'feature_flags',
         'password',
         'is_admin',

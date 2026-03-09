@@ -23,6 +23,8 @@ final class UserResource extends JsonResource
             'email' => $this->email,
             'phone' => $this->phone,
             'notes' => $this->notes,
+            'bio' => $this->bio,
+            'avatar_url' => $this->avatar_url,
             'feature_flags' => array_merge(
                 ['dates' => false, 'delegation' => false, 'ai_assistant' => false],
                 $this->feature_flags ?? []

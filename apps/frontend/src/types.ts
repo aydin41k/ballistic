@@ -6,6 +6,8 @@ export interface User {
   email: string;
   phone: string | null;
   notes: string | null;
+  bio: string | null;
+  avatar_url: string | null;
   feature_flags: {
     dates: boolean;
     delegation: boolean;

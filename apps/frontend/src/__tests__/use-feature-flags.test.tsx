@@ -63,6 +63,8 @@ describe("useFeatureFlags", () => {
       email: "test@example.com",
       phone: null,
       notes: null,
+      bio: null,
+      avatar_url: null,
       feature_flags: {
         dates: false,
         delegation: false,
@@ -107,6 +109,8 @@ describe("useFeatureFlags", () => {
       email: "test@example.com",
       phone: null,
       notes: null,
+      bio: null,
+      avatar_url: null,
       feature_flags: { dates: true, delegation: true, ai_assistant: true },
       available_feature_flags: {
         dates: false,
@@ -132,6 +136,8 @@ describe("useFeatureFlags", () => {
       email: "test@example.com",
       phone: null,
       notes: null,
+      bio: null,
+      avatar_url: null,
       feature_flags: { dates: false, delegation: true, ai_assistant: true },
       available_feature_flags: {
         dates: true,
@@ -156,6 +162,8 @@ describe("useFeatureFlags", () => {
       email: "test@example.com",
       phone: null,
       notes: null,
+      bio: null,
+      avatar_url: null,
       feature_flags: { dates: true, delegation: true, ai_assistant: true },
       available_feature_flags: {
         dates: true,
@@ -181,6 +189,8 @@ describe("useFeatureFlags", () => {
       email: "test@example.com",
       phone: null,
       notes: null,
+      bio: null,
+      avatar_url: null,
       feature_flags: { dates: true, delegation: true, ai_assistant: true },
       // no available_feature_flags
       email_verified_at: null,
@@ -204,6 +214,8 @@ describe("useFeatureFlags", () => {
       email: "test@example.com",
       phone: null,
       notes: null,
+      bio: null,
+      avatar_url: null,
       feature_flags: { dates: true, delegation: false, ai_assistant: true },
       available_feature_flags: {
         dates: false,
