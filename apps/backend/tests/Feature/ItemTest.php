@@ -838,4 +838,52 @@ final class ItemTest extends TestCase
             'status' => 'todo',
         ]);
     }
+
+    public function test_no_project_filter_returns_only_items_without_project(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+
+        $withProject = Item::factory()->todo()->for($user)->create([
+            'project_id' => $project->id,
+            'title' => 'Has project',
+        ]);
+        $withoutProject = Item::factory()->todo()->for($user)->create([
+            'project_id' => null,
+            'title' => 'No project',
+        ]);
+
+        $response = $this->actingAs($user)
+            ->getJson('/api/items?no_project=1');
+
+        $response->assertOk();
+
+        $ids = collect($response->json('data'))->pluck('id')->toArray();
+        $this->assertContains((string) $withoutProject->id, $ids);
+        $this->assertNotContains((string) $withProject->id, $ids);
+    }
+
+    public function test_no_project_filter_takes_precedence_over_project_id(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+
+        Item::factory()->todo()->for($user)->create([
+            'project_id' => $project->id,
+            'title' => 'Has project',
+        ]);
+        $withoutProject = Item::factory()->todo()->for($user)->create([
+            'project_id' => null,
+            'title' => 'No project',
+        ]);
+
+        // When both filters are sent, no_project should take precedence
+        $response = $this->actingAs($user)
+            ->getJson("/api/items?no_project=1&project_id={$project->id}");
+
+        $response->assertOk();
+
+        $ids = collect($response->json('data'))->pluck('id')->toArray();
+        $this->assertContains((string) $withoutProject->id, $ids);
+    }
 }

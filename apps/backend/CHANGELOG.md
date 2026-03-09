@@ -5,6 +5,52 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.17.01] - 2026-03-09
+
+### Fixed
+
+- **Security: Audit log sensitive field redaction** — `Auditable` trait now strips `password`, `remember_token`, and other secrets from `before`/`after` metadata on create, update, and delete events
+- **Security: AuditLogController input validation** — all filter params (`user_id`, `action`, `status`, `date_from`, `date_to`, `per_page`) are now validated; `per_page` is bounded 10–100 to prevent memory abuse
+- **Performance: Cached audit log actions dropdown** — `AuditLog::distinct()->pluck('action')` query is now cached for 60 seconds instead of running on every page load
+- **Bug: `no_project` and `project_id` filter conflict** — `no_project=1` now takes precedence over `project_id`, preventing an impossible AND condition that returned zero results
+- **Quality: `AuditAuthEvents::handleFailed` missing `resource_id`** — explicitly sets `resource_id => null` for consistency
+- **Quality: `AuditLog` model casts** — switched from `$casts` property to `casts()` method for codebase consistency
+
+### Tests
+
+- Added `test_user_created_audit_log_does_not_contain_password` — verifies password redaction on user creation
+- Added `test_user_deleted_audit_log_does_not_contain_password` — verifies password redaction on user deletion
+- Added `test_no_project_filter_takes_precedence_over_project_id` — verifies filter conflict resolution
+
+## [0.17.0] - 2026-03-09
+
+### Added
+
+- **Audit logging system**: Full model-change and auth-event audit trail
+  - `Auditable` trait on all core models (User, Item, Project, Tag, Connection, AppSetting) fires `ModelChanged` events on create/update/delete
+  - `AuditAuthEvents` subscriber captures login, logout, registration, and failed auth attempts
+  - `EnsureUserIsAdmin` middleware logs denied admin access attempts
+  - `WriteAuditLog` queued job processes audit writes asynchronously on the `audit` queue
+  - `AuditLog` model with migration, factory, and cascade-to-SET-NULL FK fix for compliance
+  - Admin audit logs page with filterable table (action, status) and pagination
+- **Feature flags admin UI**: Inertia-based CRUD for global feature flags
+  - `FeatureFlagController` with index/update actions, admin-only via middleware
+  - Frontend toggle cards with unsaved-changes indicator, save/discard flow
+  - `AppSetting::globalFeatureFlags()` with safe defaults and cache
+- **Admin sidebar**: Added Feature Flags and Audit Logs links (admin-only)
+- **Items `no_project` API filter**: `?no_project=1` parameter to return only inbox items
+
+### Changed
+
+- **Audit event serialisation**: `ModelChanged` event passes only primitives (resourceType, resourceId, ipAddress, userAgent) instead of the Model object, ensuring safe serialisation for queued listeners — fixes hard-delete audit failures
+- **Audit listener architecture**: `AuditModelChanges` listener is synchronous but dispatches a `WriteAuditLog` queued job, avoiding `TransactionAwareEventDispatcher` deferral issues while keeping writes async
+
+### Tests
+
+- **`AuditLoggingTest`**: 18 tests covering model CRUD audit, auth event audit, before/after metadata capture, timestamp-only change filtering, admin actions
+- **`FeatureFlagAdminTest`**: 7 tests covering admin access, non-admin denial, CRUD, partial updates, invalid value rejection
+- **`ItemTest`**: Added `test_no_project_filter_returns_only_items_without_project`
+
 ## [0.16.21] - 2026-03-08
 
 ### Fixed
