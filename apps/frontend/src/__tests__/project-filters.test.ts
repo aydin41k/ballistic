@@ -1,4 +1,7 @@
-import { filterItemsByExcludedProjects, NO_PROJECT_FILTER_ID } from "@/lib/projectFilters";
+import {
+  filterItemsByExcludedProjects,
+  NO_PROJECT_FILTER_ID,
+} from "@/lib/projectFilters";
 import type { Item } from "@/types";
 
 const makeItem = (overrides: Partial<Item>): Item => ({

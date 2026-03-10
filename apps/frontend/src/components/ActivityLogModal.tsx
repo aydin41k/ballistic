@@ -201,7 +201,9 @@ export function ActivityLogModal({ isOpen, onClose }: ActivityLogModalProps) {
                     </p>
                     <p className="text-xs text-gray-400 mt-1">
                       {formatDate(
-                        item.activity_at || item.completed_at || item.updated_at,
+                        item.activity_at ||
+                          item.completed_at ||
+                          item.updated_at,
                       )}
                     </p>
                   </div>
