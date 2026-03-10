@@ -71,6 +71,16 @@ describe("SettingsModal MCP token management", () => {
       expect(createMcpToken).toHaveBeenCalledWith("Cursor");
     });
     expect(screen.getByText("plain-token-value")).toBeInTheDocument();
+    expect(
+      screen.queryByText("YOUR_MCP_TOKEN", { exact: false }),
+    ).not.toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole("button", { name: /mcp config \(header auth\)/i }),
+    );
+    expect(
+      screen.getByText("YOUR_MCP_TOKEN", { exact: false }),
+    ).toBeInTheDocument();
 
     // New token is prepended; click Revoke for the first one (tok-2 "Cursor")
     await user.click(screen.getAllByRole("button", { name: "Revoke" })[0]);
@@ -124,5 +134,31 @@ describe("SettingsModal MCP token management", () => {
         screen.queryByText("Failed to load tokens."),
       ).not.toBeInTheDocument();
     });
+  });
+
+  test("MCP config is collapsible", async () => {
+    const user = userEvent.setup();
+
+    render(<SettingsModal isOpen={true} onClose={jest.fn()} />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Claude Desktop")).toBeInTheDocument();
+    });
+
+    const toggle = screen.getByRole("button", {
+      name: /mcp config \(header auth\)/i,
+    });
+
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    expect(
+      screen.queryByText("YOUR_MCP_TOKEN", { exact: false }),
+    ).not.toBeInTheDocument();
+
+    await user.click(toggle);
+
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    expect(
+      screen.getByText("YOUR_MCP_TOKEN", { exact: false }),
+    ).toBeInTheDocument();
   });
 });

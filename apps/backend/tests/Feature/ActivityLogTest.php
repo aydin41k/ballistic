@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Models\AuditLog;
 use App\Models\Item;
 use App\Models\Project;
 use App\Models\User;
@@ -22,6 +23,8 @@ final class ActivityLogTest extends TestCase
         Item::factory()->count(5)->create([
             'user_id' => $user->id,
             'project_id' => $project->id,
+            'status' => 'done',
+            'completed_at' => now(),
         ]);
 
         $response = $this->actingAs($user)
@@ -35,7 +38,14 @@ final class ActivityLogTest extends TestCase
                         'id',
                         'title',
                         'status',
+                        'is_assigned',
+                        'is_assigned_to_me',
+                        'is_delegated',
                         'project',
+                        'assignee',
+                        'owner',
+                        'completed_by',
+                        'activity_at',
                         'completed_at',
                         'created_at',
                         'updated_at',
@@ -50,19 +60,23 @@ final class ActivityLogTest extends TestCase
             ]);
     }
 
-    public function test_activity_log_orders_by_updated_at_descending(): void
+    public function test_activity_log_orders_by_completion_time_descending(): void
     {
         $user = User::factory()->create();
 
         $oldest = Item::factory()->create([
             'user_id' => $user->id,
             'project_id' => null,
+            'status' => 'done',
+            'completed_at' => now()->subDays(2),
             'updated_at' => now()->subDays(2),
         ]);
 
         $newest = Item::factory()->create([
             'user_id' => $user->id,
             'project_id' => null,
+            'status' => 'wontdo',
+            'completed_at' => now(),
             'updated_at' => now(),
         ]);
 
@@ -82,6 +96,8 @@ final class ActivityLogTest extends TestCase
         Item::factory()->count(10)->create([
             'user_id' => $user->id,
             'project_id' => null,
+            'status' => 'done',
+            'completed_at' => now(),
         ]);
 
         $response = $this->actingAs($user)
@@ -98,6 +114,8 @@ final class ActivityLogTest extends TestCase
         Item::factory()->count(5)->create([
             'user_id' => $user->id,
             'project_id' => null,
+            'status' => 'done',
+            'completed_at' => now(),
         ]);
 
         $response = $this->actingAs($user)
@@ -107,26 +125,48 @@ final class ActivityLogTest extends TestCase
         $this->assertEquals(50, $response->json('meta.per_page'));
     }
 
-    public function test_activity_log_does_not_include_other_users_items(): void
+    public function test_activity_log_only_includes_completed_or_cancelled_accessible_items(): void
     {
         $user = User::factory()->create();
         $other = User::factory()->create();
 
-        Item::factory()->count(3)->create([
+        $ownedDone = Item::factory()->count(2)->create([
             'user_id' => $user->id,
             'project_id' => null,
+            'status' => 'done',
+            'completed_at' => now(),
+        ]);
+
+        Item::factory()->create([
+            'user_id' => $user->id,
+            'project_id' => null,
+            'status' => 'todo',
+        ]);
+
+        $assignedToUser = Item::factory()->create([
+            'user_id' => $other->id,
+            'assignee_id' => $user->id,
+            'project_id' => null,
+            'status' => 'wontdo',
+            'completed_at' => now(),
         ]);
 
         Item::factory()->count(2)->create([
             'user_id' => $other->id,
             'project_id' => null,
+            'status' => 'done',
+            'completed_at' => now(),
         ]);
 
         $response = $this->actingAs($user)
             ->getJson('/api/activity-log');
 
         $response->assertStatus(200)
-            ->assertJsonCount(3, 'data');
+            ->assertJsonCount(3, 'data')
+            ->assertJsonFragment(['id' => $ownedDone[0]->id])
+            ->assertJsonFragment(['id' => $assignedToUser->id]);
+
+        $this->assertNotContains('todo', array_column($response->json('data'), 'status'));
     }
 
     public function test_activity_log_supports_cursor_pagination(): void
@@ -138,6 +178,8 @@ final class ActivityLogTest extends TestCase
             Item::factory()->create([
                 'user_id' => $user->id,
                 'project_id' => null,
+                'status' => $i % 2 === 0 ? 'done' : 'wontdo',
+                'completed_at' => now()->subMinutes(5 - $i),
                 'updated_at' => now()->subMinutes(5 - $i),
             ]);
         }
@@ -170,5 +212,71 @@ final class ActivityLogTest extends TestCase
         $response = $this->getJson('/api/activity-log');
 
         $response->assertStatus(401);
+    }
+
+    public function test_activity_log_includes_assignment_context_and_actor(): void
+    {
+        $user = User::factory()->create(['name' => 'Owner User']);
+        $delegate = User::factory()->create(['name' => 'Delegate User']);
+        $manager = User::factory()->create(['name' => 'Manager User']);
+
+        $delegatedItem = Item::factory()->create([
+            'user_id' => $user->id,
+            'assignee_id' => $delegate->id,
+            'project_id' => null,
+            'status' => 'done',
+            'completed_at' => now()->subHour(),
+        ]);
+
+        $assignedToUser = Item::factory()->create([
+            'user_id' => $manager->id,
+            'assignee_id' => $user->id,
+            'project_id' => null,
+            'status' => 'wontdo',
+            'completed_at' => now()->subMinutes(30),
+        ]);
+
+        AuditLog::create([
+            'user_id' => $delegate->id,
+            'action' => 'item_updated',
+            'resource_type' => 'item',
+            'resource_id' => $delegatedItem->id,
+            'status' => 'success',
+            'metadata' => [
+                'after' => ['status' => 'done'],
+            ],
+        ]);
+
+        AuditLog::create([
+            'user_id' => $manager->id,
+            'action' => 'item_updated',
+            'resource_type' => 'item',
+            'resource_id' => $assignedToUser->id,
+            'status' => 'success',
+            'metadata' => [
+                'after' => ['status' => 'wontdo'],
+            ],
+        ]);
+
+        $response = $this->actingAs($user)
+            ->getJson('/api/activity-log');
+
+        $response->assertStatus(200)
+            ->assertJsonFragment([
+                'id' => $delegatedItem->id,
+                'is_delegated' => true,
+                'is_assigned_to_me' => false,
+            ])
+            ->assertJsonFragment([
+                'id' => $assignedToUser->id,
+                'is_delegated' => false,
+                'is_assigned_to_me' => true,
+            ])
+            ->assertJsonFragment([
+                'name' => 'Delegate User',
+            ])
+            ->assertJsonFragment([
+                'name' => 'Manager User',
+            ]);
     }
 }

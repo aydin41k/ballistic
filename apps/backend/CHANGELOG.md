@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.17.02] - 2026-03-10
+
+### Fixed
+
+- **Activity log now reflects completion outcomes only** — `/api/activity-log` now returns only items currently marked `done` or `wontdo`, includes both owned and assigned accessible items, and exposes assignment context plus the actor who completed/cancelled the task
+- **Activity log event dates** — the log now orders and renders against completion/cancellation timestamps instead of generic item updates, fixing misleading same-day entries
+- **`wontdo` completion timestamps** — `ItemController` now sets `completed_at` when items are marked `wontdo` and clears it when items are returned to active states
+- **Admin font stack** — backend UI now prefers `Virgil` before existing sans-serif fallbacks
+
+### Tests
+
+- **`ActivityLogTest`**: updated for completed/cancelled-only behaviour and added coverage for assignment context plus completion actor metadata
+- **`ItemTest`**: added `test_marking_item_as_wontdo_sets_completed_at`
+
 ## [0.17.01] - 2026-03-09
 
 ### Fixed
