@@ -31,6 +31,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const [newToken, setNewToken] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [confirmRevokeId, setConfirmRevokeId] = useState<string | null>(null);
+  const [showMcpConfig, setShowMcpConfig] = useState(false);
 
   // Close on escape key
   useEffect(() => {
@@ -465,25 +466,41 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                   )}
 
                   <div className="p-3 rounded-md border border-gray-200 bg-white">
-                    <p className="text-xs text-gray-700 mb-2">
-                      MCP config (header auth):
-                    </p>
-                    <pre className="text-[11px] overflow-x-auto rounded bg-gray-100 p-2 text-gray-800">
-                      {JSON.stringify(
-                        {
-                          mcpServers: {
-                            ballistic: {
-                              url: mcpUrl,
-                              headers: {
-                                Authorization: "Bearer YOUR_MCP_TOKEN",
+                    <button
+                      type="button"
+                      onClick={() => setShowMcpConfig((prev) => !prev)}
+                      className="flex w-full items-center justify-between text-left"
+                      aria-expanded={showMcpConfig}
+                      aria-controls="mcp-config-panel"
+                    >
+                      <span className="text-xs font-medium text-gray-700">
+                        MCP config (header auth)
+                      </span>
+                      <span className="text-xs text-blue-600">
+                        {showMcpConfig ? "Hide" : "Show"}
+                      </span>
+                    </button>
+                    {showMcpConfig && (
+                      <pre
+                        id="mcp-config-panel"
+                        className="mt-3 text-[11px] overflow-x-auto rounded bg-gray-100 p-2 text-gray-800"
+                      >
+                        {JSON.stringify(
+                          {
+                            mcpServers: {
+                              ballistic: {
+                                url: mcpUrl,
+                                headers: {
+                                  Authorization: "Bearer YOUR_MCP_TOKEN",
+                                },
                               },
                             },
                           },
-                        },
-                        null,
-                        2,
-                      )}
-                    </pre>
+                          null,
+                          2,
+                        )}
+                      </pre>
+                    )}
                   </div>
                 </div>
               </section>
@@ -502,7 +519,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
             {/* Version Info */}
             <section className="pt-4 border-t border-gray-100">
               <p className="text-xs text-gray-400 text-center">
-                Ballistic v0.16.2
+                Ballistic v0.17.1
               </p>
             </section>
           </div>

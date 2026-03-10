@@ -1,4 +1,5 @@
 import type {
+  ActivityLogItem,
   Item,
   ItemScope,
   McpToken,
@@ -9,6 +10,8 @@ import type {
   NotificationsResponse,
 } from "@/types";
 import { getAuthHeaders, clearToken } from "./auth";
+
+export type { ActivityLogItem } from "@/types";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "";
 
@@ -506,16 +509,6 @@ export async function dismissNotification(
 // ─────────────────────────────────────────────────────────────────────────────
 // Activity Log
 // ─────────────────────────────────────────────────────────────────────────────
-
-export interface ActivityLogItem {
-  id: string;
-  title: string;
-  status: string;
-  project: { id: string; name: string; color: string | null } | null;
-  completed_at: string | null;
-  created_at: string;
-  updated_at: string;
-}
 
 export interface CursorPaginatedResponse<T> {
   data: T[];

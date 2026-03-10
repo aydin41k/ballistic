@@ -22,6 +22,10 @@ import { ProfileModal } from "@/components/ProfileModal";
 import { ActivityLogModal } from "@/components/ActivityLogModal";
 import { NotificationCentre } from "@/components/NotificationCentre";
 import { useAuth } from "@/contexts/AuthContext";
+import {
+  filterItemsByExcludedProjects,
+  NO_PROJECT_FILTER_ID,
+} from "@/lib/projectFilters";
 
 function normaliseItemResponse(payload: Item | { data?: Item }): Item {
   if (
@@ -241,21 +245,18 @@ export default function Home() {
 
   // Apply project filter client-side (exclusion model)
   const hasProjectFilter = excludedProjectIds.size > 0;
-  const filteredItems = hasProjectFilter
-    ? sortedItems.filter(
-        (i) => !i.project_id || !excludedProjectIds.has(i.project_id),
-      )
-    : sortedItems;
-  const filteredAssignedItems = hasProjectFilter
-    ? assignedItems.filter(
-        (i) => !i.project_id || !excludedProjectIds.has(i.project_id),
-      )
-    : assignedItems;
-  const filteredDelegatedItems = hasProjectFilter
-    ? delegatedItems.filter(
-        (i) => !i.project_id || !excludedProjectIds.has(i.project_id),
-      )
-    : delegatedItems;
+  const filteredItems = filterItemsByExcludedProjects(
+    sortedItems,
+    excludedProjectIds,
+  );
+  const filteredAssignedItems = filterItemsByExcludedProjects(
+    assignedItems,
+    excludedProjectIds,
+  );
+  const filteredDelegatedItems = filterItemsByExcludedProjects(
+    delegatedItems,
+    excludedProjectIds,
+  );
 
   function onRowChange(itemOrUpdater: Item | ((current: Item) => Item)) {
     const updater = (prev: Item[]) => {
@@ -642,6 +643,27 @@ export default function Home() {
                     )}
                   </div>
                   <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setExcludedProjectIds((prev) => {
+                          const next = new Set(prev);
+                          if (next.has(NO_PROJECT_FILTER_ID)) {
+                            next.delete(NO_PROJECT_FILTER_ID);
+                          } else {
+                            next.add(NO_PROJECT_FILTER_ID);
+                          }
+                          return next;
+                        })
+                      }
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                        excludedProjectIds.has(NO_PROJECT_FILTER_ID)
+                          ? "bg-slate-100 text-slate-400 line-through"
+                          : "bg-[var(--blue)] text-white"
+                      }`}
+                    >
+                      No project
+                    </button>
                     {projects.map((project) => {
                       const isExcluded = excludedProjectIds.has(project.id);
                       return (
