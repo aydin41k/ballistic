@@ -1,3 +1,19 @@
+## 0.17.1 - 2026-03-10
+
+### Changed
+
+- **Activity log**: now shows only `done` and `wontdo` items, uses completion/cancellation timestamps from the backend, surfaces assignment context, and shows who marked each item done or won’t do
+- **Project filters**: added a `No project` chip so inbox items can be filtered alongside named projects
+- **`SettingsModal`**: MCP config snippet is now collapsible instead of always expanded
+- **Typography**: app font stack now prefers `Virgil`
+- **Version label**: updated settings footer to `v0.17.1`
+
+### Tests
+
+- Added `activity-log-modal.test.tsx` for actor/assignment/date rendering
+- Added `project-filters.test.ts` for named-project and no-project exclusion rules
+- Updated `settings-modal-mcp.test.tsx` for the MCP config disclosure behaviour
+
 ## 0.17.0 - 2026-03-10
 
 ### Added

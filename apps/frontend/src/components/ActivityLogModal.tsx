@@ -26,13 +26,29 @@ const STATUS_COLOURS: Record<string, string> = {
 };
 
 function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString("en-AU", {
+  return new Date(iso).toLocaleString("en-AU", {
     day: "numeric",
     month: "short",
     year: "numeric",
     hour: "2-digit",
     minute: "2-digit",
   });
+}
+
+function getStatusActionLabel(status: ActivityLogItem["status"]): string {
+  return status === "done" ? "Marked done" : "Marked won’t do";
+}
+
+function getAssignmentLabel(item: ActivityLogItem): string | null {
+  if (item.is_assigned_to_me && item.owner) {
+    return `Assigned by ${item.owner.name}`;
+  }
+
+  if (item.is_delegated && item.assignee) {
+    return `Assigned to ${item.assignee.name}`;
+  }
+
+  return null;
 }
 
 export function ActivityLogModal({ isOpen, onClose }: ActivityLogModalProps) {
@@ -173,8 +189,22 @@ export function ActivityLogModal({ isOpen, onClose }: ActivityLogModalProps) {
                         </span>
                       )}
                     </div>
+                    {getAssignmentLabel(item) && (
+                      <p className="mt-1 text-xs text-slate-500">
+                        {getAssignmentLabel(item)}
+                      </p>
+                    )}
+                    <p className="mt-1 text-xs text-slate-500">
+                      {item.completed_by?.name
+                        ? `${getStatusActionLabel(item.status)} by ${item.completed_by.name}`
+                        : getStatusActionLabel(item.status)}
+                    </p>
                     <p className="text-xs text-gray-400 mt-1">
-                      {formatDate(item.updated_at)}
+                      {formatDate(
+                        item.activity_at ||
+                          item.completed_at ||
+                          item.updated_at,
+                      )}
                     </p>
                   </div>
                 </div>

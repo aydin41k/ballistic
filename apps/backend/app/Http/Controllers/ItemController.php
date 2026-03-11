@@ -156,8 +156,8 @@ final class ItemController extends Controller
             $this->ensureConnection($owner, $validated['assignee_id']);
         }
 
-        // Auto-set completed_at if status is 'done'
-        if (($validated['status'] ?? null) === 'done') {
+        // Auto-set completed_at when an item is completed or cancelled.
+        if (in_array($validated['status'] ?? null, ['done', 'wontdo'], true)) {
             $validated['completed_at'] = now();
         }
 
@@ -251,11 +251,13 @@ final class ItemController extends Controller
             $this->ensureConnection($owner, $newAssigneeId);
         }
 
-        // Auto-manage completed_at based on status changes
+        // Auto-manage completed_at based on status changes.
         if (isset($validated['status'])) {
-            if ($validated['status'] === 'done' && $item->status !== 'done') {
+            if (in_array($validated['status'], ['done', 'wontdo'], true)
+                && ! in_array($item->status, ['done', 'wontdo'], true)) {
                 $validated['completed_at'] = now();
-            } elseif ($validated['status'] !== 'done' && $item->status === 'done') {
+            } elseif (in_array($validated['status'], ['todo', 'doing'], true)
+                && in_array($item->status, ['done', 'wontdo'], true)) {
                 $validated['completed_at'] = null;
             }
         }

@@ -142,6 +142,30 @@ final class ItemTest extends TestCase
         ]);
     }
 
+    public function test_marking_item_as_wontdo_sets_completed_at(): void
+    {
+        $user = User::factory()->create();
+        $item = Item::factory()->create([
+            'user_id' => $user->id,
+            'status' => 'todo',
+            'completed_at' => null,
+        ]);
+
+        $response = $this->actingAs($user)
+            ->patchJson("/api/items/{$item->id}", [
+                'status' => 'wontdo',
+            ]);
+
+        $response->assertStatus(200)
+            ->assertJsonFragment([
+                'status' => 'wontdo',
+            ]);
+
+        $item->refresh();
+
+        $this->assertNotNull($item->completed_at);
+    }
+
     public function test_user_can_delete_their_item(): void
     {
         $user = User::factory()->create();
