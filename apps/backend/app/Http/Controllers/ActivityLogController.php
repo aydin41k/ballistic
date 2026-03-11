@@ -9,8 +9,8 @@ use App\Models\AuditLog;
 use App\Models\Item;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Auth;
 
 final class ActivityLogController extends Controller
 {
