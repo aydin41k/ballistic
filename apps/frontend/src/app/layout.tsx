@@ -1,14 +1,18 @@
 import type { Metadata, Viewport } from "next";
-import { Architects_Daughter } from "next/font/google";
 import "./globals.css";
+import { Inter, Source_Sans_3 } from "next/font/google";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ServiceWorkerRegistration } from "@/components/ServiceWorkerRegistration";
 
-const architectsDaughter = Architects_Daughter({
-  variable: "--font-architects-daughter",
-  weight: "400",
+const inter = Inter({
   subsets: ["latin"],
-  display: "swap",
+  variable: "--font-ui",
+});
+
+const sourceSans = Source_Sans_3({
+  subsets: ["latin"],
+  variable: "--font-reading",
+  weight: ["400", "600", "700"],
 });
 
 export const metadata: Metadata = {
@@ -38,7 +42,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${architectsDaughter.variable} min-h-dvh bg-[var(--page-bg)] text-[var(--text)]`}
+        className={`${inter.variable} ${sourceSans.variable} min-h-dvh bg-[var(--page-bg)] text-[var(--text)] font-ui`}
       >
         <ServiceWorkerRegistration />
         <AuthProvider>

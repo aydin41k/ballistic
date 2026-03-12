@@ -168,7 +168,7 @@ export function ActivityLogModal({ isOpen, onClose }: ActivityLogModalProps) {
                   className="flex items-start gap-3 p-3 rounded-lg bg-gray-50 border border-gray-100"
                 >
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-gray-900 truncate">
+                    <p className="font-reading text-sm font-medium text-gray-900 truncate">
                       {item.title}
                     </p>
                     <div className="flex items-center gap-2 mt-1">

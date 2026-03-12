@@ -150,7 +150,7 @@ export function NotesModal({ isOpen, onClose }: NotesModalProps) {
             onChange={(e) => setNotes(e.target.value.slice(0, MAX_CHARS))}
             onBlur={() => saveNotes(notes)}
             placeholder="Jot down anything..."
-            className="w-full min-h-[400px] max-h-[80vh] resize-y rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-300 focus:outline-none focus:ring-1 focus:ring-blue-300"
+            className="font-reading w-full min-h-[400px] max-h-[80vh] resize-y rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-300 focus:outline-none focus:ring-1 focus:ring-blue-300"
           />
 
           {/* Character counter */}
