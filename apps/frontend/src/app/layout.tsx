@@ -1,7 +1,15 @@
 import type { Metadata, Viewport } from "next";
+import { Architects_Daughter } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ServiceWorkerRegistration } from "@/components/ServiceWorkerRegistration";
+
+const architectsDaughter = Architects_Daughter({
+  variable: "--font-architects-daughter",
+  weight: "400",
+  subsets: ["latin"],
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: "Ballistic – Bullet Journal",
@@ -29,7 +37,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className="min-h-dvh bg-[var(--page-bg)] text-[var(--text)]">
+      <body
+        className={`${architectsDaughter.variable} min-h-dvh bg-[var(--page-bg)] text-[var(--text)]`}
+      >
         <ServiceWorkerRegistration />
         <AuthProvider>
           <div className="mx-auto w-full max-w-screen-sm p-4">{children}</div>

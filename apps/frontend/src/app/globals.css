@@ -14,7 +14,17 @@
 
   @font-face {
     font-family: "Virgil";
-    src: local("Virgil");
+    src: url("/fonts/excalidraw/Virgil.woff2") format("woff2");
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+  }
+
+  @font-face {
+    font-family: "Cascadia";
+    src: url("/fonts/excalidraw/Cascadia.woff2") format("woff2");
+    font-style: normal;
+    font-weight: 400;
     font-display: swap;
   }
 
@@ -26,7 +36,9 @@
   body {
     @apply bg-[var(--page-bg)] text-[var(--text)] antialiased;
     font-family:
+      var(--font-architects-daughter),
       "Virgil",
+      "Cascadia",
       "Segoe Print",
       "Bradley Hand",
       "Comic Sans MS",
