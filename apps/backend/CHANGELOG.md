@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.17.03] - 2026-03-14
+
+### Changed
+
+- **Admin API surface reduction** — removed the orphaned `GET /api/admin/stats` and `GET /api/admin/stats/user-activity` endpoints because the supported admin health dashboard already serves equivalent operational metrics via Inertia
+- **Generated admin route helpers** — removed the unused backend Wayfinder helper for the deleted admin stats endpoints
+
+### Tests
+
+- **`AdminTest`**: replaced admin stats assertions with regression coverage proving the removed admin stats API routes now return `404` while admin user routes remain protected
+
 ## [0.17.02] - 2026-03-10
 
 ### Fixed
