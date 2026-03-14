@@ -1,5 +1,8 @@
 import { render, screen, waitFor } from "@testing-library/react";
-import { ActivityLogModal } from "@/components/ActivityLogModal";
+import {
+  ActivityLogModal,
+  getActivityTimestamp,
+} from "@/components/ActivityLogModal";
 import { fetchActivityLog } from "@/lib/api";
 
 jest.mock("@/lib/api", () => ({
@@ -90,5 +93,27 @@ describe("ActivityLogModal", () => {
       screen.getByText("Marked won’t do by Mia Manager"),
     ).toBeInTheDocument();
     expect(screen.getByText(/9 Mar 2026|09 Mar 2026/)).toBeInTheDocument();
+    expect(screen.getByText(/10 Mar 2026/)).toBeInTheDocument();
+  });
+
+  test("uses updated_at for wontdo items", () => {
+    expect(
+      getActivityTimestamp({
+        id: "item-2",
+        title: "Assigned task",
+        status: "wontdo",
+        is_assigned: true,
+        is_assigned_to_me: true,
+        is_delegated: false,
+        project: null,
+        assignee: null,
+        owner: null,
+        completed_by: null,
+        activity_at: "2026-03-08T08:30:00Z",
+        completed_at: null,
+        created_at: "2026-03-01T09:00:00Z",
+        updated_at: "2026-03-10T10:00:00Z",
+      }),
+    ).toBe("2026-03-10T10:00:00Z");
   });
 });

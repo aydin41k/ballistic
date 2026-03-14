@@ -51,6 +51,14 @@ function getAssignmentLabel(item: ActivityLogItem): string | null {
   return null;
 }
 
+export function getActivityTimestamp(item: ActivityLogItem): string {
+  if (item.status === "wontdo") {
+    return item.updated_at;
+  }
+
+  return item.activity_at || item.completed_at || item.updated_at;
+}
+
 export function ActivityLogModal({ isOpen, onClose }: ActivityLogModalProps) {
   const modalRef = useRef<HTMLDivElement>(null);
   useModal(isOpen);
@@ -200,11 +208,7 @@ export function ActivityLogModal({ isOpen, onClose }: ActivityLogModalProps) {
                         : getStatusActionLabel(item.status)}
                     </p>
                     <p className="text-xs text-gray-400 mt-1">
-                      {formatDate(
-                        item.activity_at ||
-                          item.completed_at ||
-                          item.updated_at,
-                      )}
+                      {formatDate(getActivityTimestamp(item))}
                     </p>
                   </div>
                 </div>
