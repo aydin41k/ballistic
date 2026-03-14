@@ -63,7 +63,7 @@ export function ActivityLogModal({ isOpen, onClose }: ActivityLogModalProps) {
   const groups = useMemo(() => {
     const map = new Map<string, ActivityLogEntry[]>();
     for (const entry of items) {
-      const ts = entry.completed_at ?? entry.updated_at;
+      const ts = getActivityTimestamp(entry);
       const key = ts.slice(0, 10); // YYYY-MM-DD
       const bucket = map.get(key);
       if (bucket) bucket.push(entry);
@@ -201,10 +201,18 @@ function ActivityRow({ entry }: { entry: ActivityLogEntry }) {
         )}
       </div>
       <time className="shrink-0 text-[11px] text-gray-400">
-        {formatTime(entry.completed_at ?? entry.updated_at)}
+        {formatTime(getActivityTimestamp(entry))}
       </time>
     </li>
   );
+}
+
+export function getActivityTimestamp(entry: ActivityLogEntry): string {
+  if (entry.status === "wontdo") {
+    return entry.updated_at;
+  }
+
+  return entry.completed_at ?? entry.updated_at;
 }
 
 function ActivityLogSkeleton() {
