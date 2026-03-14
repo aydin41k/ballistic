@@ -22,6 +22,7 @@ use App\Mcp\Tools\SearchItemsTool;
 use App\Mcp\Tools\UpdateItemTool;
 use App\Mcp\Tools\UpdateProjectTool;
 use Laravel\Mcp\Server;
+use Laravel\Mcp\Server\Transport\StdioTransport;
 
 /**
  * Ballistic Social MCP Server.
@@ -172,6 +173,10 @@ final class BallisticServer extends Server
      */
     public function boot(): void
     {
+        if ($this->transport instanceof StdioTransport) {
+            return;
+        }
+
         $user = request()->user();
 
         if (! $user) {

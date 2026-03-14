@@ -180,7 +180,7 @@ curl -X POST http://localhost/mcp \
 ./mcp-verify.sh install
 
 # Test STDIO transport
-APP_SERVICE=model_a ./mcp-verify.sh stdio
+APP_SERVICE=laravel.test ./mcp-verify.sh stdio
 
 # Test HTTP transport
 MCP_AUTH_TOKEN='your-token' ./mcp-verify.sh http
@@ -483,7 +483,7 @@ Verify with MCP Inspector:
 For local development and CLI integration, use the STDIO transport:
 
 ```bash
-APP_SERVICE=model_a sail artisan mcp:start ballistic
+APP_SERVICE=laravel.test sail artisan mcp:start ballistic
 ```
 
 This starts an interactive session reading JSON-RPC from stdin and writing to stdout.

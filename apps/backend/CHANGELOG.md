@@ -11,10 +11,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Admin API surface reduction** — removed the orphaned `GET /api/admin/stats` and `GET /api/admin/stats/user-activity` endpoints because the supported admin health dashboard already serves equivalent operational metrics via Inertia
 - **Generated admin route helpers** — removed the unused backend Wayfinder helper for the deleted admin stats endpoints
+- **MCP STDIO bootstrap** — local `artisan mcp:start ballistic` sessions now boot without HTTP auth so `initialize`, `tools/list`, and `resources/list` work for Inspector and smoke-test flows; HTTP `/mcp` auth and feature-flag enforcement remain unchanged
+- **MCP verification docs/script** — replaced stale `APP_SERVICE=model_a` examples with `APP_SERVICE=laravel.test` so local verification matches the current Sail service name
 
 ### Tests
 
 - **`AdminTest`**: replaced admin stats assertions with regression coverage proving the removed admin stats API routes now return `404` while admin user routes remain protected
+- **`BallisticServerTest`**: added coverage for STDIO boot bypass and preserved HTTP auth enforcement
 
 ## [0.17.02] - 2026-03-10
 
