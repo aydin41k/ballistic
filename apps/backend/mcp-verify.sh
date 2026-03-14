@@ -7,7 +7,7 @@
 #
 # Prerequisites:
 # - Node.js 18+ and npm installed
-# - Sail container running (APP_SERVICE=model_a ./vendor/bin/sail up -d)
+# - Sail container running (APP_SERVICE=laravel.test ./vendor/bin/sail up -d)
 # - A test user with a Sanctum token
 #
 # Usage:
@@ -86,7 +86,7 @@ EOF
     log_info "Sending test messages to STDIO server..."
 
     # Run the MCP server via artisan and capture output
-    timeout 10 APP_SERVICE=model_a "$SAIL" artisan mcp:start ballistic < "$TEMP_INPUT" > "$TEMP_OUTPUT" 2>&1 || true
+    env APP_SERVICE=laravel.test timeout 10 "$SAIL" artisan mcp:start ballistic < "$TEMP_INPUT" > "$TEMP_OUTPUT" 2>&1 || true
 
     # Check for expected responses
     if grep -q '"serverInfo"' "$TEMP_OUTPUT" 2>/dev/null; then
