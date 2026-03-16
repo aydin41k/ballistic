@@ -25,6 +25,8 @@ final class ActivityLogController extends Controller
         $perPage = min((int) $request->input('per_page', 20), 50);
         $userId = (string) Auth::id();
 
+        $activityTimestampExpression = "CASE WHEN status = 'wontdo' THEN updated_at ELSE completed_at END";
+
         $items = Item::query()
             ->where(function ($query) use ($userId): void {
                 $query->where('user_id', $userId)
@@ -32,7 +34,9 @@ final class ActivityLogController extends Controller
             })
             ->whereIn('status', ['done', 'wontdo'])
             ->with(['project', 'assignee', 'user'])
-            ->orderByDesc('completed_at')
+            ->select('items.*')
+            ->selectRaw("{$activityTimestampExpression} as activity_sort_at")
+            ->orderByDesc('activity_sort_at')
             ->orderByDesc('updated_at')
             ->cursorPaginate($perPage);
 
@@ -43,11 +47,13 @@ final class ActivityLogController extends Controller
             ->map(function (Item $item) use ($activityMetadata, $request, $userId): array {
                 $metadata = $activityMetadata[$item->id] ?? [];
 
+                $fallbackActivityAt = $item->status === 'wontdo'
+                    ? $item->updated_at?->toIso8601String()
+                    : $item->completed_at?->toIso8601String();
+
                 $item->setAttribute(
                     'activity_at',
-                    $metadata['activity_at']
-                        ?? $item->completed_at?->toIso8601String()
-                        ?? $item->updated_at?->toIso8601String()
+                    $metadata['activity_at'] ?? $fallbackActivityAt ?? $item->updated_at?->toIso8601String()
                 );
                 $item->setAttribute('completed_by', $metadata['completed_by'] ?? null);
                 $item->setAttribute(
