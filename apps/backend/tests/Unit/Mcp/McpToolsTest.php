@@ -18,6 +18,7 @@ use App\Models\Project;
 use App\Models\Tag;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Laravel\Mcp\Server\Tools\ToolResult;
 use Tests\TestCase;
 
@@ -246,6 +247,29 @@ final class McpToolsTest extends TestCase
 
         $item->refresh();
         $this->assertNull($item->completed_at);
+    }
+
+    public function test_update_item_tool_refreshes_completed_at_when_switching_from_done_to_wontdo(): void
+    {
+        $item = Item::factory()->create([
+            'user_id' => $this->user->id,
+            'status' => 'done',
+            'completed_at' => Carbon::parse('2026-03-09 11:00:00'),
+            'updated_at' => Carbon::parse('2026-03-09 11:00:00'),
+        ]);
+
+        $tool = new UpdateItemTool($this->auth);
+
+        $result = $tool->handle([
+            'id' => (string) $item->id,
+            'status' => 'wontdo',
+        ]);
+
+        $resultArray = $result->toArray();
+        $this->assertFalse($resultArray['isError']);
+
+        $item->refresh();
+        $this->assertTrue($item->completed_at->greaterThan(Carbon::parse('2026-03-09 11:00:00')));
     }
 
     // ========================================================================

@@ -11,6 +11,7 @@ use App\Models\Project;
 use App\Models\Tag;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Tests\TestCase;
 
 final class McpServerTest extends TestCase
@@ -1262,6 +1263,34 @@ final class McpServerTest extends TestCase
         $item->refresh();
 
         $this->assertNull($item->completed_at);
+    }
+
+    public function test_update_item_refreshes_completed_at_when_switching_from_done_to_wontdo(): void
+    {
+        $item = Item::factory()->create([
+            'user_id' => $this->user->id,
+            'status' => 'done',
+            'completed_at' => Carbon::parse('2026-03-09 11:00:00'),
+            'updated_at' => Carbon::parse('2026-03-09 11:00:00'),
+        ]);
+
+        $response = $this->withToken($this->token)->postJson('/mcp', [
+            'jsonrpc' => '2.0',
+            'id' => 1151,
+            'method' => 'tools/call',
+            'params' => [
+                'name' => 'update_item',
+                'arguments' => [
+                    'id' => $item->id,
+                    'status' => 'wontdo',
+                ],
+            ],
+        ]);
+
+        $response->assertStatus(200);
+        $item->refresh();
+
+        $this->assertTrue($item->completed_at->greaterThan(Carbon::parse('2026-03-09 11:00:00')));
     }
 
     public function test_update_item_syncs_tags(): void

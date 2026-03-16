@@ -9,6 +9,7 @@ use App\Models\Project;
 use App\Models\User;
 use App\Services\RecurrenceService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Tests\TestCase;
 
 final class ItemTest extends TestCase
@@ -164,6 +165,31 @@ final class ItemTest extends TestCase
         $item->refresh();
 
         $this->assertNotNull($item->completed_at);
+    }
+
+    public function test_switching_from_done_to_wontdo_refreshes_completed_at(): void
+    {
+        $user = User::factory()->create();
+        $item = Item::factory()->create([
+            'user_id' => $user->id,
+            'status' => 'done',
+            'completed_at' => Carbon::parse('2026-03-09 11:00:00'),
+            'updated_at' => Carbon::parse('2026-03-09 11:00:00'),
+        ]);
+
+        $response = $this->actingAs($user)
+            ->patchJson("/api/items/{$item->id}", [
+                'status' => 'wontdo',
+            ]);
+
+        $response->assertStatus(200)
+            ->assertJsonFragment([
+                'status' => 'wontdo',
+            ]);
+
+        $item->refresh();
+
+        $this->assertTrue($item->completed_at->greaterThan(Carbon::parse('2026-03-09 11:00:00')));
     }
 
     public function test_user_can_delete_their_item(): void

@@ -168,7 +168,7 @@ final class UpdateItemTool extends Tool
 
             // Track completion
             if (isset($updateData['status'])) {
-                if (in_array($updateData['status'], ['done', 'wontdo']) && $item->completed_at === null) {
+                if (in_array($updateData['status'], ['done', 'wontdo']) && $updateData['status'] !== $item->status) {
                     $updateData['completed_at'] = now();
                 } elseif (in_array($updateData['status'], ['todo', 'doing']) && $item->completed_at !== null) {
                     $updateData['completed_at'] = null;

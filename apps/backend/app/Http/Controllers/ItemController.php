@@ -254,7 +254,7 @@ final class ItemController extends Controller
         // Auto-manage completed_at based on status changes.
         if (isset($validated['status'])) {
             if (in_array($validated['status'], ['done', 'wontdo'], true)
-                && ! in_array($item->status, ['done', 'wontdo'], true)) {
+                && $validated['status'] !== $item->status) {
                 $validated['completed_at'] = now();
             } elseif (in_array($validated['status'], ['todo', 'doing'], true)
                 && in_array($item->status, ['done', 'wontdo'], true)) {

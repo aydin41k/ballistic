@@ -9,6 +9,7 @@ use App\Models\Item;
 use App\Models\Project;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Tests\TestCase;
 
 final class ActivityLogTest extends TestCase
@@ -60,24 +61,24 @@ final class ActivityLogTest extends TestCase
             ]);
     }
 
-    public function test_activity_log_orders_by_completion_time_descending(): void
+    public function test_activity_log_orders_by_actual_activity_time_descending(): void
     {
         $user = User::factory()->create();
 
-        $oldest = Item::factory()->create([
+        $doneItem = Item::factory()->create([
             'user_id' => $user->id,
             'project_id' => null,
             'status' => 'done',
-            'completed_at' => now()->subDays(2),
-            'updated_at' => now()->subDays(2),
+            'completed_at' => Carbon::parse('2026-03-09 11:00:00'),
+            'updated_at' => Carbon::parse('2026-03-09 11:00:00'),
         ]);
 
-        $newest = Item::factory()->create([
+        $wontdoItem = Item::factory()->create([
             'user_id' => $user->id,
             'project_id' => null,
             'status' => 'wontdo',
-            'completed_at' => now(),
-            'updated_at' => now(),
+            'completed_at' => Carbon::parse('2026-03-01 08:00:00'),
+            'updated_at' => Carbon::parse('2026-03-10 10:00:00'),
         ]);
 
         $response = $this->actingAs($user)
@@ -85,8 +86,9 @@ final class ActivityLogTest extends TestCase
 
         $response->assertStatus(200);
         $data = $response->json('data');
-        $this->assertEquals($newest->id, $data[0]['id']);
-        $this->assertEquals($oldest->id, $data[1]['id']);
+        $this->assertEquals($wontdoItem->id, $data[0]['id']);
+        $this->assertEquals($doneItem->id, $data[1]['id']);
+        $this->assertSame('2026-03-10T10:00:00+00:00', $data[0]['activity_at']);
     }
 
     public function test_activity_log_respects_per_page_parameter(): void
@@ -212,6 +214,28 @@ final class ActivityLogTest extends TestCase
         $response = $this->getJson('/api/activity-log');
 
         $response->assertStatus(401);
+    }
+
+    public function test_activity_log_prefers_cancellation_timestamp_when_no_audit_log_exists(): void
+    {
+        $user = User::factory()->create();
+
+        $item = Item::factory()->create([
+            'user_id' => $user->id,
+            'project_id' => null,
+            'status' => 'wontdo',
+            'completed_at' => Carbon::parse('2026-03-01 08:00:00'),
+            'updated_at' => Carbon::parse('2026-03-10 10:00:00'),
+        ]);
+
+        $response = $this->actingAs($user)
+            ->getJson('/api/activity-log');
+
+        $response->assertStatus(200)
+            ->assertJsonFragment([
+                'id' => $item->id,
+                'activity_at' => '2026-03-10T10:00:00+00:00',
+            ]);
     }
 
     public function test_activity_log_includes_assignment_context_and_actor(): void
