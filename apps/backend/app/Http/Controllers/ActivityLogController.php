@@ -25,7 +25,7 @@ final class ActivityLogController extends Controller
         $perPage = min((int) $request->input('per_page', 20), 50);
         $userId = (string) Auth::id();
 
-        $activityTimestampExpression = "CASE WHEN status = 'wontdo' THEN updated_at ELSE completed_at END";
+        $activityTimestampExpression = "CASE WHEN status = 'wontdo' THEN COALESCE(completed_at, updated_at) ELSE completed_at END";
 
         $items = Item::query()
             ->where(function ($query) use ($userId): void {

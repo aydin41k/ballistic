@@ -224,8 +224,8 @@ final class ActivityLogTest extends TestCase
             'user_id' => $user->id,
             'project_id' => null,
             'status' => 'wontdo',
-            'completed_at' => Carbon::parse('2026-03-01 08:00:00'),
-            'updated_at' => Carbon::parse('2026-03-10 10:00:00'),
+            'completed_at' => Carbon::parse('2026-03-10 10:00:00'),
+            'updated_at' => Carbon::parse('2026-03-11 12:00:00'),
         ]);
 
         $response = $this->actingAs($user)
@@ -236,6 +236,38 @@ final class ActivityLogTest extends TestCase
                 'id' => $item->id,
                 'activity_at' => '2026-03-10T10:00:00+00:00',
             ]);
+    }
+
+    public function test_activity_log_uses_completed_at_for_cancelled_items_when_no_audit_log_exists(): void
+    {
+        $user = User::factory()->create();
+
+        $cancelledEarlier = Item::factory()->create([
+            'user_id' => $user->id,
+            'project_id' => null,
+            'status' => 'wontdo',
+            'completed_at' => Carbon::parse('2026-03-10 10:00:00'),
+            'updated_at' => Carbon::parse('2026-03-11 12:00:00'),
+        ]);
+
+        $cancelledLater = Item::factory()->create([
+            'user_id' => $user->id,
+            'project_id' => null,
+            'status' => 'wontdo',
+            'completed_at' => Carbon::parse('2026-03-10 11:00:00'),
+            'updated_at' => Carbon::parse('2026-03-10 11:00:00'),
+        ]);
+
+        $response = $this->actingAs($user)
+            ->getJson('/api/activity-log');
+
+        $response->assertStatus(200);
+
+        $data = $response->json('data');
+        $this->assertEquals($cancelledLater->id, $data[0]['id']);
+        $this->assertEquals($cancelledEarlier->id, $data[1]['id']);
+        $this->assertSame('2026-03-10T11:00:00+00:00', $data[0]['activity_at']);
+        $this->assertSame('2026-03-10T10:00:00+00:00', $data[1]['activity_at']);
     }
 
     public function test_activity_log_includes_assignment_context_and_actor(): void
