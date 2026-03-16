@@ -27,17 +27,20 @@ final class ActivityLogController extends Controller
 
         $activityTimestampExpression = "CASE WHEN status = 'wontdo' THEN updated_at ELSE completed_at END";
 
-        $items = Item::query()
+        $baseQuery = Item::query()
             ->where(function ($query) use ($userId): void {
                 $query->where('user_id', $userId)
                     ->orWhere('assignee_id', $userId);
             })
             ->whereIn('status', ['done', 'wontdo'])
-            ->with(['project', 'assignee', 'user'])
             ->select('items.*')
-            ->selectRaw("{$activityTimestampExpression} as activity_sort_at")
+            ->selectRaw("{$activityTimestampExpression} as activity_sort_at");
+
+        $items = Item::query()
+            ->fromSub($baseQuery, 'items')
+            ->with(['project', 'assignee', 'user'])
             ->orderByDesc('activity_sort_at')
-            ->orderByDesc('updated_at')
+            ->orderByDesc('id')
             ->cursorPaginate($perPage);
 
         $itemCollection = collect($items->items());
@@ -101,7 +104,7 @@ final class ActivityLogController extends Controller
         $logs = AuditLog::query()
             ->where('resource_type', 'item')
             ->whereIn('resource_id', $itemIds)
-            ->whereIn('action', ['item_created', 'item_updated'])
+            ->where('action', 'item_updated')
             ->with('user:id,name')
             ->orderByDesc('created_at')
             ->get();
@@ -136,11 +139,6 @@ final class ActivityLogController extends Controller
         $afterStatus = data_get($log->metadata, 'after.status');
         if (is_string($afterStatus)) {
             return $afterStatus;
-        }
-
-        $createdStatus = data_get($log->metadata, 'status');
-        if (is_string($createdStatus)) {
-            return $createdStatus;
         }
 
         return null;
