@@ -464,7 +464,7 @@ final class ItemAssignmentTest extends TestCase
             ->assertJsonPath('message', 'Assignees can only update status, description, and notes.');
     }
 
-    public function test_assignee_cannot_update_description(): void
+    public function test_assignee_can_update_description(): void
     {
         $owner = User::factory()->create();
         $assignee = User::factory()->create();

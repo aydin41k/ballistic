@@ -450,8 +450,8 @@ final class McpAuthContextTest extends TestCase
         ]);
 
         $this->assertFalse($this->auth->canUpdateItemFields($item, ['title']));
-        $this->assertFalse($this->auth->canUpdateItemFields($item, ['description']));
         $this->assertFalse($this->auth->canUpdateItemFields($item, ['project_id']));
+        $this->assertFalse($this->auth->canUpdateItemFields($item, ['due_date']));
     }
 
     public function test_assignee_can_self_unassign(): void
