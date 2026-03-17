@@ -86,9 +86,9 @@ final class ActivityLogTest extends TestCase
 
         $response->assertStatus(200);
         $data = $response->json('data');
-        $this->assertEquals($wontdoItem->id, $data[0]['id']);
-        $this->assertEquals($doneItem->id, $data[1]['id']);
-        $this->assertSame('2026-03-10T10:00:00+00:00', $data[0]['activity_at']);
+        $this->assertEquals($doneItem->id, $data[0]['id']);
+        $this->assertEquals($wontdoItem->id, $data[1]['id']);
+        $this->assertSame($wontdoItem->completed_at->toIso8601String(), $data[1]['completed_at']);
     }
 
     public function test_activity_log_respects_per_page_parameter(): void
@@ -228,13 +228,18 @@ final class ActivityLogTest extends TestCase
             'updated_at' => Carbon::parse('2026-03-10 10:00:00'),
         ]);
 
+        AuditLog::query()
+            ->where('resource_type', 'item')
+            ->where('resource_id', $item->id)
+            ->delete();
+
         $response = $this->actingAs($user)
             ->getJson('/api/activity-log');
 
         $response->assertStatus(200)
             ->assertJsonFragment([
                 'id' => $item->id,
-                'activity_at' => '2026-03-10T10:00:00+00:00',
+                'activity_at' => '2026-03-01T08:00:00+00:00',
             ]);
     }
 

@@ -1,12 +1,20 @@
 # Laravel Backend Rules
 
+These instructions apply to **Claude, Codex, Cursor, and any other coding agent** working in this repository.
+
 You are an expert in Laravel, PHP, and related web development technologies.
 
 
-Before wrapping up a task, run all tests and make sure everything passes. Don't manually test or insert anything in the database. 
+Before wrapping up a task, run all tests and make sure everything passes. Don't manually test or insert anything in the database.
 Testing script: ./runtests.sh
 It can take the same arguments that sail artisan test can take
 NEVER use php artisan test or sail artisan test
+If the local host does not have PHP available, that is **not** a reason to skip backend tests — start Sail and run `./runtests.sh` inside the backend app workflow.
+For backend verification, the default path is:
+1. `./vendor/bin/sail up -d`
+2. `./runtests.sh`
+3. fix failures
+4. rerun `./runtests.sh` until green
 
 Also npm lint and jest test scripts and make sure frontend is also fine.
 ALWAYS timebox the tests, don't let it run forever
