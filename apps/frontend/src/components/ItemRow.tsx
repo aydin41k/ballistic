@@ -3,7 +3,7 @@
 import { cycleStatus } from "@/lib/status";
 import { updateStatus } from "@/lib/api";
 import type { Item } from "@/types";
-import { useOptimistic, startTransition } from "react";
+import { useOptimistic, startTransition, useEffect, useRef } from "react";
 import { StatusCircle } from "./StatusCircle";
 import { useFeatureFlags } from "@/hooks/useFeatureFlags";
 
@@ -42,6 +42,8 @@ export function ItemRow({
   onError,
 }: Props) {
   const { dates, delegation } = useFeatureFlags();
+  const pendingStatusRef = useRef<Item["status"] | null>(null);
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [optimisticItem, addOptimistic] = useOptimistic(
     item,
@@ -57,47 +59,73 @@ export function ItemRow({
     }),
   );
 
+  useEffect(() => {
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+    };
+  }, []);
+
   function onToggle() {
     const nextStatus = cycleStatus(optimisticItem.status);
 
     const completedAt =
-      nextStatus === "done"
+      nextStatus === "done" || nextStatus === "wontdo"
         ? new Date().toISOString()
-        : item.status === "done"
+        : optimisticItem.status === "done" || optimisticItem.status === "wontdo"
           ? null
-          : item.completed_at;
+          : optimisticItem.completed_at;
 
     // Update UI immediately (optimistic update)
     startTransition(() => {
       addOptimistic(nextStatus);
     });
 
-    // Update parent state with correct completed_at
-    onChange({
-      ...item,
-      status: nextStatus,
-      completed_at: completedAt,
+    // Update parent state immediately
+    onChange((current) => {
+      if (current.id !== item.id) return current;
+      return {
+        ...current,
+        status: nextStatus,
+        completed_at: completedAt,
+      };
     });
 
-    // Reconcile with server - merge authoritative timestamps
-    // without overwriting status (user may toggle again mid-flight)
-    updateStatus(item.id, nextStatus)
-      .then((serverItem) => {
-        onChange((current) => {
-          if (current.id !== item.id) return current;
-          if (current.status !== nextStatus) return current;
-          return {
-            ...current,
-            completed_at: serverItem.completed_at,
-            updated_at: serverItem.updated_at,
-          };
+    pendingStatusRef.current = nextStatus;
+
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+
+    debounceTimerRef.current = setTimeout(() => {
+      const statusToSend = pendingStatusRef.current;
+      if (!statusToSend) return;
+
+      updateStatus(item.id, statusToSend)
+        .then((serverItem) => {
+          onChange((current) => {
+            if (current.id !== item.id) return current;
+            if (current.status !== statusToSend) return current;
+            return {
+              ...current,
+              status: serverItem.status,
+              completed_at: serverItem.completed_at,
+              updated_at: serverItem.updated_at,
+            };
+          });
+        })
+        .catch((error) => {
+          console.error("Failed to update status:", error);
+          onChange(item);
+          onError("Failed to update status. Change reverted.");
+        })
+        .finally(() => {
+          if (pendingStatusRef.current === statusToSend) {
+            pendingStatusRef.current = null;
+          }
         });
-      })
-      .catch((error) => {
-        console.error("Failed to update status:", error);
-        onChange(item);
-        onError("Failed to update status. Change reverted.");
-      });
+    }, 3000);
   }
 
   function onMove(direction: "up" | "down" | "top") {
