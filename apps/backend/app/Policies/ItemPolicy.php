@@ -135,4 +135,3 @@ final class ItemPolicy
         return $item->assignee_id !== null && (string) $user->id === (string) $item->assignee_id;
     }
 }
-
