@@ -13,6 +13,7 @@ use App\Mcp\Tools\DeleteItemTool;
 use App\Mcp\Tools\SearchItemsTool;
 use App\Mcp\Tools\UpdateItemTool;
 use App\Mcp\Tools\UpdateProjectTool;
+use App\Mcp\Tools\UpdateProfileTool;
 use App\Models\Item;
 use App\Models\Project;
 use App\Models\Tag;
@@ -372,6 +373,34 @@ final class McpToolsTest extends TestCase
         $this->assertStringContainsString('owner', strtolower($resultArray['content'][0]['text']));
     }
 
+    public function test_update_profile_tool_updates_notes_via_new_tool(): void
+    {
+        $tool = new UpdateProfileTool($this->auth);
+
+        $result = $tool->handle([
+            'notes' => 'Updated MCP notes',
+        ]);
+
+        $resultArray = $result->toArray();
+        $this->assertFalse($resultArray['isError']);
+
+        $this->user->refresh();
+        $this->assertEquals('Updated MCP notes', $this->user->notes);
+    }
+
+    public function test_update_profile_tool_validates_avatar_url_via_new_tool(): void
+    {
+        $tool = new UpdateProfileTool($this->auth);
+
+        $result = $tool->handle([
+            'avatar_url' => 'not-a-url',
+        ]);
+
+        $resultArray = $result->toArray();
+        $this->assertTrue($resultArray['isError']);
+        $this->assertStringContainsString('Profile validation failed', $resultArray['content'][0]['text']);
+    }
+
     // ========================================================================
     // SEARCH ITEMS TOOL TESTS
     // ========================================================================
@@ -491,6 +520,49 @@ final class McpToolsTest extends TestCase
         $resultArray = $result->toArray();
         $this->assertTrue($resultArray['isError']);
         $this->assertStringContainsString('colour', strtolower($resultArray['content'][0]['text']));
+    }
+
+    // ========================================================================
+    // UPDATE PROFILE TOOL TESTS
+    // ========================================================================
+
+    public function test_update_profile_tool_updates_notes(): void
+    {
+        $tool = new UpdateProfileTool($this->auth);
+
+        $result = $tool->handle([
+            'notes' => 'Updated from MCP',
+        ]);
+
+        $resultArray = $result->toArray();
+        $this->assertFalse($resultArray['isError']);
+
+        $this->user->refresh();
+        $this->assertEquals('Updated from MCP', $this->user->notes);
+    }
+
+    public function test_update_profile_tool_validates_avatar_url(): void
+    {
+        $tool = new UpdateProfileTool($this->auth);
+
+        $result = $tool->handle([
+            'avatar_url' => 'not-a-url',
+        ]);
+
+        $resultArray = $result->toArray();
+        $this->assertTrue($resultArray['isError']);
+        $this->assertStringContainsString('Profile validation failed', $resultArray['content'][0]['text']);
+    }
+
+    public function test_update_profile_tool_requires_at_least_one_field(): void
+    {
+        $tool = new UpdateProfileTool($this->auth);
+
+        $result = $tool->handle([]);
+
+        $resultArray = $result->toArray();
+        $this->assertTrue($resultArray['isError']);
+        $this->assertStringContainsString('Provide at least one profile field to update', $resultArray['content'][0]['text']);
     }
 
     // ========================================================================

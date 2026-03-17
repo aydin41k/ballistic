@@ -178,6 +178,7 @@ final class McpServerTest extends TestCase
         $this->assertContains('update_project', $toolNames);
         $this->assertContains('create_tag', $toolNames);
         $this->assertContains('lookup_users', $toolNames);
+        $this->assertContains('update_profile', $toolNames);
     }
 
     public function test_tools_have_valid_schemas(): void
@@ -199,6 +200,28 @@ final class McpServerTest extends TestCase
             $this->assertArrayHasKey('type', $tool['inputSchema']);
             $this->assertEquals('object', $tool['inputSchema']['type']);
         }
+    }
+
+    public function test_update_profile_tool_can_update_notes_via_new_tool(): void
+    {
+        $response = $this->withToken($this->token)->postJson('/mcp', [
+            'jsonrpc' => '2.0',
+            'id' => 999,
+            'method' => 'tools/call',
+            'params' => [
+                'name' => 'update_profile',
+                'arguments' => [
+                    'notes' => 'Ballistic\n- cleaned via MCP',
+                ],
+            ],
+        ]);
+
+        $response->assertStatus(200);
+        $data = $response->json();
+
+        $this->assertFalse($data['result']['isError'] ?? false);
+        $this->user->refresh();
+        $this->assertEquals('Ballistic\n- cleaned via MCP', $this->user->notes);
     }
 
     // --- Resources/List Tests ---
@@ -621,6 +644,28 @@ final class McpServerTest extends TestCase
             'color' => '#FF0000',
             'user_id' => $this->user->id,
         ]);
+    }
+
+    public function test_update_profile_tool_updates_notes(): void
+    {
+        $response = $this->withToken($this->token)->postJson('/mcp', [
+            'jsonrpc' => '2.0',
+            'id' => 99,
+            'method' => 'tools/call',
+            'params' => [
+                'name' => 'update_profile',
+                'arguments' => [
+                    'notes' => 'Ballistic MCP updated notes',
+                ],
+            ],
+        ]);
+
+        $response->assertStatus(200);
+        $data = $response->json();
+
+        $this->assertFalse($data['result']['isError'] ?? false);
+        $this->user->refresh();
+        $this->assertSame('Ballistic MCP updated notes', $this->user->notes);
     }
 
     // --- Tool Call Tests: lookup_users ---

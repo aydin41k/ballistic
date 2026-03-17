@@ -20,6 +20,7 @@ use App\Mcp\Tools\DeleteItemTool;
 use App\Mcp\Tools\LookupUsersTool;
 use App\Mcp\Tools\SearchItemsTool;
 use App\Mcp\Tools\UpdateItemTool;
+use App\Mcp\Tools\UpdateProfileTool;
 use App\Mcp\Tools\UpdateProjectTool;
 use Laravel\Mcp\Server;
 use Laravel\Mcp\Server\Transport\StdioTransport;
@@ -99,7 +100,7 @@ final class BallisticServer extends Server
 
         Task Assignment:
         - Users can only assign tasks to connected users (mutual consent required)
-        - Assignees can update status and assignee_notes only
+        - Assignees can update status, description, and assignee_notes only
         - Assignees can reject tasks by setting assignee_id to null
 
         Best Practices:
@@ -132,6 +133,7 @@ final class BallisticServer extends Server
 
         // User operations
         LookupUsersTool::class,
+        UpdateProfileTool::class,
     ];
 
     /**
