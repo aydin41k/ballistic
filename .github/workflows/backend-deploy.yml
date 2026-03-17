@@ -4,19 +4,19 @@
 name: Backend Build and deploy
 
 on:
-    workflow_run:
-        workflows: ["Backend Tester"]
-        types: [completed]
-        branches:
-            - master
+  push:
+    branches:
+      - master
+    paths:
+      - "apps/backend/**"
+      - ".github/workflows/backend-deploy.yml"
 
 concurrency:
-    group: backend-tester-${{ github.event.workflow_run.head_sha }}
-    cancel-in-progress: true
+  group: backend-deploy-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -27,8 +27,6 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-        with:
-            ref: ${{ github.event.workflow_run.head_sha }}
 
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
@@ -47,10 +45,10 @@ jobs:
 
       - name: Create SQLite database file
         run: touch database/database.sqlite
-        
+
       - name: Publish Wayfinder
         run: php artisan wayfinder:generate
-        
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -83,15 +81,15 @@ jobs:
     runs-on: ubuntu-latest
     needs: build
     permissions:
-      id-token: write #This is required for requesting the JWT
-      contents: read #This is required for actions/checkout
+      id-token: write
+      contents: read
 
     steps:
       - name: Download artifact from build job
         uses: actions/download-artifact@v4
         with:
           name: php-app
-      
+
       - name: Login to Azure
         uses: azure/login@v2
         with:
@@ -99,11 +97,10 @@ jobs:
           tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_19E926FB270A4504A4C11FAC738FDC94 }}
           subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_4E33C29952DD42CB96A3C949003B9C76 }}
 
-      - name: 'Deploy to Azure Web App'
+      - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v3
         id: deploy-to-webapp
         with:
           app-name: 'ballisticserver'
           slot-name: 'Production'
           package: .
-          
