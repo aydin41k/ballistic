@@ -25,5 +25,8 @@ Use the project's actual test path:
 
 ## General
 - Before wrapping up, make sure the relevant checks actually passed.
+- Before any push, run **all CI/CD-equivalent checks locally** for the affected repo areas, not just a subset that seems relevant.
+- Pull/fetch first, then run the full local check set, then push only if green.
+- Do not use GitHub Actions as the first place to discover avoidable lint/test failures.
 - Follow existing repo instructions in `CLAUDE.md` too; this file is here to make sure non-Claude agents get the same rules.
 - Use Australian spelling in user-facing/project text.
