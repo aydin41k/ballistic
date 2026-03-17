@@ -2509,7 +2509,7 @@ final class McpServerTest extends TestCase
     // EDGE CASE TESTS - ASSIGNEE PERMISSIONS
     // ============================================================================
 
-    public function test_assignee_cannot_update_description(): void
+    public function test_assignee_can_update_description(): void
     {
         $owner = User::factory()->create();
         $item = Item::factory()->create([
@@ -2534,7 +2534,8 @@ final class McpServerTest extends TestCase
         $response->assertStatus(200);
         $data = $response->json();
 
-        $this->assertTrue($data['result']['isError']);
+        $this->assertFalse($data['result']['isError'] ?? false);
+        $this->assertStringContainsString('Hacked', json_encode($data['result']));
     }
 
     public function test_assignee_cannot_update_project(): void

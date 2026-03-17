@@ -411,7 +411,7 @@ final class ItemAssignmentTest extends TestCase
         $this->assertEquals('accepted', $connection->status);
     }
 
-    public function test_assignee_can_only_update_status_and_notes(): void
+    public function test_assignee_can_only_update_status_description_and_notes(): void
     {
         $owner = User::factory()->create();
         $assignee = User::factory()->create();
@@ -461,7 +461,7 @@ final class ItemAssignmentTest extends TestCase
             ]);
 
         $response->assertStatus(403)
-            ->assertJsonPath('message', 'Assignees can only update status and notes.');
+            ->assertJsonPath('message', 'Assignees can only update status, description, and notes.');
     }
 
     public function test_assignee_cannot_update_description(): void
@@ -480,8 +480,12 @@ final class ItemAssignmentTest extends TestCase
                 'description' => 'Changed description',
             ]);
 
-        $response->assertStatus(403)
-            ->assertJsonPath('message', 'Assignees can only update status and notes.');
+        $response->assertStatus(200);
+
+        $this->assertDatabaseHas('items', [
+            'id' => $item->id,
+            'description' => 'Changed description',
+        ]);
     }
 
     public function test_assignee_cannot_reassign_item(): void
@@ -503,7 +507,7 @@ final class ItemAssignmentTest extends TestCase
             ]);
 
         $response->assertStatus(403)
-            ->assertJsonPath('message', 'Assignees can only update status and notes.');
+            ->assertJsonPath('message', 'Assignees can only update status, description, and notes.');
     }
 
     public function test_owner_can_update_any_field(): void
@@ -1006,6 +1010,6 @@ final class ItemAssignmentTest extends TestCase
             ]);
 
         $response->assertStatus(403)
-            ->assertJsonPath('message', 'Assignees can only update status and notes.');
+            ->assertJsonPath('message', 'Assignees can only update status, description, and notes.');
     }
 }

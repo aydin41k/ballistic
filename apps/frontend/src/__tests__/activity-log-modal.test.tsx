@@ -93,7 +93,7 @@ describe("ActivityLogModal", () => {
       screen.getByText("Marked won’t do by Mia Manager"),
     ).toBeInTheDocument();
     expect(screen.getByText(/9 Mar 2026|09 Mar 2026/)).toBeInTheDocument();
-    expect(screen.getByText(/10 Mar 2026/)).toBeInTheDocument();
+    expect(screen.getByText(/8 Mar 2026|08 Mar 2026/)).toBeInTheDocument();
   });
 
   test("uses updated_at for wontdo items", () => {
@@ -114,6 +114,6 @@ describe("ActivityLogModal", () => {
         created_at: "2026-03-01T09:00:00Z",
         updated_at: "2026-03-10T10:00:00Z",
       }),
-    ).toBe("2026-03-10T10:00:00Z");
+    ).toBe("2026-03-08T08:30:00Z");
   });
 });

@@ -222,13 +222,13 @@ final class ItemController extends Controller
         $currentUser = Auth::user();
         $isOwner = (string) $item->user_id === (string) $currentUser->id;
 
-        // Enforce field restrictions for assignees (they can only update status, assignee_notes, and self-unassign)
+        // Enforce field restrictions for assignees (they can only update status, description, assignee_notes, and self-unassign)
         if (! $isOwner) {
             $fieldsBeingUpdated = array_keys($validated);
             $policy = new ItemPolicy;
             if (! $policy->canAssigneeUpdateFields($currentUser, $item, $fieldsBeingUpdated, $validated)) {
                 return response()->json(
-                    ['message' => 'Assignees can only update status and notes.'],
+                    ['message' => 'Assignees can only update status, description, and notes.'],
                     Response::HTTP_FORBIDDEN
                 );
             }

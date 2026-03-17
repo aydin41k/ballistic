@@ -53,7 +53,7 @@ final class ActivityLogController extends Controller
 
                 $item->setAttribute(
                     'activity_at',
-                    $metadata['activity_at'] ?? $fallbackActivityAt ?? $item->updated_at?->toIso8601String()
+                    $fallbackActivityAt ?? $item->updated_at?->toIso8601String()
                 );
                 $item->setAttribute('completed_by', $metadata['completed_by'] ?? null);
                 $item->setAttribute(

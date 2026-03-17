@@ -52,10 +52,6 @@ function getAssignmentLabel(item: ActivityLogItem): string | null {
 }
 
 export function getActivityTimestamp(item: ActivityLogItem): string {
-  if (item.status === "wontdo") {
-    return item.updated_at;
-  }
-
   return item.activity_at || item.completed_at || item.updated_at;
 }
 

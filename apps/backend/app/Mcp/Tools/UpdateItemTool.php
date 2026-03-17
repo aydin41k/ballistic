@@ -29,7 +29,7 @@ final class UpdateItemTool extends Tool
 
     public function description(): string
     {
-        return 'Update an existing todo item. Owners can update all fields. Assignees can only update status and assignee_notes, or set assignee_id to null to reject the task.';
+        return 'Update an existing todo item. Owners can update all fields. Assignees can only update status, description, and assignee_notes, or set assignee_id to null to reject the task.';
     }
 
     public function schema(ToolInputSchema $schema): ToolInputSchema
