@@ -88,6 +88,8 @@ final class ActivityLogTest extends TestCase
         $data = $response->json('data');
         $this->assertEquals($doneItem->id, $data[0]['id']);
         $this->assertEquals($wontdoItem->id, $data[1]['id']);
+        $this->assertSame($doneItem->completed_at->toIso8601String(), $data[0]['activity_at']);
+        $this->assertSame($wontdoItem->completed_at->toIso8601String(), $data[1]['activity_at']);
         $this->assertSame($wontdoItem->completed_at->toIso8601String(), $data[1]['completed_at']);
     }
 
