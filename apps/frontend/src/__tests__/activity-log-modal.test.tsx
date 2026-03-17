@@ -117,4 +117,3 @@ describe("ActivityLogModal", () => {
     ).toBe("2026-03-08T08:30:00Z");
   });
 });
-
