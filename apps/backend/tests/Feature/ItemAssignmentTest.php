@@ -563,11 +563,11 @@ final class ItemAssignmentTest extends TestCase
     {
         $owner = User::factory()->create();
 
-        $item1 = Item::factory()->create([
+        $item1 = Item::factory()->todo()->create([
             'user_id' => $owner->id,
             'position' => 0,
         ]);
-        $item2 = Item::factory()->create([
+        $item2 = Item::factory()->todo()->create([
             'user_id' => $owner->id,
             'position' => 1,
         ]);

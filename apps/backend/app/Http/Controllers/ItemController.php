@@ -383,11 +383,11 @@ final class ItemController extends Controller
     }
 
     /**
-     * Reorder items by updating their positions.
+     * Reorder active items by updating their positions.
      *
      * Only the owner can reorder items (not assignees).
-     * This endpoint renumbers all non-submitted items to positions after the submitted
-     * range, preventing position conflicts with completed/cancelled items.
+     * Reordering is limited to active items (`todo` and `doing`) so completed
+     * and cancelled items keep their existing positions and timestamps.
      */
     public function reorder(Request $request): JsonResponse
     {
@@ -412,9 +412,15 @@ final class ItemController extends Controller
         DB::transaction(function () use ($validated, $submittedIds): void {
             // Collect only items owned by this user in a single query
             $ownedIds = Item::where('user_id', Auth::id())
+                ->whereIn('status', ['todo', 'doing'])
                 ->whereIn('id', $submittedIds)
                 ->pluck('id')
                 ->flip();
+            $reorderedItemIds = $ownedIds->keys()->all();
+
+            if ($reorderedItemIds === []) {
+                return;
+            }
 
             $maxPosition = -1;
 
@@ -429,11 +435,11 @@ final class ItemController extends Controller
                 }
             }
 
-            // Renumber non-submitted items to positions after the submitted range.
-            // This prevents position double-ups with completed/cancelled items
-            // that the client filters out before reordering.
+            // Renumber only other active items to positions after the submitted range.
+            // Completed/cancelled items are intentionally left untouched.
             $otherItemIds = Item::where('user_id', Auth::id())
-                ->whereNotIn('id', $submittedIds)
+                ->whereIn('status', ['todo', 'doing'])
+                ->whereNotIn('id', $reorderedItemIds)
                 ->orderBy('position')
                 ->pluck('id');
 

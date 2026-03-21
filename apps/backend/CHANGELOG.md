@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.17.04] - 2026-03-21
+
+### Added
+
+- **Local testing seeder** — added `LocalTestingSeeder` to create a deterministic local admin user, a connected collaborator, two projects, and a spread of inbox, overdue, scheduled, recurring, delegated, completed, and `wontdo` items for manual testing
+
+### Fixed
+
+- **Active-only item reordering** — `POST /api/items/reorder` now updates positions only for `todo` and `doing` items, leaving `done` and `wontdo` items untouched so completed/cancelled rows no longer get incidental `updated_at` changes during reordering
+
+### Tests
+
+- Added `LocalTestingSeederTest` — verifies the local demo seeder is rerunnable without duplicating records and preserves the expected seeded dataset
+- Updated item reorder coverage to assert completed/cancelled items keep both their positions and `updated_at`, and that submitted `done`/`wontdo` IDs are ignored
+
 ## [0.17.03] - 2026-03-14
 
 ### Changed
