@@ -410,7 +410,7 @@ final class ItemController extends Controller
         }
 
         DB::transaction(function () use ($validated, $submittedIds): void {
-            // Collect only items owned by this user in a single query
+            // Collect only items owned by this user in a single query.
             $ownedIds = Item::where('user_id', Auth::id())
                 ->whereIn('status', ['todo', 'doing'])
                 ->whereIn('id', $submittedIds)
@@ -422,16 +422,41 @@ final class ItemController extends Controller
                 return;
             }
 
+            // Preserve completed/cancelled rows exactly as they are, but keep their
+            // positions reserved so active-item reordering cannot create duplicates.
+            $reservedPositions = Item::where('user_id', Auth::id())
+                ->whereIn('status', ['done', 'wontdo'])
+                ->pluck('position')
+                ->map(static fn (mixed $position): int => (int) $position)
+                ->flip();
+            $assignedPositions = $reservedPositions->all();
+
+            $claimNextAvailablePosition = static function (int $desiredPosition) use (&$assignedPositions): int {
+                $position = $desiredPosition;
+
+                while (array_key_exists($position, $assignedPositions)) {
+                    $position++;
+                }
+
+                $assignedPositions[$position] = true;
+
+                return $position;
+            };
+
             $maxPosition = -1;
 
             foreach ($validated['items'] as $itemData) {
-                if ($ownedIds->has($itemData['id'])) {
-                    Item::where('id', $itemData['id'])
-                        ->update(['position' => $itemData['position']]);
+                if (! $ownedIds->has($itemData['id'])) {
+                    continue;
+                }
 
-                    if ($itemData['position'] > $maxPosition) {
-                        $maxPosition = $itemData['position'];
-                    }
+                $position = $claimNextAvailablePosition($itemData['position']);
+
+                Item::where('id', $itemData['id'])
+                    ->update(['position' => $position]);
+
+                if ($position > $maxPosition) {
+                    $maxPosition = $position;
                 }
             }
 
@@ -443,11 +468,15 @@ final class ItemController extends Controller
                 ->orderBy('position')
                 ->pluck('id');
 
-            $nextPosition = $maxPosition + 1;
+            $nextDesiredPosition = $maxPosition + 1;
 
             foreach ($otherItemIds as $otherId) {
+                $position = $claimNextAvailablePosition($nextDesiredPosition);
+
                 Item::where('id', $otherId)
-                    ->update(['position' => $nextPosition++]);
+                    ->update(['position' => $position]);
+
+                $nextDesiredPosition = $position + 1;
             }
         });
 

@@ -694,6 +694,57 @@ final class ItemTest extends TestCase
         $this->assertDatabaseHas('items', ['id' => $wontdoItem->id, 'position' => 2]);
     }
 
+    public function test_reorder_preserves_unique_positions_when_completed_items_keep_theirs(): void
+    {
+        $user = User::factory()->create();
+
+        $activeA = Item::factory()->todo()->create([
+            'user_id' => $user->id,
+            'title' => 'Active A',
+            'position' => 3,
+        ]);
+        $activeB = Item::factory()->todo()->create([
+            'user_id' => $user->id,
+            'title' => 'Active B',
+            'position' => 4,
+        ]);
+        $doneItem = Item::factory()->done()->create([
+            'user_id' => $user->id,
+            'title' => 'Done Item',
+            'position' => 0,
+        ]);
+        $wontdoItem = Item::factory()->wontdo()->create([
+            'user_id' => $user->id,
+            'title' => 'Wontdo Item',
+            'position' => 2,
+        ]);
+
+        $response = $this->actingAs($user)->postJson('/api/items/reorder', [
+            'items' => [
+                ['id' => $activeB->id, 'position' => 0],
+                ['id' => $activeA->id, 'position' => 1],
+            ],
+        ]);
+
+        $response->assertStatus(200);
+
+        $activeB->refresh();
+        $activeA->refresh();
+
+        $this->assertSame(1, $activeB->position);
+        $this->assertSame(3, $activeA->position);
+        $this->assertDatabaseHas('items', ['id' => $doneItem->id, 'position' => 0]);
+        $this->assertDatabaseHas('items', ['id' => $wontdoItem->id, 'position' => 2]);
+
+        $positions = Item::query()
+            ->where('user_id', $user->id)
+            ->orderBy('position')
+            ->pluck('position')
+            ->toArray();
+
+        $this->assertCount(4, array_unique($positions));
+    }
+
     // --- Recurrence BYDAY Tests ---
 
     public function test_weekly_byday_generates_multiple_days_per_week(): void
