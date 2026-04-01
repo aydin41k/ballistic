@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Mcp\Resources;
 
 use App\Mcp\Services\McpAuthContext;
+use Laravel\Mcp\Request;
+use Laravel\Mcp\Response;
 use Laravel\Mcp\Server\Resource;
 
 /**
@@ -38,7 +40,7 @@ final class ItemsResource extends Resource
         return 'application/json';
     }
 
-    public function read(): string
+    public function handle(Request $request): Response
     {
         $items = $this->auth->getItems(['limit' => 100]);
         $userId = $this->auth->user()->id;
@@ -69,6 +71,6 @@ final class ItemsResource extends Resource
             ])->toArray(),
         ];
 
-        return json_encode($data, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR);
+        return Response::json($data);
     }
 }

@@ -5,19 +5,20 @@ declare(strict_types=1);
 namespace App\Mcp\Resources;
 
 use App\Mcp\Services\McpAuthContext;
-use App\Models\Item;
+use Laravel\Mcp\Request;
+use Laravel\Mcp\Response;
+use Laravel\Mcp\Server\Contracts\HasUriTemplate;
 use Laravel\Mcp\Server\Resource;
+use Laravel\Mcp\Support\UriTemplate;
 
 /**
  * MCP Resource for a single item.
  *
  * This is a template resource that requires an item ID parameter.
  */
-final class ItemResource extends Resource
+final class ItemResource extends Resource implements HasUriTemplate
 {
     protected string $description = 'Detailed information about a specific todo item.';
-
-    private ?string $itemId = null;
 
     public function __construct(
         private readonly McpAuthContext $auth
@@ -33,9 +34,9 @@ final class ItemResource extends Resource
         return 'Item Detail';
     }
 
-    public function uri(): string
+    public function uriTemplate(): UriTemplate
     {
-        return 'ballistic://items/{itemId}';
+        return new UriTemplate('ballistic://items/{itemId}');
     }
 
     public function mimeType(): string
@@ -43,31 +44,22 @@ final class ItemResource extends Resource
         return 'application/json';
     }
 
-    /**
-     * Set the item ID for this resource.
-     */
-    public function withItemId(string $itemId): self
+    public function handle(Request $request): Response
     {
-        $clone = clone $this;
-        $clone->itemId = $itemId;
+        $itemId = $request->string('itemId')->toString();
 
-        return $clone;
-    }
-
-    public function read(): string
-    {
-        if ($this->itemId === null) {
-            return json_encode([
+        if ($itemId === '') {
+            return Response::json([
                 'error' => 'Item ID required. Use the URI template: ballistic://items/{itemId}',
-            ], JSON_THROW_ON_ERROR);
+            ]);
         }
 
-        $item = $this->auth->getItem($this->itemId);
+        $item = $this->auth->getItem($itemId);
 
         if ($item === null) {
-            return json_encode([
-                'error' => "Item not found or access denied: {$this->itemId}",
-            ], JSON_THROW_ON_ERROR);
+            return Response::json([
+                'error' => "Item not found or access denied: {$itemId}",
+            ]);
         }
 
         $item->load(['project', 'tags', 'assignee', 'user', 'recurrenceParent', 'recurrenceInstances']);
@@ -137,6 +129,6 @@ final class ItemResource extends Resource
             'updated_at' => $item->updated_at->toIso8601String(),
         ];
 
-        return json_encode($data, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR);
+        return Response::json($data);
     }
 }

@@ -6,11 +6,12 @@ namespace App\Mcp\Tools;
 
 use App\Mcp\Services\McpAuthContext;
 use Generator;
+use Illuminate\Contracts\JsonSchema\JsonSchema;
+use Laravel\Mcp\Request;
+use Laravel\Mcp\Response;
 use Laravel\Mcp\Server\Tool;
 use Laravel\Mcp\Server\Tools\Annotations\IsIdempotent;
 use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
-use Laravel\Mcp\Server\Tools\ToolInputSchema;
-use Laravel\Mcp\Server\Tools\ToolResult;
 
 /**
  * Search and filter todo items.
@@ -33,46 +34,42 @@ final class SearchItemsTool extends Tool
         return 'Search and filter todo items. Returns items you own or are assigned to you. Use filters to narrow results.';
     }
 
-    public function schema(ToolInputSchema $schema): ToolInputSchema
+    public function schema(JsonSchema $schema): array
     {
-        return $schema
-            ->string('search')
-            ->description('Text to search for in title and description')
-            ->raw('scope', [
-                'type' => 'string',
-                'enum' => ['active', 'planned', 'all'],
-                'description' => 'Filter by scope: active (today and past), planned (future scheduled), or all (default: all)',
-            ])
-            ->raw('status', [
-                'oneOf' => [
-                    ['type' => 'string', 'enum' => ['todo', 'doing', 'done', 'wontdo']],
-                    ['type' => 'array', 'items' => ['type' => 'string', 'enum' => ['todo', 'doing', 'done', 'wontdo']]],
-                ],
-                'description' => 'Filter by status (single value or array)',
-            ])
-            ->string('project_id')
-            ->description('Filter by project UUID, or "inbox" for items with no project')
-            ->string('tag_id')
-            ->description('Filter by tag UUID')
-            ->boolean('assigned_to_me')
-            ->description('If true, only show items assigned to you by others')
-            ->boolean('delegated')
-            ->description('If true, only show items you own but have assigned to others')
-            ->string('scheduled_from')
-            ->description('Filter items scheduled on or after this date (ISO 8601: YYYY-MM-DD)')
-            ->string('scheduled_to')
-            ->description('Filter items scheduled on or before this date (ISO 8601: YYYY-MM-DD)')
-            ->string('due_from')
-            ->description('Filter items due on or after this date (ISO 8601: YYYY-MM-DD)')
-            ->string('due_to')
-            ->description('Filter items due on or before this date (ISO 8601: YYYY-MM-DD)')
-            ->integer('limit')
-            ->description('Maximum number of items to return (default: 25, max: 100)');
+        return [
+            'search' => $schema->string()
+                ->description('Text to search for in item titles and descriptions.'),
+            'scope' => $schema->string()
+                ->enum(['active', 'planned', 'all'])
+                ->description('Filter by scope: active, planned, or all.'),
+            'status' => $schema->array()
+                ->items($schema->string()->enum(['todo', 'doing', 'done', 'wontdo']))
+                ->description('Filter by one or more statuses. Backwards-compatible callers may still pass a single string.'),
+            'project_id' => $schema->string()
+                ->description('Filter by project UUID, or use inbox for items with no project.'),
+            'tag_id' => $schema->string()
+                ->description('Filter by tag UUID.'),
+            'assigned_to_me' => $schema->boolean()
+                ->description('If true, only show items assigned to you by other users.'),
+            'delegated' => $schema->boolean()
+                ->description('If true, only show items you own but have assigned to other users.'),
+            'scheduled_from' => $schema->string()
+                ->description('Filter items scheduled on or after this date in ISO 8601 format YYYY-MM-DD.'),
+            'scheduled_to' => $schema->string()
+                ->description('Filter items scheduled on or before this date in ISO 8601 format YYYY-MM-DD.'),
+            'due_from' => $schema->string()
+                ->description('Filter items due on or after this date in ISO 8601 format YYYY-MM-DD.'),
+            'due_to' => $schema->string()
+                ->description('Filter items due on or before this date in ISO 8601 format YYYY-MM-DD.'),
+            'limit' => $schema->integer()
+                ->description('Maximum number of items to return.'),
+        ];
     }
 
-    public function handle(array $arguments): ToolResult|Generator
+    public function handle(Request $request): Response|Generator
     {
         try {
+            $arguments = $request->all();
             // Build filters from arguments
             $filters = [];
 
@@ -95,7 +92,7 @@ final class SearchItemsTool extends Tool
                     try {
                         new \DateTimeImmutable($filters[$field]);
                     } catch (\Exception) {
-                        return ToolResult::error("Invalid {$field} format. Use ISO 8601 format: YYYY-MM-DD");
+                        return Response::error("Invalid {$field} format. Use ISO 8601 format: YYYY-MM-DD");
                     }
                 }
             }
@@ -109,7 +106,7 @@ final class SearchItemsTool extends Tool
                 'result_count' => $items->count(),
             ]);
 
-            return ToolResult::json([
+            return Response::json([
                 'success' => true,
                 'count' => $items->count(),
                 'filters_applied' => $filters,
@@ -145,7 +142,7 @@ final class SearchItemsTool extends Tool
                 'error' => $e->getMessage(),
             ]);
 
-            return ToolResult::error("Failed to search items: {$e->getMessage()}");
+            return Response::error("Failed to search items: {$e->getMessage()}");
         }
     }
 }

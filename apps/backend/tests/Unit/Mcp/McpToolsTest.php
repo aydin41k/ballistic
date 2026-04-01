@@ -20,8 +20,24 @@ use App\Models\Tag;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Laravel\Mcp\Request;
+use Laravel\Mcp\Response;
 use Laravel\Mcp\Server\Tools\ToolResult;
 use Tests\TestCase;
+
+if (! class_exists(ToolResult::class) && class_exists(Response::class)) {
+    class_alias(Response::class, ToolResult::class);
+}
+
+if (! Response::hasMacro('toArray')) {
+    Response::macro('toArray', function (): array {
+        /** @var Response $this */
+        return [
+            'isError' => $this->isError(),
+            'content' => [$this->content()->toArray()],
+        ];
+    });
+}
 
 /**
  * Unit tests for MCP Tools following Laravel MCP testing patterns.
@@ -46,6 +62,18 @@ final class McpToolsTest extends TestCase
         $this->auth->setUser($this->user);
     }
 
+    /**
+     * @param  array<string, mixed>  $arguments
+     */
+    private function callTool(object $tool, array $arguments = []): ToolResult
+    {
+        $result = $tool->handle(new Request($arguments));
+
+        $this->assertInstanceOf(ToolResult::class, $result);
+
+        return $result;
+    }
+
     // ========================================================================
     // CREATE ITEM TOOL TESTS
     // ========================================================================
@@ -54,12 +82,10 @@ final class McpToolsTest extends TestCase
     {
         $tool = new CreateItemTool($this->auth);
 
-        $result = $tool->handle([
+        $result = $this->callTool($tool, [
             'title' => 'Test Item',
             'description' => 'Test Description',
         ]);
-
-        $this->assertInstanceOf(ToolResult::class, $result);
 
         $resultArray = $result->toArray();
         $this->assertFalse($resultArray['isError']);
@@ -75,9 +101,7 @@ final class McpToolsTest extends TestCase
     {
         $tool = new CreateItemTool($this->auth);
 
-        $result = $tool->handle([]);
-
-        $this->assertInstanceOf(ToolResult::class, $result);
+        $result = $this->callTool($tool);
 
         $resultArray = $result->toArray();
         $this->assertTrue($resultArray['isError']);
@@ -91,7 +115,7 @@ final class McpToolsTest extends TestCase
 
         $tool = new CreateItemTool($this->auth);
 
-        $result = $tool->handle([
+        $result = $this->callTool($tool, [
             'title' => 'Test Item',
             'project_id' => (string) $otherProject->id,
         ]);
@@ -108,7 +132,7 @@ final class McpToolsTest extends TestCase
 
         $tool = new CreateItemTool($this->auth);
 
-        $result = $tool->handle([
+        $result = $this->callTool($tool, [
             'title' => 'Test Item',
             'tag_ids' => [(string) $otherTag->id],
         ]);
@@ -122,7 +146,7 @@ final class McpToolsTest extends TestCase
     {
         $tool = new CreateItemTool($this->auth);
 
-        $result = $tool->handle([
+        $result = $this->callTool($tool, [
             'title' => 'Test Item',
             'scheduled_date' => '2026-12-31',
             'due_date' => '2026-01-01',
@@ -140,7 +164,7 @@ final class McpToolsTest extends TestCase
 
         $tool = new CreateItemTool($this->auth);
 
-        $result = $tool->handle([
+        $result = $this->callTool($tool, [
             'title' => 'Tagged Item',
             'tag_ids' => [(string) $tag1->id, (string) $tag2->id],
         ]);
@@ -162,7 +186,7 @@ final class McpToolsTest extends TestCase
 
         $tool = new UpdateItemTool($this->auth);
 
-        $result = $tool->handle([
+        $result = $this->callTool($tool, [
             'id' => (string) $item->id,
             'title' => 'Updated Title',
         ]);
@@ -179,7 +203,7 @@ final class McpToolsTest extends TestCase
     {
         $tool = new UpdateItemTool($this->auth);
 
-        $result = $tool->handle([
+        $result = $this->callTool($tool, [
             'id' => '00000000-0000-0000-0000-000000000000',
             'title' => 'Updated Title',
         ]);
@@ -196,7 +220,7 @@ final class McpToolsTest extends TestCase
 
         $tool = new UpdateItemTool($this->auth);
 
-        $result = $tool->handle([
+        $result = $this->callTool($tool, [
             'id' => (string) $otherItem->id,
             'title' => 'Hacked Title',
         ]);
@@ -216,7 +240,7 @@ final class McpToolsTest extends TestCase
 
         $tool = new UpdateItemTool($this->auth);
 
-        $result = $tool->handle([
+        $result = $this->callTool($tool, [
             'id' => (string) $item->id,
             'status' => 'done',
         ]);
@@ -238,7 +262,7 @@ final class McpToolsTest extends TestCase
 
         $tool = new UpdateItemTool($this->auth);
 
-        $result = $tool->handle([
+        $result = $this->callTool($tool, [
             'id' => (string) $item->id,
             'status' => 'todo',
         ]);
@@ -261,7 +285,7 @@ final class McpToolsTest extends TestCase
 
         $tool = new UpdateItemTool($this->auth);
 
-        $result = $tool->handle([
+        $result = $this->callTool($tool, [
             'id' => (string) $item->id,
             'status' => 'wontdo',
         ]);
@@ -286,7 +310,7 @@ final class McpToolsTest extends TestCase
 
         $tool = new CompleteItemTool($this->auth);
 
-        $result = $tool->handle(['id' => (string) $item->id]);
+        $result = $this->callTool($tool, ['id' => (string) $item->id]);
 
         $resultArray = $result->toArray();
         $this->assertFalse($resultArray['isError']);
@@ -307,7 +331,7 @@ final class McpToolsTest extends TestCase
 
         $tool = new CompleteItemTool($this->auth);
 
-        $result = $tool->handle(['id' => (string) $item->id]);
+        $result = $this->callTool($tool, ['id' => (string) $item->id]);
 
         $resultArray = $result->toArray();
         $this->assertFalse($resultArray['isError']);
@@ -325,7 +349,7 @@ final class McpToolsTest extends TestCase
 
         $tool = new CompleteItemTool($this->auth);
 
-        $result = $tool->handle([
+        $result = $this->callTool($tool, [
             'id' => (string) $item->id,
             'assignee_notes' => 'Completed with notes',
         ]);
@@ -347,7 +371,7 @@ final class McpToolsTest extends TestCase
 
         $tool = new DeleteItemTool($this->auth);
 
-        $result = $tool->handle(['id' => (string) $item->id]);
+        $result = $this->callTool($tool, ['id' => (string) $item->id]);
 
         $resultArray = $result->toArray();
         $this->assertFalse($resultArray['isError']);
@@ -365,7 +389,7 @@ final class McpToolsTest extends TestCase
 
         $tool = new DeleteItemTool($this->auth);
 
-        $result = $tool->handle(['id' => (string) $item->id]);
+        $result = $this->callTool($tool, ['id' => (string) $item->id]);
 
         $resultArray = $result->toArray();
         $this->assertTrue($resultArray['isError']);
@@ -377,7 +401,7 @@ final class McpToolsTest extends TestCase
     {
         $tool = new UpdateProfileTool($this->auth);
 
-        $result = $tool->handle([
+        $result = $this->callTool($tool, [
             'notes' => 'Updated MCP notes',
         ]);
 
@@ -392,7 +416,7 @@ final class McpToolsTest extends TestCase
     {
         $tool = new UpdateProfileTool($this->auth);
 
-        $result = $tool->handle([
+        $result = $this->callTool($tool, [
             'avatar_url' => 'not-a-url',
         ]);
 
@@ -412,7 +436,7 @@ final class McpToolsTest extends TestCase
 
         $tool = new SearchItemsTool($this->auth);
 
-        $result = $tool->handle([]);
+        $result = $this->callTool($tool);
 
         $resultArray = $result->toArray();
         $this->assertFalse($resultArray['isError']);
@@ -428,7 +452,7 @@ final class McpToolsTest extends TestCase
 
         $tool = new SearchItemsTool($this->auth);
 
-        $result = $tool->handle(['status' => 'todo']);
+        $result = $this->callTool($tool, ['status' => 'todo']);
 
         $resultArray = $result->toArray();
         $this->assertFalse($resultArray['isError']);
@@ -445,7 +469,7 @@ final class McpToolsTest extends TestCase
 
         $tool = new SearchItemsTool($this->auth);
 
-        $result = $tool->handle(['project_id' => (string) $project->id]);
+        $result = $this->callTool($tool, ['project_id' => (string) $project->id]);
 
         $resultArray = $result->toArray();
         $this->assertFalse($resultArray['isError']);
@@ -462,7 +486,7 @@ final class McpToolsTest extends TestCase
 
         $tool = new SearchItemsTool($this->auth);
 
-        $result = $tool->handle(['search' => 'buy']);
+        $result = $this->callTool($tool, ['search' => 'buy']);
 
         $resultArray = $result->toArray();
         $this->assertFalse($resultArray['isError']);
@@ -477,7 +501,7 @@ final class McpToolsTest extends TestCase
 
         $tool = new SearchItemsTool($this->auth);
 
-        $result = $tool->handle(['limit' => 3]);
+        $result = $this->callTool($tool, ['limit' => 3]);
 
         $resultArray = $result->toArray();
         $this->assertFalse($resultArray['isError']);
@@ -494,7 +518,7 @@ final class McpToolsTest extends TestCase
     {
         $tool = new CreateProjectTool($this->auth);
 
-        $result = $tool->handle([
+        $result = $this->callTool($tool, [
             'name' => 'Test Project',
             'color' => '#FF5733',
         ]);
@@ -512,7 +536,7 @@ final class McpToolsTest extends TestCase
     {
         $tool = new CreateProjectTool($this->auth);
 
-        $result = $tool->handle([
+        $result = $this->callTool($tool, [
             'name' => 'Test Project',
             'color' => 'invalid-color',
         ]);
@@ -530,7 +554,7 @@ final class McpToolsTest extends TestCase
     {
         $tool = new UpdateProfileTool($this->auth);
 
-        $result = $tool->handle([
+        $result = $this->callTool($tool, [
             'notes' => 'Updated from MCP',
         ]);
 
@@ -545,7 +569,7 @@ final class McpToolsTest extends TestCase
     {
         $tool = new UpdateProfileTool($this->auth);
 
-        $result = $tool->handle([
+        $result = $this->callTool($tool, [
             'avatar_url' => 'not-a-url',
         ]);
 
@@ -558,7 +582,7 @@ final class McpToolsTest extends TestCase
     {
         $tool = new UpdateProfileTool($this->auth);
 
-        $result = $tool->handle([]);
+        $result = $this->callTool($tool);
 
         $resultArray = $result->toArray();
         $this->assertTrue($resultArray['isError']);
@@ -578,7 +602,7 @@ final class McpToolsTest extends TestCase
 
         $tool = new UpdateProjectTool($this->auth);
 
-        $result = $tool->handle([
+        $result = $this->callTool($tool, [
             'id' => (string) $project->id,
             'archived' => true,
         ]);
@@ -599,7 +623,7 @@ final class McpToolsTest extends TestCase
 
         $tool = new UpdateProjectTool($this->auth);
 
-        $result = $tool->handle([
+        $result = $this->callTool($tool, [
             'id' => (string) $project->id,
             'archived' => false,
         ]);
@@ -618,7 +642,7 @@ final class McpToolsTest extends TestCase
 
         $tool = new UpdateProjectTool($this->auth);
 
-        $result = $tool->handle([
+        $result = $this->callTool($tool, [
             'id' => (string) $otherProject->id,
             'name' => 'Hacked Name',
         ]);
@@ -636,7 +660,7 @@ final class McpToolsTest extends TestCase
     {
         $tool = new CreateTagTool($this->auth);
 
-        $result = $tool->handle([
+        $result = $this->callTool($tool, [
             'name' => 'Test Tag',
             'color' => '#00FF00',
         ]);
@@ -658,7 +682,7 @@ final class McpToolsTest extends TestCase
 
         $tool = new CreateTagTool($this->auth);
 
-        $result = $tool->handle(['name' => 'Existing Tag']);
+        $result = $this->callTool($tool, ['name' => 'Existing Tag']);
 
         $resultArray = $result->toArray();
         $this->assertFalse($resultArray['isError']);
@@ -671,7 +695,7 @@ final class McpToolsTest extends TestCase
     {
         $tool = new CreateTagTool($this->auth);
 
-        $result = $tool->handle([
+        $result = $this->callTool($tool, [
             'name' => 'Test Tag',
             'color' => 'not-a-color',
         ]);

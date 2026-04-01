@@ -6,10 +6,11 @@ namespace App\Mcp\Tools;
 
 use App\Mcp\Services\McpAuthContext;
 use Generator;
+use Illuminate\Contracts\JsonSchema\JsonSchema;
+use Laravel\Mcp\Request;
+use Laravel\Mcp\Response;
 use Laravel\Mcp\Server\Tool;
 use Laravel\Mcp\Server\Tools\Annotations\IsIdempotent;
-use Laravel\Mcp\Server\Tools\ToolInputSchema;
-use Laravel\Mcp\Server\Tools\ToolResult;
 
 /**
  * Mark a todo item as complete.
@@ -31,34 +32,37 @@ final class CompleteItemTool extends Tool
         return 'Mark a todo item as complete (status: done). Both owners and assignees can complete items.';
     }
 
-    public function schema(ToolInputSchema $schema): ToolInputSchema
+    public function schema(JsonSchema $schema): array
     {
-        return $schema
-            ->string('id')
-            ->description('The UUID of the item to complete (required)')
-            ->required()
-            ->string('assignee_notes')
-            ->description('Optional notes to add when completing (useful for assignees to provide context)');
+        return [
+            'id' => $schema->string()
+                ->description('The UUID of the item to complete.')
+                ->required(),
+            'assignee_notes' => $schema->string()
+                ->description('Optional notes to add when completing, useful for assignees to provide context.'),
+        ];
     }
 
-    public function handle(array $arguments): ToolResult|Generator
+    public function handle(Request $request): Response|Generator
     {
         try {
+            $arguments = $request->all();
+
             // Get the item
             $item = $this->auth->getItem($arguments['id']);
 
             if ($item === null) {
-                return ToolResult::error("Item not found or access denied: {$arguments['id']}");
+                return Response::error("Item not found or access denied: {$arguments['id']}");
             }
 
             // Check update permission
             if (! $this->auth->canUpdateItem($item)) {
-                return ToolResult::error('You do not have permission to complete this item');
+                return Response::error('You do not have permission to complete this item');
             }
 
             // Check if already completed
             if ($item->status === 'done') {
-                return ToolResult::json([
+                return Response::json([
                     'success' => true,
                     'message' => 'Item is already marked as done',
                     'item' => [
@@ -89,7 +93,7 @@ final class CompleteItemTool extends Tool
                 'title' => $item->title,
             ]);
 
-            return ToolResult::json([
+            return Response::json([
                 'success' => true,
                 'message' => 'Item marked as complete',
                 'item' => [
@@ -105,7 +109,7 @@ final class CompleteItemTool extends Tool
                 'error' => $e->getMessage(),
             ]);
 
-            return ToolResult::error("Failed to complete item: {$e->getMessage()}");
+            return Response::error("Failed to complete item: {$e->getMessage()}");
         }
     }
 }

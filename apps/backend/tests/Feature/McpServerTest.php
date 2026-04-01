@@ -881,10 +881,16 @@ final class McpServerTest extends TestCase
         $response->assertStatus(200);
         $data = $response->json();
 
-        // Laravel MCP package returns result with isError flag for unknown tools
-        // rather than a JSON-RPC error object
-        $this->assertTrue($data['result']['isError'] ?? false);
-        $this->assertStringContainsString('not found', strtolower($data['result']['content'][0]['text']));
+        $resultErrorText = strtolower($data['result']['content'][0]['text'] ?? '');
+        $rpcErrorMessage = strtolower($data['error']['message'] ?? '');
+
+        $this->assertTrue(
+            isset($data['error']) || ($data['result']['isError'] ?? false)
+        );
+        $this->assertTrue(
+            str_contains($resultErrorText, 'not found') ||
+            str_contains($rpcErrorMessage, 'not found')
+        );
     }
 
     // --- Performance Tests ---

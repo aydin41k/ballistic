@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Mcp\Resources;
 
 use App\Mcp\Services\McpAuthContext;
+use Laravel\Mcp\Request;
+use Laravel\Mcp\Response;
 use Laravel\Mcp\Server\Resource;
 
 /**
@@ -38,7 +40,7 @@ final class ProjectsResource extends Resource
         return 'application/json';
     }
 
-    public function read(): string
+    public function handle(Request $request): Response
     {
         // Include archived projects with separate flag
         $activeProjects = $this->auth->getProjects(includeArchived: false);
@@ -67,6 +69,6 @@ final class ProjectsResource extends Resource
             ],
         ];
 
-        return json_encode($data, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR);
+        return Response::json($data);
     }
 }

@@ -16,6 +16,8 @@ use App\Models\Project;
 use App\Models\Tag;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Laravel\Mcp\Request;
+use Laravel\Mcp\Response;
 use Tests\TestCase;
 
 /**
@@ -41,6 +43,23 @@ final class McpResourcesTest extends TestCase
         $this->auth->setUser($this->user);
     }
 
+    /**
+     * @param  array<string, mixed>  $arguments
+     * @return array<string, mixed>
+     */
+    private function readResource(object $resource, array $arguments = []): array
+    {
+        $response = $resource->handle(new Request($arguments));
+
+        $this->assertInstanceOf(Response::class, $response);
+
+        $data = json_decode((string) $response->content(), true);
+
+        $this->assertIsArray($data);
+
+        return $data;
+    }
+
     // ========================================================================
     // USER PROFILE RESOURCE TESTS
     // ========================================================================
@@ -49,9 +68,7 @@ final class McpResourcesTest extends TestCase
     {
         $resource = new UserProfileResource($this->auth);
 
-        $content = $resource->read();
-
-        $data = json_decode($content, true);
+        $data = $this->readResource($resource);
 
         $this->assertEquals((string) $this->user->id, $data['id']);
         $this->assertEquals($this->user->name, $data['name']);
@@ -68,8 +85,7 @@ final class McpResourcesTest extends TestCase
 
         $resource = new UserProfileResource($this->auth);
 
-        $content = $resource->read();
-        $data = json_decode($content, true);
+        $data = $this->readResource($resource);
 
         $this->assertEquals(3, $data['counts']['items']);
         $this->assertEquals(2, $data['counts']['projects']);
@@ -101,8 +117,7 @@ final class McpResourcesTest extends TestCase
 
         $resource = new ItemsResource($this->auth);
 
-        $content = $resource->read();
-        $data = json_decode($content, true);
+        $data = $this->readResource($resource);
 
         $this->assertCount(3, $data['items']);
     }
@@ -118,8 +133,7 @@ final class McpResourcesTest extends TestCase
 
         $resource = new ItemsResource($this->auth);
 
-        $content = $resource->read();
-        $data = json_decode($content, true);
+        $data = $this->readResource($resource);
 
         $this->assertCount(2, $data['items']);
     }
@@ -144,8 +158,7 @@ final class McpResourcesTest extends TestCase
 
         $resource = new ItemsResource($this->auth);
 
-        $content = $resource->read();
-        $data = json_decode($content, true);
+        $data = $this->readResource($resource);
 
         $itemData = $data['items'][0];
 
@@ -167,8 +180,7 @@ final class McpResourcesTest extends TestCase
 
         $resource = new ProjectsResource($this->auth);
 
-        $content = $resource->read();
-        $data = json_decode($content, true);
+        $data = $this->readResource($resource);
 
         // Resource returns active/archived structure
         $this->assertCount(3, $data['active']['projects']);
@@ -187,8 +199,7 @@ final class McpResourcesTest extends TestCase
 
         $resource = new ProjectsResource($this->auth);
 
-        $content = $resource->read();
-        $data = json_decode($content, true);
+        $data = $this->readResource($resource);
 
         $this->assertCount(2, $data['active']['projects']);
         $this->assertCount(1, $data['archived']['projects']);
@@ -211,8 +222,7 @@ final class McpResourcesTest extends TestCase
 
         $resource = new ProjectsResource($this->auth);
 
-        $content = $resource->read();
-        $data = json_decode($content, true);
+        $data = $this->readResource($resource);
 
         $this->assertEquals(5, $data['active']['projects'][0]['items_count']);
     }
@@ -228,8 +238,7 @@ final class McpResourcesTest extends TestCase
 
         $resource = new TagsResource($this->auth);
 
-        $content = $resource->read();
-        $data = json_decode($content, true);
+        $data = $this->readResource($resource);
 
         $this->assertCount(3, $data['tags']);
     }
@@ -253,8 +262,7 @@ final class McpResourcesTest extends TestCase
 
         $resource = new TagsResource($this->auth);
 
-        $content = $resource->read();
-        $data = json_decode($content, true);
+        $data = $this->readResource($resource);
 
         $this->assertEquals(3, $data['tags'][0]['items_count']);
     }
@@ -281,8 +289,7 @@ final class McpResourcesTest extends TestCase
 
         $resource = new ConnectionsResource($this->auth);
 
-        $content = $resource->read();
-        $data = json_decode($content, true);
+        $data = $this->readResource($resource);
 
         $this->assertCount(2, $data['connections']);
     }
@@ -305,8 +312,7 @@ final class McpResourcesTest extends TestCase
 
         $resource = new ConnectionsResource($this->auth);
 
-        $content = $resource->read();
-        $data = json_decode($content, true);
+        $data = $this->readResource($resource);
 
         $this->assertCount(1, $data['connections']);
         $this->assertEquals((string) $acceptedUser->id, $data['connections'][0]['id']);
@@ -323,8 +329,7 @@ final class McpResourcesTest extends TestCase
     {
         $resource = new ConnectionsResource($this->auth);
 
-        $content = $resource->read();
-        $data = json_decode($content, true);
+        $data = $this->readResource($resource);
 
         $this->assertCount(0, $data['connections']);
     }

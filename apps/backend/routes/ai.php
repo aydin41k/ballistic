@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 use App\Http\Middleware\EnsureAiAssistantEnabled;
 use App\Mcp\Servers\BallisticServer;
-use Laravel\Mcp\Server\Facades\Mcp;
+use Laravel\Mcp\Facades\Mcp;
 
 /*
 |--------------------------------------------------------------------------
@@ -26,8 +26,8 @@ use Laravel\Mcp\Server\Facades\Mcp;
 
 // Web-based MCP server (HTTP transport)
 // Protected by Sanctum authentication, AI feature flag, and rate limiting
-// Available at POST /mcp (the McpServiceProvider adds the /mcp prefix)
-Mcp::web('', BallisticServer::class)
+// Available at POST /mcp
+Mcp::web('mcp', BallisticServer::class)
     ->middleware('auth:sanctum')
     ->middleware(EnsureAiAssistantEnabled::class)
     ->middleware('token.mcp')

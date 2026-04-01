@@ -7,11 +7,12 @@ namespace App\Mcp\Tools;
 use App\Mcp\Services\McpAuthContext;
 use App\Models\Item;
 use Generator;
+use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Illuminate\Support\Facades\DB;
+use Laravel\Mcp\Request;
+use Laravel\Mcp\Response;
 use Laravel\Mcp\Server\Tool;
 use Laravel\Mcp\Server\Tools\Annotations\IsIdempotent;
-use Laravel\Mcp\Server\Tools\ToolInputSchema;
-use Laravel\Mcp\Server\Tools\ToolResult;
 
 /**
  * Create a new todo item.
@@ -33,51 +34,48 @@ final class CreateItemTool extends Tool
         return 'Create a new todo item. Items can be organised into projects, tagged, scheduled for future dates, and have due dates set.';
     }
 
-    public function schema(ToolInputSchema $schema): ToolInputSchema
+    public function schema(JsonSchema $schema): array
     {
-        return $schema
-            ->string('title')
-            ->description('The title of the todo item (required)')
-            ->required()
-            ->string('description')
-            ->description('Detailed description of the task')
-            ->string('project_id')
-            ->description('UUID of the project to assign this item to (optional, null for inbox)')
-            ->raw('status', [
-                'type' => 'string',
-                'enum' => ['todo', 'doing', 'done', 'wontdo'],
-                'description' => 'Initial status of the item (default: todo)',
-            ])
-            ->string('scheduled_date')
-            ->description('Date to schedule the item for (ISO 8601 format: YYYY-MM-DD). Future dates hide the item until that date.')
-            ->string('due_date')
-            ->description('Due date for the item (ISO 8601 format: YYYY-MM-DD)')
-            ->string('recurrence_rule')
-            ->description('RRULE string for recurring items (RFC 5545 subset, e.g., FREQ=DAILY;INTERVAL=1)')
-            ->raw('recurrence_strategy', [
-                'type' => 'string',
-                'enum' => ['expires', 'carry_over'],
-                'description' => 'How to handle missed recurrences: expires (mark as wontdo) or carry_over (keep active)',
-            ])
-            ->raw('tag_ids', [
-                'type' => 'array',
-                'items' => ['type' => 'string'],
-                'description' => 'Array of tag UUIDs to attach to this item',
-            ])
-            ->integer('position')
-            ->description('Position for ordering (0 = top, higher numbers = lower in list)');
+        return [
+            'title' => $schema->string()
+                ->description('The title of the todo item.')
+                ->required(),
+            'description' => $schema->string()
+                ->description('Detailed description of the task.'),
+            'project_id' => $schema->string()
+                ->description('UUID of the project to assign this item to, or null for inbox items.')
+                ->nullable(),
+            'status' => $schema->string()
+                ->enum(['todo', 'doing', 'done', 'wontdo'])
+                ->description('Initial status of the item.'),
+            'scheduled_date' => $schema->string()
+                ->description('Date to schedule the item for in ISO 8601 format YYYY-MM-DD.'),
+            'due_date' => $schema->string()
+                ->description('Due date for the item in ISO 8601 format YYYY-MM-DD.'),
+            'recurrence_rule' => $schema->string()
+                ->description('RRULE string for recurring items, for example FREQ=DAILY;INTERVAL=1.'),
+            'recurrence_strategy' => $schema->string()
+                ->enum(['expires', 'carry_over'])
+                ->description('How to handle missed recurrences: expires marks them as wontdo, carry_over keeps them active.'),
+            'tag_ids' => $schema->array()
+                ->items($schema->string())
+                ->description('Array of tag UUIDs to attach to this item.'),
+            'position' => $schema->integer()
+                ->description('Position for ordering, where 0 is top and higher numbers are lower in the list.'),
+        ];
     }
 
-    public function handle(array $arguments): ToolResult|Generator
+    public function handle(Request $request): Response|Generator
     {
         try {
+            $arguments = $request->all();
             $user = $this->auth->user();
 
             // Validate project ownership if provided
             if (! empty($arguments['project_id'])) {
                 $project = $this->auth->getProject($arguments['project_id']);
                 if ($project === null) {
-                    return ToolResult::error("Project not found or access denied: {$arguments['project_id']}");
+                    return Response::error("Project not found or access denied: {$arguments['project_id']}");
                 }
             }
 
@@ -87,7 +85,7 @@ final class CreateItemTool extends Tool
                 foreach ($tagIds as $tagId) {
                     $tag = $this->auth->getTag($tagId);
                     if ($tag === null) {
-                        return ToolResult::error("Tag not found or access denied: {$tagId}");
+                        return Response::error("Tag not found or access denied: {$tagId}");
                     }
                 }
             }
@@ -100,7 +98,7 @@ final class CreateItemTool extends Tool
                 try {
                     $scheduledDate = new \DateTimeImmutable($arguments['scheduled_date']);
                 } catch (\Exception) {
-                    return ToolResult::error('Invalid scheduled_date format. Use ISO 8601 format: YYYY-MM-DD');
+                    return Response::error('Invalid scheduled_date format. Use ISO 8601 format: YYYY-MM-DD');
                 }
             }
 
@@ -108,13 +106,13 @@ final class CreateItemTool extends Tool
                 try {
                     $dueDate = new \DateTimeImmutable($arguments['due_date']);
                 } catch (\Exception) {
-                    return ToolResult::error('Invalid due_date format. Use ISO 8601 format: YYYY-MM-DD');
+                    return Response::error('Invalid due_date format. Use ISO 8601 format: YYYY-MM-DD');
                 }
             }
 
             // Validate due_date >= scheduled_date
             if ($scheduledDate && $dueDate && $dueDate < $scheduledDate) {
-                return ToolResult::error('due_date must be on or after scheduled_date');
+                return Response::error('due_date must be on or after scheduled_date');
             }
 
             // Create item and attach tags within a transaction
@@ -148,7 +146,7 @@ final class CreateItemTool extends Tool
                 'title' => $item->title,
             ]);
 
-            return ToolResult::json([
+            return Response::json([
                 'success' => true,
                 'item' => [
                     'id' => $item->id,
@@ -173,7 +171,7 @@ final class CreateItemTool extends Tool
                 'error' => $e->getMessage(),
             ]);
 
-            return ToolResult::error("Failed to create item: {$e->getMessage()}");
+            return Response::error("Failed to create item: {$e->getMessage()}");
         }
     }
 }

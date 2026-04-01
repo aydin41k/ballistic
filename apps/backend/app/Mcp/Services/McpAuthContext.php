@@ -10,6 +10,7 @@ use App\Models\Item;
 use App\Models\Project;
 use App\Models\Tag;
 use App\Models\User;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
 
@@ -233,9 +234,9 @@ final class McpAuthContext
     /**
      * Get connected users for the authenticated user.
      *
-     * @return \Illuminate\Support\Collection<int, User>
+     * @return Collection<int, User>
      */
-    public function getConnectedUsers(): \Illuminate\Support\Collection
+    public function getConnectedUsers(): Collection
     {
         return $this->user()->connections();
     }

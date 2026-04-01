@@ -6,9 +6,8 @@ namespace Tests\Unit\Mcp;
 
 use App\Mcp\Servers\BallisticServer;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Laravel\Mcp\Server\Contracts\Transport\Transport;
+use Laravel\Mcp\Server\Contracts\Transport;
 use Laravel\Mcp\Server\Transport\StdioTransport;
-use ReflectionProperty;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 use Tests\TestCase;
 
@@ -18,8 +17,7 @@ final class BallisticServerTest extends TestCase
 
     public function test_boot_allows_stdio_sessions_without_http_authentication(): void
     {
-        $server = new BallisticServer;
-        $this->setTransport($server, new StdioTransport);
+        $server = new BallisticServer(new StdioTransport('test-session'));
         $server->boot();
 
         $this->addToAssertionCount(1);
@@ -27,10 +25,9 @@ final class BallisticServerTest extends TestCase
 
     public function test_boot_requires_authenticated_http_requests(): void
     {
-        $server = new BallisticServer;
-        $this->setTransport($server, new class implements Transport
+        $server = new BallisticServer(new class implements Transport
         {
-            public function onReceive(callable $handler): void {}
+            public function onReceive(\Closure $handler): void {}
 
             public function send(string $message, ?string $sessionId = null): void {}
 
@@ -53,12 +50,5 @@ final class BallisticServerTest extends TestCase
         } catch (HttpException $exception) {
             $this->assertSame(401, $exception->getStatusCode());
         }
-    }
-
-    private function setTransport(BallisticServer $server, Transport $transport): void
-    {
-        $property = new ReflectionProperty($server, 'transport');
-        $property->setAccessible(true);
-        $property->setValue($server, $transport);
     }
 }

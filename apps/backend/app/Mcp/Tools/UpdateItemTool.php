@@ -6,11 +6,12 @@ namespace App\Mcp\Tools;
 
 use App\Mcp\Services\McpAuthContext;
 use Generator;
+use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Illuminate\Support\Facades\DB;
+use Laravel\Mcp\Request;
+use Laravel\Mcp\Response;
 use Laravel\Mcp\Server\Tool;
 use Laravel\Mcp\Server\Tools\Annotations\IsIdempotent;
-use Laravel\Mcp\Server\Tools\ToolInputSchema;
-use Laravel\Mcp\Server\Tools\ToolResult;
 
 /**
  * Update an existing todo item.
@@ -32,55 +33,55 @@ final class UpdateItemTool extends Tool
         return 'Update an existing todo item. Owners can update all fields. Assignees can only update status, description, and assignee_notes, or set assignee_id to null to reject the task.';
     }
 
-    public function schema(ToolInputSchema $schema): ToolInputSchema
+    public function schema(JsonSchema $schema): array
     {
-        return $schema
-            ->string('id')
-            ->description('The UUID of the item to update (required)')
-            ->required()
-            ->string('title')
-            ->description('New title for the item (owner only)')
-            ->string('description')
-            ->description('New description for the item (owner only)')
-            ->string('project_id')
-            ->description('UUID of the project to move this item to, or null for inbox (owner only)')
-            ->raw('status', [
-                'type' => 'string',
-                'enum' => ['todo', 'doing', 'done', 'wontdo'],
-                'description' => 'New status for the item',
-            ])
-            ->string('assignee_notes')
-            ->description('Notes from the assignee (visible to both owner and assignee)')
-            ->string('assignee_id')
-            ->description('UUID of user to assign item to, or null to unassign. Assignees can only set this to null (self-unassignment). Owners can assign to any connected user.')
-            ->string('scheduled_date')
-            ->description('New scheduled date (ISO 8601 format: YYYY-MM-DD, owner only)')
-            ->string('due_date')
-            ->description('New due date (ISO 8601 format: YYYY-MM-DD, owner only)')
-            ->string('recurrence_rule')
-            ->description('New RRULE string (owner only)')
-            ->raw('tag_ids', [
-                'type' => 'array',
-                'items' => ['type' => 'string'],
-                'description' => 'Array of tag UUIDs to set on this item (owner only, replaces existing tags)',
-            ])
-            ->integer('position')
-            ->description('New position for ordering (owner only)');
+        return [
+            'id' => $schema->string()
+                ->description('The UUID of the item to update.')
+                ->required(),
+            'title' => $schema->string()
+                ->description('New title for the item. Owners only.'),
+            'description' => $schema->string()
+                ->description('New description for the item. Owners only.'),
+            'project_id' => $schema->string()
+                ->description('UUID of the project to move this item to, or null for inbox. Owners only.')
+                ->nullable(),
+            'status' => $schema->string()
+                ->enum(['todo', 'doing', 'done', 'wontdo'])
+                ->description('New status for the item.'),
+            'assignee_notes' => $schema->string()
+                ->description('Notes from the assignee that are visible to both the owner and the assignee.'),
+            'assignee_id' => $schema->string()
+                ->description('UUID of the user to assign the item to, or null to unassign it.')
+                ->nullable(),
+            'scheduled_date' => $schema->string()
+                ->description('New scheduled date in ISO 8601 format YYYY-MM-DD. Owners only.'),
+            'due_date' => $schema->string()
+                ->description('New due date in ISO 8601 format YYYY-MM-DD. Owners only.'),
+            'recurrence_rule' => $schema->string()
+                ->description('New RRULE string. Owners only.'),
+            'tag_ids' => $schema->array()
+                ->items($schema->string())
+                ->description('Array of tag UUIDs to set on this item. Owners only and replaces existing tags.'),
+            'position' => $schema->integer()
+                ->description('New position for ordering. Owners only.'),
+        ];
     }
 
-    public function handle(array $arguments): ToolResult|Generator
+    public function handle(Request $request): Response|Generator
     {
         try {
+            $arguments = $request->all();
             // Get the item
             $item = $this->auth->getItem($arguments['id']);
 
             if ($item === null) {
-                return ToolResult::error("Item not found or access denied: {$arguments['id']}");
+                return Response::error("Item not found or access denied: {$arguments['id']}");
             }
 
             // Check update permission
             if (! $this->auth->canUpdateItem($item)) {
-                return ToolResult::error('You do not have permission to update this item');
+                return Response::error('You do not have permission to update this item');
             }
 
             // Determine which fields are being updated
@@ -98,14 +99,14 @@ final class UpdateItemTool extends Tool
                 $isOwner = $this->auth->isItemOwner($item);
                 $allowedFields = $isOwner ? 'all fields' : 'status and assignee_notes only';
 
-                return ToolResult::error("You can only update {$allowedFields}. Attempted to update: ".implode(', ', $fieldsBeingUpdated));
+                return Response::error("You can only update {$allowedFields}. Attempted to update: ".implode(', ', $fieldsBeingUpdated));
             }
 
             // Validate project ownership if provided
             if (isset($arguments['project_id']) && $arguments['project_id'] !== null) {
                 $project = $this->auth->getProject($arguments['project_id']);
                 if ($project === null) {
-                    return ToolResult::error("Project not found or access denied: {$arguments['project_id']}");
+                    return Response::error("Project not found or access denied: {$arguments['project_id']}");
                 }
             }
 
@@ -113,11 +114,11 @@ final class UpdateItemTool extends Tool
             if (array_key_exists('assignee_id', $arguments) && $arguments['assignee_id'] !== null) {
                 // Only owners can assign to others
                 if (! $this->auth->isItemOwner($item)) {
-                    return ToolResult::error('Only item owners can assign to others');
+                    return Response::error('Only item owners can assign to others');
                 }
                 // Must have a connection with the assignee
                 if (! $this->auth->canAssignTo($arguments['assignee_id'])) {
-                    return ToolResult::error("Cannot assign to user '{$arguments['assignee_id']}': No accepted connection exists");
+                    return Response::error("Cannot assign to user '{$arguments['assignee_id']}': No accepted connection exists");
                 }
             }
 
@@ -127,7 +128,7 @@ final class UpdateItemTool extends Tool
                 foreach ($tagIds as $tagId) {
                     $tag = $this->auth->getTag($tagId);
                     if ($tag === null) {
-                        return ToolResult::error("Tag not found or access denied: {$tagId}");
+                        return Response::error("Tag not found or access denied: {$tagId}");
                     }
                 }
             }
@@ -150,7 +151,7 @@ final class UpdateItemTool extends Tool
                             $date = new \DateTimeImmutable($value);
                             $value = $date->format('Y-m-d');
                         } catch (\Exception) {
-                            return ToolResult::error("Invalid {$field} format. Use ISO 8601 format: YYYY-MM-DD");
+                            return Response::error("Invalid {$field} format. Use ISO 8601 format: YYYY-MM-DD");
                         }
                     }
 
@@ -163,7 +164,7 @@ final class UpdateItemTool extends Tool
             $dueDate = $updateData['due_date'] ?? $item->due_date?->format('Y-m-d');
 
             if ($scheduledDate && $dueDate && $dueDate < $scheduledDate) {
-                return ToolResult::error('due_date must be on or after scheduled_date');
+                return Response::error('due_date must be on or after scheduled_date');
             }
 
             // Track completion
@@ -194,7 +195,7 @@ final class UpdateItemTool extends Tool
                 'fields_updated' => $fieldsBeingUpdated,
             ]);
 
-            return ToolResult::json([
+            return Response::json([
                 'success' => true,
                 'item' => [
                     'id' => $item->id,
@@ -223,7 +224,7 @@ final class UpdateItemTool extends Tool
                 'error' => $e->getMessage(),
             ]);
 
-            return ToolResult::error("Failed to update item: {$e->getMessage()}");
+            return Response::error("Failed to update item: {$e->getMessage()}");
         }
     }
 }

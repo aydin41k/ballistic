@@ -7,11 +7,12 @@ namespace App\Mcp\Tools;
 use App\Contracts\NotificationServiceInterface;
 use App\Mcp\Services\McpAuthContext;
 use Generator;
+use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Illuminate\Support\Facades\DB;
+use Laravel\Mcp\Request;
+use Laravel\Mcp\Response;
 use Laravel\Mcp\Server\Tool;
 use Laravel\Mcp\Server\Tools\Annotations\IsIdempotent;
-use Laravel\Mcp\Server\Tools\ToolInputSchema;
-use Laravel\Mcp\Server\Tools\ToolResult;
 
 /**
  * Assign a todo item to another user.
@@ -34,32 +35,36 @@ final class AssignItemTool extends Tool
         return 'Assign a todo item to a connected user. You can only assign items you own, and only to users you have an accepted connection with. Use lookup_users to find valid assignees.';
     }
 
-    public function schema(ToolInputSchema $schema): ToolInputSchema
+    public function schema(JsonSchema $schema): array
     {
-        return $schema
-            ->string('item_id')
-            ->description('The UUID of the item to assign (required)')
-            ->required()
-            ->string('assignee_id')
-            ->description('The UUID of the user to assign the item to, or null to unassign (required)')
-            ->required()
-            ->string('description')
-            ->description('Optional description to update when assigning (useful for providing context to the assignee)');
+        return [
+            'item_id' => $schema->string()
+                ->description('The UUID of the item to assign.')
+                ->required(),
+            'assignee_id' => $schema->string()
+                ->description('The UUID of the user to assign the item to, or null to unassign.')
+                ->nullable()
+                ->required(),
+            'description' => $schema->string()
+                ->description('Optional description to update when assigning, useful for giving the assignee context.'),
+        ];
     }
 
-    public function handle(array $arguments): ToolResult|Generator
+    public function handle(Request $request): Response|Generator
     {
         try {
+            $arguments = $request->all();
+
             // Get the item
             $item = $this->auth->getItem($arguments['item_id']);
 
             if ($item === null) {
-                return ToolResult::error("Item not found or access denied: {$arguments['item_id']}");
+                return Response::error("Item not found or access denied: {$arguments['item_id']}");
             }
 
             // Check if user is the owner (only owners can assign)
             if (! $this->auth->isItemOwner($item)) {
-                return ToolResult::error('Only the item owner can assign items to others');
+                return Response::error('Only the item owner can assign items to others');
             }
 
             $assigneeId = $arguments['assignee_id'];
@@ -86,7 +91,7 @@ final class AssignItemTool extends Tool
                     'previous_assignee_id' => $previousAssignee ? (string) $previousAssignee->id : null,
                 ]);
 
-                return ToolResult::json([
+                return Response::json([
                     'success' => true,
                     'message' => 'Item has been unassigned',
                     'item' => [
@@ -99,7 +104,7 @@ final class AssignItemTool extends Tool
 
             // Validate connection exists
             if (! $this->auth->canAssignTo($assigneeId)) {
-                return ToolResult::error("Cannot assign to user '{$assigneeId}': No accepted connection exists. Use lookup_users to find valid assignees.");
+                return Response::error("Cannot assign to user '{$assigneeId}': No accepted connection exists. Use lookup_users to find valid assignees.");
             }
 
             // Prepare update data
@@ -146,7 +151,7 @@ final class AssignItemTool extends Tool
                 'assignee_name' => $item->assignee->name,
             ]);
 
-            return ToolResult::json([
+            return Response::json([
                 'success' => true,
                 'message' => "Item assigned to {$item->assignee->name}",
                 'item' => [
@@ -163,7 +168,7 @@ final class AssignItemTool extends Tool
                 'error' => $e->getMessage(),
             ]);
 
-            return ToolResult::error("Failed to assign item: {$e->getMessage()}");
+            return Response::error("Failed to assign item: {$e->getMessage()}");
         }
     }
 }

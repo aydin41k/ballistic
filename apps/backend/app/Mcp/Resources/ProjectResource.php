@@ -5,16 +5,18 @@ declare(strict_types=1);
 namespace App\Mcp\Resources;
 
 use App\Mcp\Services\McpAuthContext;
+use Laravel\Mcp\Request;
+use Laravel\Mcp\Response;
+use Laravel\Mcp\Server\Contracts\HasUriTemplate;
 use Laravel\Mcp\Server\Resource;
+use Laravel\Mcp\Support\UriTemplate;
 
 /**
  * MCP Resource for a single project.
  */
-final class ProjectResource extends Resource
+final class ProjectResource extends Resource implements HasUriTemplate
 {
     protected string $description = 'Detailed information about a specific project including its items.';
-
-    private ?string $projectId = null;
 
     public function __construct(
         private readonly McpAuthContext $auth
@@ -30,9 +32,9 @@ final class ProjectResource extends Resource
         return 'Project Detail';
     }
 
-    public function uri(): string
+    public function uriTemplate(): UriTemplate
     {
-        return 'ballistic://projects/{projectId}';
+        return new UriTemplate('ballistic://projects/{projectId}');
     }
 
     public function mimeType(): string
@@ -40,31 +42,22 @@ final class ProjectResource extends Resource
         return 'application/json';
     }
 
-    /**
-     * Set the project ID for this resource.
-     */
-    public function withProjectId(string $projectId): self
+    public function handle(Request $request): Response
     {
-        $clone = clone $this;
-        $clone->projectId = $projectId;
+        $projectId = $request->string('projectId')->toString();
 
-        return $clone;
-    }
-
-    public function read(): string
-    {
-        if ($this->projectId === null) {
-            return json_encode([
+        if ($projectId === '') {
+            return Response::json([
                 'error' => 'Project ID required. Use the URI template: ballistic://projects/{projectId}',
-            ], JSON_THROW_ON_ERROR);
+            ]);
         }
 
-        $project = $this->auth->getProject($this->projectId);
+        $project = $this->auth->getProject($projectId);
 
         if ($project === null) {
-            return json_encode([
-                'error' => "Project not found or access denied: {$this->projectId}",
-            ], JSON_THROW_ON_ERROR);
+            return Response::json([
+                'error' => "Project not found or access denied: {$projectId}",
+            ]);
         }
 
         $project->load('items');
@@ -76,6 +69,7 @@ final class ProjectResource extends Resource
             'archived_at' => $project->archived_at?->toIso8601String(),
             'created_at' => $project->created_at->toIso8601String(),
             'updated_at' => $project->updated_at->toIso8601String(),
+            'item_count' => $project->items->count(),
 
             // Item counts by status
             'item_counts' => [
@@ -101,6 +95,6 @@ final class ProjectResource extends Resource
                 ])->values()->toArray(),
         ];
 
-        return json_encode($data, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR);
+        return Response::json($data);
     }
 }
