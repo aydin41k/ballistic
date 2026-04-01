@@ -6,6 +6,7 @@ namespace App\Http\Resources;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Carbon;
 
 final class NotificationResource extends JsonResource
 {
@@ -43,7 +44,7 @@ final class NotificationResource extends JsonResource
      * - "25 Jan" (> 4 weeks, same year)
      * - "25 Jan 2025" (different year)
      */
-    private function formatRelativeTime(?\Illuminate\Support\Carbon $datetime): ?string
+    private function formatRelativeTime(?Carbon $datetime): ?string
     {
         if ($datetime === null) {
             return null;

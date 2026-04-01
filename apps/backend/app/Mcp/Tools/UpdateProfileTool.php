@@ -6,11 +6,12 @@ namespace App\Mcp\Tools;
 
 use App\Mcp\Services\McpAuthContext;
 use Generator;
+use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Illuminate\Support\Facades\Validator;
+use Laravel\Mcp\Request;
+use Laravel\Mcp\Response;
 use Laravel\Mcp\Server\Tool;
 use Laravel\Mcp\Server\Tools\Annotations\IsIdempotent;
-use Laravel\Mcp\Server\Tools\ToolInputSchema;
-use Laravel\Mcp\Server\Tools\ToolResult;
 
 #[IsIdempotent]
 final class UpdateProfileTool extends Tool
@@ -29,31 +30,33 @@ final class UpdateProfileTool extends Tool
         return 'Update the authenticated user profile. Supports notes plus other profile fields like phone, bio, avatar URL, and display name.';
     }
 
-    public function schema(ToolInputSchema $schema): ToolInputSchema
+    public function schema(JsonSchema $schema): array
     {
-        return $schema
-            ->string('notes')
-            ->description('Scratchpad/profile notes for the authenticated user')
-            ->string('name')
-            ->description('Display name for the authenticated user')
-            ->string('phone')
-            ->description('Phone number for the authenticated user')
-            ->string('bio')
-            ->description('Short bio for the authenticated user')
-            ->string('avatar_url')
-            ->description('Avatar image URL for the authenticated user');
+        return [
+            'notes' => $schema->string()
+                ->description('Scratchpad or profile notes for the authenticated user.'),
+            'name' => $schema->string()
+                ->description('Display name for the authenticated user.'),
+            'phone' => $schema->string()
+                ->description('Phone number for the authenticated user.'),
+            'bio' => $schema->string()
+                ->description('Short bio for the authenticated user.'),
+            'avatar_url' => $schema->string()
+                ->description('Avatar image URL for the authenticated user.'),
+        ];
     }
 
-    public function handle(array $arguments): ToolResult|Generator
+    public function handle(Request $request): Response|Generator
     {
         try {
+            $arguments = $request->all();
             $user = $this->auth->user();
 
             $allowed = ['name', 'phone', 'notes', 'bio', 'avatar_url'];
             $updateData = array_intersect_key($arguments, array_flip($allowed));
 
             if ($updateData === []) {
-                return ToolResult::error('Provide at least one profile field to update');
+                return Response::error('Provide at least one profile field to update');
             }
 
             $validator = Validator::make($updateData, [
@@ -65,7 +68,7 @@ final class UpdateProfileTool extends Tool
             ]);
 
             if ($validator->fails()) {
-                return ToolResult::error('Profile validation failed: '.json_encode($validator->errors()->toArray(), JSON_THROW_ON_ERROR));
+                return Response::error('Profile validation failed: '.json_encode($validator->errors()->toArray(), JSON_THROW_ON_ERROR));
             }
 
             $validated = $validator->validated();
@@ -76,7 +79,7 @@ final class UpdateProfileTool extends Tool
                 'fields' => array_keys($validated),
             ]);
 
-            return ToolResult::json([
+            return Response::json([
                 'success' => true,
                 'user' => [
                     'id' => $user->id,
@@ -92,7 +95,7 @@ final class UpdateProfileTool extends Tool
                 'error' => $e->getMessage(),
             ]);
 
-            return ToolResult::error("Failed to update profile: {$e->getMessage()}");
+            return Response::error("Failed to update profile: {$e->getMessage()}");
         }
     }
 }

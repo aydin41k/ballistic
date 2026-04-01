@@ -7,6 +7,7 @@ use App\Http\Middleware\EnsureUserIsAdmin;
 use App\Http\Middleware\HandleAppearance;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Mcp\Middleware\McpAuthMiddleware;
+use App\Providers\AuthServiceProvider;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -42,7 +43,7 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withProviders([
-        App\Providers\AuthServiceProvider::class,
+        AuthServiceProvider::class,
     ])
     ->withExceptions(function (Exceptions $exceptions) {
         //

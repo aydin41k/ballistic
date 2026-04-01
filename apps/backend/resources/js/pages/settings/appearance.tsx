@@ -11,7 +11,7 @@ import { appearance } from '@/routes';
 const breadcrumbs: BreadcrumbItem[] = [
     {
         title: 'Appearance settings',
-        href: appearance().url,
+        href: appearance(),
     },
 ];
 

@@ -18,7 +18,7 @@ final class EnsureAiAssistantEnabled
      * user has enabled their AI assistant feature flag.
      * Returns 404 if the feature is not enabled (to not reveal the endpoint exists).
      *
-     * @param  \Closure(\Illuminate\Http\Request): (\Symfony\Component\HttpFoundation\Response)  $next
+     * @param  Closure(Request): (Response)  $next
      */
     public function handle(Request $request, Closure $next): Response
     {

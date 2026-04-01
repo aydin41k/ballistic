@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- **Backend dependency baseline** — upgraded the backend onto the latest compatible Composer set, including Laravel 13, Inertia Laravel 3, Laravel MCP 0.6, Boost 2, Tinker 3, and PHPUnit 12
+- **MCP package integration** — migrated Ballistic MCP tools and resources onto the current Laravel MCP request/response API, updated the MCP route registration to the explicit `/mcp` endpoint, and aligned the server metadata with the new package contract
+
+### Fixed
+
+- **MCP compatibility regressions** — restored MCP feature and unit coverage after the package upgrade, including single-resource payload compatibility for project item counts and updated error-handling expectations for unknown tools
+- **Laravel 13 test bootstrap** — disabled the renamed `PreventRequestForgery` middleware and Vite asset resolution during backend feature tests so admin, auth, and settings flows exercise application behaviour instead of test-environment friction
+- **Frontend route helper typing** — corrected dashboard and appearance breadcrumbs to use the existing string-based route helpers, clearing the backend frontend type-check after Wayfinder generation
+
+### Tests
+
+- Regenerated Wayfinder route/action helpers
+- Re-ran the full backend Sail suite successfully
+- Re-ran frontend type-checking successfully
 ## [0.17.04] - 2026-03-21
 
 ### Added

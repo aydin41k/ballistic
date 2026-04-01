@@ -6,6 +6,7 @@ namespace Tests\Feature;
 
 use App\Models\Connection;
 use App\Models\Item;
+use App\Models\Notification;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -709,7 +710,7 @@ final class ItemAssignmentTest extends TestCase
         ]);
 
         // Verify the notification message contains the task title
-        $notification = \App\Models\Notification::where('user_id', $owner->id)
+        $notification = Notification::where('user_id', $owner->id)
             ->where('type', 'task_completed_by_assignee')
             ->first();
 
@@ -737,7 +738,7 @@ final class ItemAssignmentTest extends TestCase
                 'status' => 'wontdo',
             ]);
 
-        $notification = \App\Models\Notification::where('user_id', $owner->id)
+        $notification = Notification::where('user_id', $owner->id)
             ->where('type', 'task_completed_by_assignee')
             ->first();
 
@@ -817,7 +818,7 @@ final class ItemAssignmentTest extends TestCase
                 'due_date' => '2026-02-15',
             ]);
 
-        $notification = \App\Models\Notification::where('user_id', $assignee->id)
+        $notification = Notification::where('user_id', $assignee->id)
             ->where('type', 'task_updated')
             ->first();
 
@@ -927,7 +928,7 @@ final class ItemAssignmentTest extends TestCase
                 'assignee_id' => null,
             ]);
 
-        $notification = \App\Models\Notification::where('user_id', $owner->id)
+        $notification = Notification::where('user_id', $owner->id)
             ->where('type', 'task_rejected')
             ->first();
 

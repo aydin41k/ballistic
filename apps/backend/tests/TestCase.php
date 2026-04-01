@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Tests;
 
+use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
+use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
+use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
 
 abstract class TestCase extends BaseTestCase
@@ -14,10 +17,13 @@ abstract class TestCase extends BaseTestCase
     {
         parent::setUp();
 
-        // Disable CSRF middleware for Laravel 12 testing
+        $this->withoutVite();
+
+        // Disable CSRF middleware across Laravel versions during feature tests.
         $this->withoutMiddleware([
-            \Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class,
-            \Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class,
+            PreventRequestForgery::class,
+            VerifyCsrfToken::class,
+            ValidateCsrfToken::class,
         ]);
     }
 }

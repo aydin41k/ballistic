@@ -7,6 +7,7 @@ namespace Tests\Unit;
 use App\Jobs\CreateNotificationJob;
 use App\Models\Notification;
 use App\Models\User;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -111,7 +112,7 @@ final class CreateNotificationJobTest extends TestCase
             message: 'Test'
         );
 
-        $this->assertInstanceOf(\Illuminate\Contracts\Queue\ShouldQueue::class, $job);
+        $this->assertInstanceOf(ShouldQueue::class, $job);
     }
 
     public function test_job_creates_multiple_notifications_for_same_user(): void

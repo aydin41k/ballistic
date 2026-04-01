@@ -47,7 +47,7 @@ interface Props {
 const breadcrumbs: BreadcrumbItem[] = [
     {
         title: 'Dashboard',
-        href: dashboard().url,
+        href: dashboard(),
     },
 ];
 

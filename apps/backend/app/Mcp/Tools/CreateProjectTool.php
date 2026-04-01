@@ -7,10 +7,11 @@ namespace App\Mcp\Tools;
 use App\Mcp\Services\McpAuthContext;
 use App\Models\Project;
 use Generator;
+use Illuminate\Contracts\JsonSchema\JsonSchema;
+use Laravel\Mcp\Request;
+use Laravel\Mcp\Response;
 use Laravel\Mcp\Server\Tool;
 use Laravel\Mcp\Server\Tools\Annotations\IsIdempotent;
-use Laravel\Mcp\Server\Tools\ToolInputSchema;
-use Laravel\Mcp\Server\Tools\ToolResult;
 
 /**
  * Create a new project.
@@ -32,24 +33,26 @@ final class CreateProjectTool extends Tool
         return 'Create a new project for organising todo items.';
     }
 
-    public function schema(ToolInputSchema $schema): ToolInputSchema
+    public function schema(JsonSchema $schema): array
     {
-        return $schema
-            ->string('name')
-            ->description('The name of the project (required)')
-            ->required()
-            ->string('color')
-            ->description('Hex colour code for the project (e.g., #FF5733). Optional.');
+        return [
+            'name' => $schema->string()
+                ->description('The name of the project.')
+                ->required(),
+            'color' => $schema->string()
+                ->description('Hex colour code for the project, for example #FF5733.'),
+        ];
     }
 
-    public function handle(array $arguments): ToolResult|Generator
+    public function handle(Request $request): Response|Generator
     {
         try {
+            $arguments = $request->all();
             $user = $this->auth->user();
 
             // Validate colour format if provided
             if (isset($arguments['color']) && ! preg_match('/^#[0-9A-Fa-f]{6}$/', $arguments['color'])) {
-                return ToolResult::error('Invalid colour format. Use hex format: #RRGGBB');
+                return Response::error('Invalid colour format. Use hex format: #RRGGBB');
             }
 
             // Create the project
@@ -64,7 +67,7 @@ final class CreateProjectTool extends Tool
                 'name' => $project->name,
             ]);
 
-            return ToolResult::json([
+            return Response::json([
                 'success' => true,
                 'project' => [
                     'id' => $project->id,
@@ -78,7 +81,7 @@ final class CreateProjectTool extends Tool
                 'error' => $e->getMessage(),
             ]);
 
-            return ToolResult::error("Failed to create project: {$e->getMessage()}");
+            return Response::error("Failed to create project: {$e->getMessage()}");
         }
     }
 }

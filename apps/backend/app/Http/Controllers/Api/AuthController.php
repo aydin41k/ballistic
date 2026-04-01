@@ -17,6 +17,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Validation\Rules;
 use Illuminate\Validation\ValidationException;
+use Laravel\Sanctum\PersonalAccessToken;
 
 final class AuthController extends Controller
 {
@@ -98,7 +99,7 @@ final class AuthController extends Controller
         $user = $request->user();
 
         // Revoke the current token
-        /** @var \Laravel\Sanctum\PersonalAccessToken|null $currentToken */
+        /** @var PersonalAccessToken|null $currentToken */
         $currentToken = $user->currentAccessToken();
         if ($currentToken !== null) {
             $currentToken->delete();

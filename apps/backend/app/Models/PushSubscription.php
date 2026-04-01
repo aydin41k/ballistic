@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -17,9 +18,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string $p256dh_key
  * @property string $auth_key
  * @property string|null $user_agent
- * @property \Carbon\Carbon|null $last_used_at
- * @property \Carbon\Carbon $created_at
- * @property \Carbon\Carbon $updated_at
+ * @property Carbon|null $last_used_at
+ * @property Carbon $created_at
+ * @property Carbon $updated_at
  * @property-read User $user
  */
 final class PushSubscription extends Model

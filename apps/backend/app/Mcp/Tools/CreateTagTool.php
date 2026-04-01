@@ -7,11 +7,12 @@ namespace App\Mcp\Tools;
 use App\Mcp\Services\McpAuthContext;
 use App\Models\Tag;
 use Generator;
+use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Illuminate\Support\Facades\DB;
+use Laravel\Mcp\Request;
+use Laravel\Mcp\Response;
 use Laravel\Mcp\Server\Tool;
 use Laravel\Mcp\Server\Tools\Annotations\IsIdempotent;
-use Laravel\Mcp\Server\Tools\ToolInputSchema;
-use Laravel\Mcp\Server\Tools\ToolResult;
 
 /**
  * Create a new tag.
@@ -33,24 +34,26 @@ final class CreateTagTool extends Tool
         return 'Create a new tag for categorising todo items.';
     }
 
-    public function schema(ToolInputSchema $schema): ToolInputSchema
+    public function schema(JsonSchema $schema): array
     {
-        return $schema
-            ->string('name')
-            ->description('The name of the tag (required, must be unique per user)')
-            ->required()
-            ->string('color')
-            ->description('Hex colour code for the tag (e.g., #FF5733). Optional.');
+        return [
+            'name' => $schema->string()
+                ->description('The name of the tag. It must be unique per user.')
+                ->required(),
+            'color' => $schema->string()
+                ->description('Hex colour code for the tag, for example #FF5733.'),
+        ];
     }
 
-    public function handle(array $arguments): ToolResult|Generator
+    public function handle(Request $request): Response|Generator
     {
         try {
+            $arguments = $request->all();
             $user = $this->auth->user();
 
             // Validate colour format if provided
             if (isset($arguments['color']) && ! preg_match('/^#[0-9A-Fa-f]{6}$/', $arguments['color'])) {
-                return ToolResult::error('Invalid colour format. Use hex format: #RRGGBB');
+                return Response::error('Invalid colour format. Use hex format: #RRGGBB');
             }
 
             // Use firstOrCreate within a transaction to prevent race conditions
@@ -71,7 +74,7 @@ final class CreateTagTool extends Tool
             });
 
             if (! $wasRecentlyCreated) {
-                return ToolResult::json([
+                return Response::json([
                     'success' => true,
                     'message' => 'Tag already exists with this name',
                     'tag' => [
@@ -87,7 +90,7 @@ final class CreateTagTool extends Tool
                 'name' => $tag->name,
             ]);
 
-            return ToolResult::json([
+            return Response::json([
                 'success' => true,
                 'tag' => [
                     'id' => $tag->id,
@@ -101,7 +104,7 @@ final class CreateTagTool extends Tool
                 'error' => $e->getMessage(),
             ]);
 
-            return ToolResult::error("Failed to create tag: {$e->getMessage()}");
+            return Response::error("Failed to create tag: {$e->getMessage()}");
         }
     }
 }

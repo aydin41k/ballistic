@@ -9,6 +9,7 @@ use App\Http\Middleware\EnsureApiTokenAbility;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
+use Laravel\Sanctum\TransientToken;
 use Tests\TestCase;
 
 final class EnsureApiTokenAbilityTest extends TestCase
@@ -57,7 +58,7 @@ final class EnsureApiTokenAbilityTest extends TestCase
         // Session auth (Inertia web routes) returns a TransientToken, not PersonalAccessToken.
         // The middleware must pass these through unconditionally.
         $user = User::factory()->create();
-        $user->withAccessToken(new \Laravel\Sanctum\TransientToken);
+        $user->withAccessToken(new TransientToken);
         $request = $this->requestFor($user);
 
         $response = $this->middleware()->handle($request, fn () => response('ok'));

@@ -45,6 +45,10 @@ use Laravel\Mcp\Server\Transport\StdioTransport;
  */
 final class BallisticServer extends Server
 {
+    protected string $name = 'Ballistic Social';
+
+    protected string $version = '0.16.1';
+
     /**
      * The supported MCP protocol versions.
      */
@@ -69,16 +73,6 @@ final class BallisticServer extends Server
             'listChanged' => false,
         ],
     ];
-
-    /**
-     * The MCP server name.
-     */
-    public string $serverName = 'Ballistic Social';
-
-    /**
-     * The MCP server version.
-     */
-    public string $serverVersion = '0.16.1';
 
     /**
      * Instructions for AI agents interacting with this server.
