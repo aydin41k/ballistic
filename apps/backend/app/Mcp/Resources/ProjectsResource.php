@@ -42,18 +42,22 @@ final class ProjectsResource extends Resource
 
     public function handle(Request $request): Response
     {
-        // Include archived projects with separate flag
-        $activeProjects = $this->auth->getProjects(includeArchived: false);
-        $archivedProjects = $this->auth->getProjects(includeArchived: true)
-            ->filter(fn ($p) => $p->archived_at !== null);
+        $projects = $this->auth->getProjects(includeArchived: true)
+            ->loadCount([
+                'items',
+                'items as active_items_count' => fn ($query) => $query->whereIn('status', ['todo', 'doing']),
+            ]);
+
+        $activeProjects = $projects->filter(fn ($project) => $project->archived_at === null)->values();
+        $archivedProjects = $projects->filter(fn ($project) => $project->archived_at !== null)->values();
 
         $mapProject = fn ($project) => [
             'id' => $project->id,
             'name' => $project->name,
             'color' => $project->color,
             'archived_at' => $project->archived_at?->toIso8601String(),
-            'items_count' => $project->items()->count(),
-            'active_items_count' => $project->items()->whereIn('status', ['todo', 'doing'])->count(),
+            'items_count' => $project->items_count,
+            'active_items_count' => $project->active_items_count,
             'created_at' => $project->created_at->toIso8601String(),
             'updated_at' => $project->updated_at->toIso8601String(),
         ];
