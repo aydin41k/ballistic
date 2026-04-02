@@ -42,7 +42,11 @@ final class TagsResource extends Resource
 
     public function handle(Request $request): Response
     {
-        $tags = $this->auth->getTags();
+        $tags = $this->auth->getTags()
+            ->loadCount([
+                'items',
+                'items as active_items_count' => fn ($query) => $query->whereIn('status', ['todo', 'doing']),
+            ]);
 
         $data = [
             'count' => $tags->count(),
@@ -50,8 +54,8 @@ final class TagsResource extends Resource
                 'id' => $tag->id,
                 'name' => $tag->name,
                 'color' => $tag->color,
-                'items_count' => $tag->items()->count(),
-                'active_items_count' => $tag->items()->whereIn('status', ['todo', 'doing'])->count(),
+                'items_count' => $tag->items_count,
+                'active_items_count' => $tag->active_items_count,
                 'created_at' => $tag->created_at->toIso8601String(),
             ])->toArray(),
         ];

@@ -25,9 +25,10 @@ use Laravel\Mcp\Facades\Mcp;
 */
 
 // Web-based MCP server (HTTP transport)
-// Protected by Sanctum authentication, AI feature flag, and rate limiting
-// Available at POST /mcp
-Mcp::web('mcp', BallisticServer::class)
+// Protected by Sanctum authentication, AI feature flag, and rate limiting.
+// routes/ai.php is already mounted under the MCP prefix by the package bootstrap,
+// so the empty path keeps the endpoint at POST /mcp instead of /mcp/mcp.
+Mcp::web('', BallisticServer::class)
     ->middleware('auth:sanctum')
     ->middleware(EnsureAiAssistantEnabled::class)
     ->middleware('token.mcp')
