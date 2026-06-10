@@ -1,0 +1,51 @@
+name: Mobile Linter Tester
+
+on:
+  pull_request:
+    paths:
+      - "apps/mobile/**"
+      - ".github/workflows/mobile-linter-tester.yml"
+
+concurrency:
+  group: mobile-linter-tester-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: apps/mobile
+        shell: bash
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: apps/mobile/package-lock.json
+
+      - name: Install dependencies
+        # Use npm install (not npm ci) because expo-haptics and
+        # @react-native-community/datetimepicker were added after the last
+        # committed lock-file snapshot. Regenerate the lock file on first run,
+        # then commit the updated package-lock.json to switch back to npm ci.
+        run: npm install
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Expo Doctor
+        run: npm run doctor
+        # Non-blocking: doctor checks are advisory for a managed-workflow app.
+        continue-on-error: true
