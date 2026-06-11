@@ -215,6 +215,7 @@ function MoveButton({
   return (
     <Pressable
       onPress={onPress}
+      hitSlop={6}
       style={({ pressed }) => [
         styles.moveButton,
         pressed && styles.pressedOpacity,

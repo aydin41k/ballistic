@@ -193,5 +193,10 @@ export async function logout(): Promise<void> {
     }
   }
 
-  await clearStoredAuth();
+  try {
+    await clearStoredAuth();
+  } catch {
+    // If SecureStore/AsyncStorage can't be cleared (e.g. a transient
+    // keychain error), the caller should still be signed out locally.
+  }
 }

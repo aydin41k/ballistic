@@ -1,3 +1,7 @@
+// Abort requests that hang longer than this so a stalled backend can't leave
+// the UI stuck on a spinner forever.
+const REQUEST_TIMEOUT_MS = 15_000;
+
 type ApiErrorCode = "http" | "network" | "unauthorised";
 
 export class ApiError extends Error {
@@ -62,10 +66,15 @@ export async function fetchWithHandling(
   init: RequestInit,
   networkMessage = "Unable to reach the Ballistic backend. Check that the API is running and the mobile API base URL is correct.",
 ): Promise<Response> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
   try {
-    return await fetch(input, init);
+    return await fetch(input, { ...init, signal: controller.signal });
   } catch {
     throw new ApiError(networkMessage, { code: "network" });
+  } finally {
+    clearTimeout(timeout);
   }
 }
 

@@ -7,7 +7,9 @@ import {
 } from "@/lib/http";
 import { clearStoredAuth, getStoredToken } from "@/lib/storage";
 
-type UnauthorisedHandler = (() => void | Promise<void>) | null;
+type UnauthorisedHandler =
+  | ((message: string) => void | Promise<void>)
+  | null;
 type QueryParams = Record<string, string | undefined>;
 
 type ApiRequestOptions = {
@@ -57,7 +59,7 @@ async function handleResponse<T>(response: Response): Promise<T> {
   } catch (candidate) {
     if (candidate instanceof UnauthorisedError) {
       await clearStoredAuth();
-      await unauthorisedHandler?.();
+      await unauthorisedHandler?.(candidate.message);
     }
 
     if (candidate instanceof ApiError) {

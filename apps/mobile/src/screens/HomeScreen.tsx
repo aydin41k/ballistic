@@ -215,6 +215,11 @@ export function HomeScreen() {
     () => (dates ? sortByUrgency(items) : items),
     [dates, items],
   );
+  // Reordering (Top/Up/Down) acts on the canonical, position-ordered `items`
+  // array. Only allow it when the rendered "mine" section is that same
+  // array - i.e. not urgency-sorted and not project-filtered - otherwise the
+  // on-screen first/last positions and the move buttons' effects diverge.
+  const canReorderSection = !dates && excludedProjectIds.size === 0;
   const filteredItems = useMemo(
     () => filterItemsByExcludedProjects(sortedItems, excludedProjectIds),
     [excludedProjectIds, sortedItems],
@@ -616,7 +621,7 @@ export function HomeScreen() {
               <TaskCard
                 item={item}
                 dates={dates}
-                canReorder={section.key === "mine"}
+                canReorder={section.key === "mine" && canReorderSection}
                 isFirst={index === 0}
                 isLast={index === section.data.length - 1}
                 onOpen={() => {
@@ -738,7 +743,7 @@ export function HomeScreen() {
               style={({ pressed }) => [
                 styles.fab,
                 !canCreateTask && styles.fabDisabled,
-                pressed && !canCreateTask === false && styles.fabPressed,
+                pressed && canCreateTask && styles.fabPressed,
               ]}
             >
               <Text style={styles.fabLabel}>+</Text>

@@ -33,11 +33,7 @@ jobs:
           cache-dependency-path: apps/mobile/package-lock.json
 
       - name: Install dependencies
-        # Use npm install (not npm ci) because expo-haptics and
-        # @react-native-community/datetimepicker were added after the last
-        # committed lock-file snapshot. Regenerate the lock file on first run,
-        # then commit the updated package-lock.json to switch back to npm ci.
-        run: npm install
+        run: npm ci
 
       - name: Lint
         run: npm run lint

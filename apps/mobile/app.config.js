@@ -58,8 +58,5 @@ module.exports = ({ config }) => {
       appVariant:
         process.env.APP_VARIANT ?? process.env.EAS_BUILD_PROFILE ?? "development",
     },
-    android: {
-      ...baseConfig.android,
-    },
   };
 };

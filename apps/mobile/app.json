@@ -3,7 +3,7 @@
     "name": "Ballistic",
     "slug": "ballistic-mobile",
     "scheme": "ballistic",
-    "version": "0.1.0",
+    "version": "0.2.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -31,7 +31,8 @@
       "permissions": []
     },
     "plugins": [
-      "expo-secure-store"
+      "expo-secure-store",
+      "@react-native-community/datetimepicker"
     ]
   }
 }

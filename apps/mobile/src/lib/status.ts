@@ -13,7 +13,7 @@ export function statusLabel(status: Status): string {
     case "todo":
       return "To Do";
     case "doing":
-      return "Doing";
+      return "In Progress";
     case "done":
       return "Done";
     case "wontdo":

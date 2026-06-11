@@ -85,6 +85,12 @@ export function ActivitySheet({
         ) : null}
         {loading ? <ActivityIndicator color={colours.blueStrong} /> : null}
 
+        {items.length === 0 && !loading && !error ? (
+          <View style={styles.emptyStateCompact}>
+            <Text style={styles.emptyCopy}>No activity yet.</Text>
+          </View>
+        ) : null}
+
         {items.map((item) => (
           <View key={`${item.id}-${getActivityTimestamp(item)}`} style={styles.activityCard}>
             <Text style={styles.personName}>{item.title}</Text>

@@ -53,9 +53,12 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const [isReady, setIsReady] = useState(false);
   const [bootstrapError, setBootstrapError] = useState<string | null>(null);
 
-  const handleSignedOut = useCallback(async () => {
+  const handleSignedOut = useCallback(async (message?: string) => {
     await clearStoredAuth();
     setUser(null);
+    setBootstrapError(
+      message ?? "Your session has expired. Please sign in again.",
+    );
   }, []);
 
   useEffect(() => {
@@ -96,8 +99,9 @@ export function AuthProvider({ children }: PropsWithChildren) {
       } catch (candidate) {
         if (!cancelled) {
           if (candidate instanceof UnauthorisedError) {
-            await handleSignedOut();
-            setBootstrapError(null);
+            // The unauthorised handler (handleSignedOut) already ran via
+            // setUnauthorisedHandler with a friendly session-expired
+            // message - nothing further to do here.
           } else if (!storedUser) {
             setBootstrapError(
               toDisplayMessage(
@@ -147,8 +151,11 @@ export function AuthProvider({ children }: PropsWithChildren) {
   );
 
   const logout = useCallback(async () => {
-    await authLogout();
-    setUser(null);
+    try {
+      await authLogout();
+    } finally {
+      setUser(null);
+    }
   }, []);
 
   const refreshUser = useCallback(async () => {

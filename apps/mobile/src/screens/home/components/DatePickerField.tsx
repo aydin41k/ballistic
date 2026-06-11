@@ -6,7 +6,7 @@ import { Modal, Platform, Pressable, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { styles } from "@/screens/home/styles";
-import { colours, radii, spacing } from "@/theme";
+import { colours } from "@/theme";
 
 type DatePickerFieldProps = {
   label: string;

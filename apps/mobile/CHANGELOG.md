@@ -1,3 +1,35 @@
+## 0.2.0 - 2026-06-11
+
+### Fixed
+
+- **Reorder controls (Top/Up/Down)** — the move buttons and their first/last visibility now only appear when the task list is in its canonical, position-ordered state (the dates feature is off and no project filters are applied). Previously they could act on a different ordering than what was on screen when urgency-sorting or project filters were active, making moves appear to do nothing.
+- **Assignee search** — searching for a user by a short, non-email query no longer triggers an unhandled rejection from the backend's user-discovery validation (which requires an email or a 9+ digit phone number); the discovery request is now skipped for queries that can't match, and any failure is handled gracefully.
+- **FAB pressed state** — fixed a misleading boolean expression so the floating action button's pressed style only applies while task creation is enabled.
+- **Logout robustness** — clearing local auth storage on logout is now wrapped so a SecureStore/AsyncStorage failure can't leave the UI stuck on an authenticated screen with a server-revoked token.
+- **Session-expiry messaging** — a 401 response now signs the user out with a clear "Your session has expired. Please sign in again." message on the sign-in screen, instead of silently bouncing back to it.
+
+### Added
+
+- **Request timeout** — API requests now abort after 15 seconds via `AbortController`, so a backend that accepts a connection but never responds no longer leaves the UI spinning indefinitely.
+- **Activity log empty state** — the Activity sheet now shows "No activity yet." when there is nothing to display, matching the Notifications sheet.
+- Larger touch target (`hitSlop`) on the Top/Up/Down move buttons.
+
+### Changed
+
+- **Status label** — "Doing" is now labelled "In Progress" to match the web app's terminology.
+- `tsconfig.json` now extends `expo/tsconfig.base` for the project's TypeScript configuration, matching Expo SDK conventions.
+- Removed the unused `react-native-screens` dependency (the app has no navigation stack).
+- Updated `expo-haptics` (`~15.0.8`), `@react-native-community/datetimepicker` (`8.4.4`), and `expo` (`~54.0.35`) to the versions expected by the installed Expo SDK, and registered the date picker as a config plugin in `app.json`. `expo-doctor` now reports 17/17 checks passing.
+- Regenerated `package-lock.json` so it matches `package.json` (it previously omitted `expo-haptics` and `@react-native-community/datetimepicker`); CI now uses `npm ci` again instead of `npm install`.
+- Added `shell-quote`, `brace-expansion`, and `ws` overrides to clear a critical and several moderate `npm audit` advisories in transitive dev-tooling dependencies.
+- Removed leftover scratch files from a previous review session (`MOBILE_PR_READY.md`, `MOBILE_PR_BODY.md`, `commit_mobile_pr.py`, `finish_mobile_pr.sh`) — not part of the app.
+
+### Notes
+
+- `npm audit --omit=dev --audit-level=moderate` still reports 11 moderate advisories in the `uuid -> xcode -> @expo/config-plugins -> expo` chain; the only available fix downgrades `expo` to a 46.x major, which is not appropriate. This matches the gap documented in 0.1.2.
+- The EAS project is not yet linked (no `extra.eas.projectId`/`owner` in `app.json`, empty `eas.json#submit.production`); `eas build`/`eas submit` will prompt interactively until `eas init` is run with an authenticated EAS account. See README "Store Builds".
+- `HomeScreen.tsx` and `TaskEditorSheet.tsx` remain the largest files in the app and are good candidates for extracting a board-state hook and an `AssigneePicker` component respectively in a follow-up.
+
 ## 0.1.3 - 2026-06-10
 
 ### Added

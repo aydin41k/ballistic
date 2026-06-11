@@ -72,7 +72,7 @@ Run these commands exactly from a fresh local checkout.
 - If `EXPO_PUBLIC_API_BASE_URL` is missing, the app falls back to `http://127.0.0.1:8000` on iOS/web and `http://10.0.2.2:8000` on Android. That fallback is only safe for local simulators/emulators.
 - A physical device will not be able to reach `127.0.0.1` or `10.0.2.2`; use your machine's LAN IP instead.
 - If sign-in fails immediately, check that Sail is up and that the URL in `apps/mobile/.env` matches the device you launched on.
-- The current scaffold uses text entry for dates rather than a native picker, so date input must be `YYYY-MM-DD`.
+- Scheduled and due dates use the native date picker (a sheet with Clear/Done on iOS, the OS dialog on Android).
 
 ## User Testing Before Deployment
 
@@ -118,6 +118,14 @@ Pull requests that touch `apps/mobile/**` trigger the `Mobile Linter Tester` wor
 
 Store builds use EAS profiles from `eas.json`.
 
+> **Before the first EAS build:** this app is not yet linked to an EAS
+> project (`app.json` has no `extra.eas.projectId`/`owner`, and
+> `eas.json#submit.production` is empty). Run `eas init` from `apps/mobile`
+> with an authenticated EAS account to link the project and commit the
+> resulting `projectId`/`owner`, then fill in `submit.production` with the
+> real Apple/Google submission details. Until then, `eas build`/`eas submit`
+> will prompt interactively and cannot run in CI.
+
 ```bash
 cd apps/mobile
 EXPO_PUBLIC_API_BASE_URL=https://YOUR_PRODUCTION_API_HOST eas build --platform all --profile production
@@ -135,6 +143,7 @@ Before submitting:
 ## Known Follow-Ups
 
 - Native lock-screen push notifications are not wired yet because the current backend exposes web-push subscription endpoints, not mobile device-token endpoints. A follow-up should add Expo Push Notifications backed by Expo's push service or direct APNs/FCM token registration.
-- Date entry should move to a native picker when dependency choices are settled.
-- The main authenticated screen (`HomeScreen.tsx`) is currently doing too much in one file and should be split into smaller feature modules before significant new behaviour is added.
-- Haptic feedback on status toggles and confirmations can be added with `expo-haptics` once the lock file is updated.
+- The main authenticated screen (`HomeScreen.tsx`) is still the largest file in the app and would benefit from splitting board state/handlers into a dedicated hook and extracting the toolbar/empty-state JSX into `home/components`, before significant new behaviour is added.
+- `TaskEditorSheet.tsx` is similarly large; the "Assign to" block is a good candidate for extraction into its own component.
+- The EAS project is not yet linked (see "Store Builds" above) - required before non-interactive EAS builds/submissions are possible.
+- Reordering (Top/Up/Down) is only available when the task list is in its default, unsorted, unfiltered order (dates feature off and no project filters applied), since the move actions operate on that canonical ordering.

@@ -2,7 +2,6 @@ import * as Haptics from "expo-haptics";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
-  Platform,
   Pressable,
   ScrollView,
   Text,
@@ -130,16 +129,32 @@ export function TaskEditorSheet({
         }
         setSearchingUsers(true);
         try {
-          const lookup = await lookupUsers(query.trim());
+          const trimmed = query.trim();
+          const lookup = await lookupUsers(trimmed);
           if (cancelled) return;
           if (lookup.length > 0) {
             setResults(lookup);
             setDiscoveredUser(null);
           } else {
             setResults([]);
-            const discovered = await discoverUser(query.trim());
-            if (cancelled) return;
-            setDiscoveredUser(discovered.found ? (discovered.user ?? null) : null);
+            // Discovery requires an exact match: a valid email, or a phone
+            // number with at least 9 digits (matches backend validation).
+            // Skip the request otherwise to avoid a guaranteed 422.
+            const looksLikeEmail = trimmed.includes("@");
+            const digitCount = trimmed.replace(/[^0-9]/g, "").length;
+            if (looksLikeEmail || digitCount >= 9) {
+              try {
+                const discovered = await discoverUser(trimmed);
+                if (cancelled) return;
+                setDiscoveredUser(
+                  discovered.found ? (discovered.user ?? null) : null,
+                );
+              } catch {
+                if (!cancelled) setDiscoveredUser(null);
+              }
+            } else {
+              setDiscoveredUser(null);
+            }
           }
         } finally {
           if (!cancelled) setSearchingUsers(false);
