@@ -1,0 +1,56 @@
+{
+  "expo": {
+    "name": "Ballistic",
+    "slug": "ballistic-mobile",
+    "version": "0.1.6",
+    "orientation": "portrait",
+    "icon": "./assets/images/ballistic-icon.png",
+    "scheme": "ballistic",
+    "userInterfaceStyle": "light",
+    "backgroundColor": "#F7F8FA",
+    "ios": {
+      "icon": "./assets/images/ballistic-icon.png",
+      "bundleIdentifier": "com.psycode.ballistic",
+      "supportsTablet": true,
+      "infoPlist": {
+        "UIBackgroundModes": ["remote-notification"]
+      }
+    },
+    "android": {
+      "icon": "./assets/images/ballistic-icon.png",
+      "package": "com.psycode.ballistic",
+      "edgeToEdgeEnabled": true,
+      "predictiveBackGestureEnabled": true,
+      "permissions": ["POST_NOTIFICATIONS"]
+    },
+    "web": {
+      "output": "static",
+      "favicon": "./assets/images/ballistic-icon.png"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#0A2540",
+          "image": "./assets/images/ballistic-logo.png",
+          "imageWidth": 180,
+          "resizeMode": "contain"
+        }
+      ],
+      "expo-secure-store",
+      "@react-native-community/datetimepicker",
+      [
+        "expo-notifications",
+        {
+          "color": "#1E40AF",
+          "defaultChannel": "ballistic"
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    }
+  }
+}

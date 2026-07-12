@@ -1,0 +1,51 @@
+name: Mobile Linter Tester
+
+on:
+  pull_request:
+    paths:
+      - "apps/mobile/**"
+      - ".github/workflows/mobile-linter-tester.yml"
+
+concurrency:
+  group: mobile-linter-tester-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: apps/mobile
+        shell: bash
+
+    env:
+      EXPO_NO_TELEMETRY: "1"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: apps/mobile/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Format check
+        run: npm run format:check
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Production export
+        run: npm run export
