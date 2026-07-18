@@ -7,6 +7,7 @@ Next.js + Tailwind + TypeScript frontend, paired with a Laravel-style REST API (
 ## 🌈 At a glance
 
 - 🧭 Quick capture with optimistic updates and drag-to-reorder lanes
+- 🖥️ Responsive desktop workspace with a persistent sidebar and explicit task controls
 - 🎯 Status cycle made for focus: `todo → doing → done → wontdo`
 - 🗂️ Projects + descriptions so every thought has a home
 - 🔐 Login / register with token storage + auto-redirect on expiry

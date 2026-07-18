@@ -127,4 +127,44 @@ describe("ItemRow", () => {
       expect(onDropItem).toHaveBeenCalledWith("1");
     }
   });
+
+  test("desktop action buttons expose edit, reorder, decline, and delete", () => {
+    const onEdit = jest.fn();
+    const onOptimisticReorder = jest.fn();
+    const onDecline = jest.fn();
+    const onDelete = jest.fn();
+
+    render(
+      <ItemRow
+        item={base}
+        onChange={jest.fn()}
+        onOptimisticReorder={onOptimisticReorder}
+        index={1}
+        onEdit={onEdit}
+        isFirst={false}
+        isLast={false}
+        onDecline={onDecline}
+        onDelete={onDelete}
+        onDragStart={jest.fn()}
+        onDragEnter={jest.fn()}
+        onDropItem={jest.fn()}
+        onDragEnd={jest.fn()}
+        draggingId={null}
+        dragOverId={null}
+        onError={jest.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Edit task" }));
+    fireEvent.click(screen.getByRole("button", { name: "Move up" }));
+    fireEvent.click(screen.getByRole("button", { name: "Move down" }));
+    fireEvent.click(screen.getByRole("button", { name: "Decline" }));
+    fireEvent.click(screen.getByRole("button", { name: "Delete" }));
+
+    expect(onEdit).toHaveBeenCalledTimes(1);
+    expect(onOptimisticReorder).toHaveBeenCalledWith("1", "up");
+    expect(onOptimisticReorder).toHaveBeenCalledWith("1", "down");
+    expect(onDecline).toHaveBeenCalledTimes(1);
+    expect(onDelete).toHaveBeenCalledTimes(1);
+  });
 });

@@ -1,3 +1,18 @@
+## 0.18.0 - 2026-07-18
+
+### Changed
+
+- **Desktop workspace**: replaced the bottom navigation bar with a persistent sidebar on large screens while retaining the existing mobile header, bottom bar, and compact task layout
+- **Desktop navigation**: added labelled access to journal tools, notifications, settings, profile, project filters, scope filters, and quick task creation
+- **Task controls**: added explicit desktop buttons for editing, moving up or down, moving to the top, declining, and deleting tasks instead of relying on row gestures or implicit interactions
+- **Wide-screen layout**: expanded the journal into a centred desktop workspace with a dedicated page header, task counts, wider task details, section counts, and desktop-sized spacing
+- **Notifications**: added a sidebar presentation for the existing notification centre without changing its mobile icon presentation
+- **Version label**: updated the settings footer to `v0.18.0`
+
+### Tests
+
+- Extended `itemrow.test.tsx` to cover the explicit desktop action buttons
+
 ## 0.17.1 - 2026-03-10
 
 ### Changed

@@ -46,7 +46,9 @@ export default function RootLayout({
       >
         <ServiceWorkerRegistration />
         <AuthProvider>
-          <div className="mx-auto w-full max-w-screen-sm p-4">{children}</div>
+          <div className="mx-auto w-full max-w-screen-sm p-4 lg:max-w-none lg:p-0">
+            {children}
+          </div>
         </AuthProvider>
       </body>
     </html>

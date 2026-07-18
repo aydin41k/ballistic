@@ -8,6 +8,7 @@ import {
   fetchItems,
   createItem,
   updateItem,
+  deleteItem,
   reorderItems,
   fetchProjects,
   createProject,
@@ -21,6 +22,7 @@ import { EditItemModal } from "@/components/EditItemModal";
 import { ProfileModal } from "@/components/ProfileModal";
 import { ActivityLogModal } from "@/components/ActivityLogModal";
 import { NotificationCentre } from "@/components/NotificationCentre";
+import { DesktopSidebar } from "@/components/DesktopSidebar";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   filterItemsByExcludedProjects,
@@ -287,6 +289,30 @@ export default function Home() {
     }
   }
 
+  async function handleDelete(item: Item) {
+    if (!confirm(`Delete “${item.title}”? This cannot be undone.`)) return;
+
+    const previousItems = [...items];
+    const previousAssigned = [...assignedItems];
+    const previousDelegated = [...delegatedItems];
+    const removeItem = (current: Item[]) =>
+      current.filter((candidate) => candidate.id !== item.id);
+
+    setItems(removeItem);
+    setAssignedItems(removeItem);
+    setDelegatedItems(removeItem);
+
+    try {
+      await deleteItem(item.id);
+    } catch (error) {
+      console.error("Failed to delete task:", error);
+      setItems(previousItems);
+      setAssignedItems(previousAssigned);
+      setDelegatedItems(previousDelegated);
+      showError("Failed to delete task. Please try again.");
+    }
+  }
+
   // Optimistic reordering function that updates UI immediately and persists via bulk API
   function onOptimisticReorder(
     itemId: string,
@@ -343,6 +369,20 @@ export default function Home() {
     const newProject = await createProject({ name });
     setProjects((prev) => [...prev, newProject]);
     return newProject;
+  }
+
+  function openNewTask() {
+    setEditingItem(null);
+    setShowEditModal(true);
+  }
+
+  function toggleProjectFilter(projectId: string) {
+    setExcludedProjectIds((previous) => {
+      const next = new Set(previous);
+      if (next.has(projectId)) next.delete(projectId);
+      else next.add(projectId);
+      return next;
+    });
   }
 
   function reorderList(
@@ -429,463 +469,559 @@ export default function Home() {
   }
 
   return (
-    <div className="flex flex-col gap-3 pb-24">
-      {/* Error toast */}
-      {toast && (
-        <div className="fixed top-4 inset-x-4 z-30 mx-auto max-w-md animate-fade-in">
-          <div className="flex items-center gap-2 rounded-md bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700 shadow-lg">
-            <span className="flex-1">{toast}</span>
-            <button
-              type="button"
-              onClick={() => setToast(null)}
-              className="shrink-0 text-red-400 hover:text-red-600 transition-colors"
-              aria-label="Dismiss"
-            >
-              <svg
-                viewBox="0 0 24 24"
-                width="16"
-                height="16"
-                fill="none"
-                stroke="currentColor"
-              >
-                <path
-                  d="M18 6 6 18M6 6l12 12"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Header */}
-      <header className="sticky top-0 z-10 -mx-4 bg-[var(--page-bg)]/95 px-4 pb-2 pt-3 backdrop-blur">
-        <div className="flex items-center justify-between">
-          <h1 className="text-xl font-semibold text-[var(--navy)]">
-            Ballistic
-            <br />
-            <small>The Simplest Bullet Journal</small>
-          </h1>
-          <button
-            type="button"
-            aria-label="Logout"
-            onClick={() => {
-              if (confirm("Are you sure you want to logout?")) {
-                handleLogout();
-              }
-            }}
-            className="tap-target grid h-9 w-9 place-items-center rounded-md bg-white shadow-sm hover:shadow-md active:scale-95"
-            title={`Logout ${user?.name || ""}`}
-          >
-            {/* logout icon */}
-            <svg
-              viewBox="0 0 24 24"
-              width="18"
-              height="18"
-              fill="none"
-              stroke="currentColor"
-              className="text-[var(--navy)]"
-            >
-              <path
-                d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </button>
-        </div>
-      </header>
-
-      {/* Planned view banner */}
-      {dates && viewScope === "planned" && (
-        <div className="flex items-center justify-between rounded-md bg-sky-50 px-3 py-2 text-sm text-sky-700 border border-sky-200">
-          <span>Showing planned items (future scheduled dates)</span>
-          <button
-            type="button"
-            onClick={() => setViewScope("active")}
-            className="text-xs font-medium text-sky-600 hover:text-sky-800 underline"
-          >
-            Back to active
-          </button>
-        </div>
-      )}
-
-      {/* List */}
-      <div className="flex flex-col gap-2">
-        {/* Render a single item as a row */}
-        {(() => {
-          function renderItem(item: Item, index: number) {
-            return (
-              <ItemRow
-                key={item.id || `item-${index}`}
-                item={item}
-                onChange={onRowChange}
-                onOptimisticReorder={onOptimisticReorder}
-                index={index}
-                onEdit={() => {
-                  setEditingItem(item);
-                  setShowEditModal(true);
-                }}
-                isFirst={index === 0}
-                onDragStart={handleDragStart}
-                onDragEnter={handleDragEnter}
-                onDropItem={handleDrop}
-                onDragEnd={handleDragEnd}
-                draggingId={draggingId}
-                dragOverId={dragOverId}
-                onError={showError}
-              />
-            );
+    <div className="lg:grid lg:min-h-dvh lg:grid-cols-[17.5rem_minmax(0,1fr)]">
+      <DesktopSidebar
+        user={user}
+        projects={projects}
+        excludedProjectIds={excludedProjectIds}
+        dates={dates}
+        delegation={delegation}
+        viewScope={viewScope}
+        onSetViewScope={setViewScope}
+        onToggleProject={toggleProjectFilter}
+        onClearProjects={() => setExcludedProjectIds(new Set())}
+        onNewTask={openNewTask}
+        onOpenNotes={() => setShowNotes(true)}
+        onOpenActivity={() => setShowActivityLog(true)}
+        onOpenSettings={() => setShowSettings(true)}
+        onOpenProfile={() => setShowProfile(true)}
+        onLogout={() => {
+          if (confirm("Are you sure you want to log out?")) {
+            void handleLogout();
           }
+        }}
+      />
 
-          return (
-            <>
-              {/* Assigned to Me section */}
-              {delegation && filteredAssignedItems.length > 0 && (
-                <>
-                  <div className="flex items-center justify-between mt-2">
-                    <h2 className="text-xs font-semibold uppercase tracking-wider text-emerald-600">
-                      Assigned to Me
-                    </h2>
-                  </div>
-                  {filteredAssignedItems.map((item, index) => (
-                    <div key={item.id || `assigned-${index}`}>
-                      {renderItem(item, index)}
-                      <button
-                        type="button"
-                        onClick={() => handleDecline(item)}
-                        className="mt-1 text-xs text-red-500 hover:text-red-700 transition-colors px-3"
-                      >
-                        Decline
-                      </button>
-                    </div>
-                  ))}
-                </>
-              )}
-
-              {/* My Tasks section */}
-              {filteredItems.length > 0 && (
-                <>
-                  {delegation && (
-                    <h2 className="text-xs font-semibold uppercase tracking-wider text-[var(--navy)] mt-2">
-                      My Tasks
-                    </h2>
-                  )}
-                  {filteredItems.map((item, index) => renderItem(item, index))}
-                </>
-              )}
-
-              {/* Delegated to Others section */}
-              {delegation && filteredDelegatedItems.length > 0 && (
-                <>
-                  <h2 className="text-xs font-semibold uppercase tracking-wider text-amber-600 mt-2">
-                    Delegated to Others
-                  </h2>
-                  {filteredDelegatedItems.map((item, index) =>
-                    renderItem(item, index),
-                  )}
-                </>
-              )}
-
-              {/* Empty state */}
-              {filteredItems.length === 0 &&
-                (!delegation ||
-                  (filteredAssignedItems.length === 0 &&
-                    filteredDelegatedItems.length === 0)) &&
-                !loading && (
-                  <EmptyState
-                    type="no-items"
-                    message={
-                      hasProjectFilter
-                        ? "No tasks match the selected projects."
-                        : "Start your bullet journal journey by adding your first task!"
-                    }
-                  />
-                )}
-            </>
-          );
-        })()}
-      </div>
-
-      {/* Footer */}
-      <footer className="text-center py-6 text-sm text-slate-500">
-        Psycode Pty. Ltd. © {new Date().getFullYear()}
-      </footer>
-
-      {/* Filter Panel */}
-      {showFilter && (
-        <>
-          <div
-            className="fixed inset-0 z-[19]"
-            onClick={() => setShowFilter(false)}
-            aria-hidden="true"
-          />
-          <div className="fixed inset-x-0 bottom-[4.5rem] z-[21]">
-            <div className="mx-auto max-w-sm px-4">
-              <div className="rounded-xl bg-white shadow-xl border border-slate-200/50 p-4 space-y-4 animate-slide-in-up">
-                {/* Project filter (multi-select, exclusion model) */}
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-                      Projects
-                    </h3>
-                    {excludedProjectIds.size > 0 && (
-                      <button
-                        type="button"
-                        onClick={() => setExcludedProjectIds(new Set())}
-                        className="text-xs text-[var(--blue)] hover:underline"
-                      >
-                        Show all
-                      </button>
-                    )}
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setExcludedProjectIds((prev) => {
-                          const next = new Set(prev);
-                          if (next.has(NO_PROJECT_FILTER_ID)) {
-                            next.delete(NO_PROJECT_FILTER_ID);
-                          } else {
-                            next.add(NO_PROJECT_FILTER_ID);
-                          }
-                          return next;
-                        })
-                      }
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
-                        excludedProjectIds.has(NO_PROJECT_FILTER_ID)
-                          ? "bg-slate-100 text-slate-400 line-through"
-                          : "bg-[var(--blue)] text-white"
-                      }`}
-                    >
-                      No project
-                    </button>
-                    {projects.map((project) => {
-                      const isExcluded = excludedProjectIds.has(project.id);
-                      return (
-                        <button
-                          key={project.id}
-                          type="button"
-                          onClick={() =>
-                            setExcludedProjectIds((prev) => {
-                              const next = new Set(prev);
-                              if (next.has(project.id)) {
-                                next.delete(project.id);
-                              } else {
-                                next.add(project.id);
-                              }
-                              return next;
-                            })
-                          }
-                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
-                            isExcluded
-                              ? "bg-slate-100 text-slate-400 line-through"
-                              : "bg-[var(--blue)] text-white"
-                          }`}
-                        >
-                          {project.color && (
-                            <span
-                              className={`inline-block h-2 w-2 rounded-full ${isExcluded ? "opacity-40" : ""}`}
-                              style={{ backgroundColor: project.color }}
-                            />
-                          )}
-                          {project.name}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Scope toggle (dates feature only) */}
-                {dates && (
-                  <div>
-                    <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">
-                      Scope
-                    </h3>
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setViewScope("active")}
-                        className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
-                          viewScope === "active"
-                            ? "bg-[var(--blue)] text-white"
-                            : "bg-slate-100 text-slate-700 hover:bg-slate-200"
-                        }`}
-                      >
-                        Active
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setViewScope("planned")}
-                        className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
-                          viewScope === "planned"
-                            ? "bg-[var(--blue)] text-white"
-                            : "bg-slate-100 text-slate-700 hover:bg-slate-200"
-                        }`}
-                      >
-                        Planned
-                      </button>
-                    </div>
-                  </div>
-                )}
+      <main className="flex min-w-0 flex-col pb-24 lg:pb-0">
+        <div className="flex flex-col gap-3 lg:mx-auto lg:w-full lg:max-w-6xl lg:px-10 lg:py-8 xl:px-12">
+          {/* Error toast */}
+          {toast && (
+            <div className="fixed top-4 inset-x-4 z-30 mx-auto max-w-md animate-fade-in">
+              <div className="flex items-center gap-2 rounded-md bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700 shadow-lg">
+                <span className="flex-1">{toast}</span>
+                <button
+                  type="button"
+                  onClick={() => setToast(null)}
+                  className="shrink-0 text-red-400 hover:text-red-600 transition-colors"
+                  aria-label="Dismiss"
+                >
+                  <svg
+                    viewBox="0 0 24 24"
+                    width="16"
+                    height="16"
+                    fill="none"
+                    stroke="currentColor"
+                  >
+                    <path
+                      d="M18 6 6 18M6 6l12 12"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </button>
               </div>
             </div>
-          </div>
-        </>
-      )}
+          )}
 
-      {/* Bottom Bar - Glassy style matching top bar */}
-      <div className="fixed inset-x-0 bottom-0 z-20 bg-[var(--page-bg)]/95 backdrop-blur border-t border-slate-200/50">
-        <div className="mx-auto grid max-w-sm grid-cols-[1fr_auto_1fr] items-center px-4 py-3">
-          <div className="flex items-center gap-1">
-            <button
-              type="button"
-              aria-label="Settings"
-              onClick={() => setShowSettings(true)}
-              className="tap-target grid h-10 w-10 place-items-center rounded-md hover:bg-slate-100 active:scale-95 transition-all duration-200"
-            >
-              {/* gear icon */}
-              <svg
-                viewBox="0 0 24 24"
-                width="20"
-                height="20"
-                fill="none"
-                stroke="currentColor"
-                className="text-[var(--navy)]"
+          {/* Mobile header */}
+          <header className="sticky top-0 z-10 -mx-4 bg-[var(--page-bg)]/95 px-4 pb-2 pt-3 backdrop-blur lg:hidden">
+            <div className="flex items-center justify-between">
+              <h1 className="text-xl font-semibold text-[var(--navy)]">
+                Ballistic
+                <br />
+                <small>The Simplest Bullet Journal</small>
+              </h1>
+              <button
+                type="button"
+                aria-label="Logout"
+                onClick={() => {
+                  if (confirm("Are you sure you want to logout?")) {
+                    handleLogout();
+                  }
+                }}
+                className="tap-target grid h-9 w-9 place-items-center rounded-md bg-white shadow-sm hover:shadow-md active:scale-95"
+                title={`Logout ${user?.name || ""}`}
               >
-                <path
-                  d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Zm7.4-3.5a7.4 7.4 0 0 0-.1-1l2.1-1.6-2-3.4-2.5 1a7.6 7.6 0 0 0-1.7-1l-.4-2.6H9.2L8.8 6a7.6 7.6 0 0 0-1.7 1l-2.5-1-2 3.4 2.1 1.6a7.4 7.4 0 0 0 0 2L2.6 14l2 3.4 2.5-1a7.6 7.6 0 0 0 1.7 1l.4 2.6h5.6l.4-2.6a7.6 7.6 0 0 0 1.7-1l2.5 1 2-3.4-2.1-1.6c.1-.3.1-.7.1-1Z"
-                  strokeWidth="1.4"
-                />
-              </svg>
-            </button>
-            <button
-              type="button"
-              aria-label="Notes"
-              onClick={() => setShowNotes(true)}
-              className="tap-target grid h-10 w-10 place-items-center rounded-md hover:bg-slate-100 active:scale-95 transition-all duration-200"
-            >
-              {/* notepad icon */}
-              <svg
-                viewBox="0 0 24 24"
-                width="20"
-                height="20"
-                fill="none"
-                stroke="currentColor"
-                className="text-[var(--navy)]"
+                {/* logout icon */}
+                <svg
+                  viewBox="0 0 24 24"
+                  width="18"
+                  height="18"
+                  fill="none"
+                  stroke="currentColor"
+                  className="text-[var(--navy)]"
+                >
+                  <path
+                    d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </button>
+            </div>
+          </header>
+
+          {/* Desktop workspace header */}
+          <header className="hidden items-end justify-between gap-8 border-b border-slate-200/80 pb-6 lg:flex">
+            <div>
+              <p className="mb-2 text-xs font-bold uppercase tracking-[0.16em] text-[var(--blue-600)]">
+                Workspace
+              </p>
+              <h1 className="text-4xl font-bold tracking-tight text-[var(--navy)]">
+                Journal
+              </h1>
+              <p className="mt-2 text-sm text-slate-500">
+                Keep today&apos;s work clear, ordered, and moving.
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="hidden items-center gap-6 rounded-xl border border-slate-200 bg-white px-5 py-3 xl:flex">
+                <DesktopStat label="My tasks" value={filteredItems.length} />
+                {delegation && (
+                  <>
+                    <span className="h-8 w-px bg-slate-200" />
+                    <DesktopStat
+                      label="Assigned"
+                      value={filteredAssignedItems.length}
+                    />
+                  </>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={openNewTask}
+                className="inline-flex h-11 items-center gap-2 rounded-xl bg-[var(--blue)] px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-[var(--blue-600)] hover:shadow-md active:scale-[0.98]"
               >
-                <path
-                  d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6Z"
-                  strokeWidth="1.4"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-                <path
-                  d="M14 2v6h6M16 13H8M16 17H8M10 9H8"
-                  strokeWidth="1.4"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            </button>
-            <button
-              type="button"
-              aria-label="Activity Log"
-              onClick={() => setShowActivityLog(true)}
-              className="tap-target grid h-10 w-10 place-items-center rounded-md hover:bg-slate-100 active:scale-95 transition-all duration-200"
-            >
-              {/* clock/history icon */}
-              <svg
-                viewBox="0 0 24 24"
-                width="20"
-                height="20"
-                fill="none"
-                stroke="currentColor"
-                className="text-[var(--navy)]"
+                <span className="text-xl font-light leading-none">+</span>
+                Add task
+              </button>
+            </div>
+          </header>
+
+          {/* Planned view banner */}
+          {dates && viewScope === "planned" && (
+            <div className="flex items-center justify-between rounded-md border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-700 lg:mt-2 lg:rounded-xl lg:px-4 lg:py-3">
+              <span>Showing planned items (future scheduled dates)</span>
+              <button
+                type="button"
+                onClick={() => setViewScope("active")}
+                className="text-xs font-medium text-sky-600 hover:text-sky-800 underline"
               >
-                <path
-                  d="M12 8v4l3 3M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"
-                  strokeWidth="1.4"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-                <path
-                  d="M3 3v5h5"
-                  strokeWidth="1.4"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            </button>
+                Back to active
+              </button>
+            </div>
+          )}
+
+          {/* List */}
+          <div className="flex flex-col gap-2 lg:gap-3 lg:pt-3">
+            {/* Render a single item as a row */}
+            {(() => {
+              function renderItem(
+                item: Item,
+                index: number,
+                options: {
+                  isLast?: boolean;
+                  onDecline?: () => void;
+                  desktopCanReorder?: boolean;
+                } = {},
+              ) {
+                return (
+                  <ItemRow
+                    key={item.id || `item-${index}`}
+                    item={item}
+                    onChange={onRowChange}
+                    onOptimisticReorder={onOptimisticReorder}
+                    index={index}
+                    onEdit={() => {
+                      setEditingItem(item);
+                      setShowEditModal(true);
+                    }}
+                    isFirst={index === 0}
+                    isLast={options.isLast}
+                    onDecline={options.onDecline}
+                    onDelete={
+                      item.user_id === user?.id
+                        ? () => void handleDelete(item)
+                        : undefined
+                    }
+                    desktopCanReorder={options.desktopCanReorder}
+                    onDragStart={handleDragStart}
+                    onDragEnter={handleDragEnter}
+                    onDropItem={handleDrop}
+                    onDragEnd={handleDragEnd}
+                    draggingId={draggingId}
+                    dragOverId={dragOverId}
+                    onError={showError}
+                  />
+                );
+              }
+
+              return (
+                <>
+                  {/* Assigned to Me section */}
+                  {delegation && filteredAssignedItems.length > 0 && (
+                    <>
+                      <div className="mt-2 flex items-center justify-between lg:mt-3 lg:px-1">
+                        <h2 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-emerald-600">
+                          Assigned to Me
+                          <span className="hidden min-w-6 rounded-full bg-emerald-50 px-2 py-1 text-center text-[10px] lg:inline-block">
+                            {filteredAssignedItems.length}
+                          </span>
+                        </h2>
+                      </div>
+                      {filteredAssignedItems.map((item, index) => (
+                        <div key={item.id || `assigned-${index}`}>
+                          {renderItem(item, index, {
+                            isLast: index === filteredAssignedItems.length - 1,
+                            onDecline: () => handleDecline(item),
+                            desktopCanReorder: false,
+                          })}
+                          <button
+                            type="button"
+                            onClick={() => handleDecline(item)}
+                            className="mt-1 px-3 text-xs text-red-500 transition-colors hover:text-red-700 lg:hidden"
+                          >
+                            Decline
+                          </button>
+                        </div>
+                      ))}
+                    </>
+                  )}
+
+                  {/* My Tasks section */}
+                  {filteredItems.length > 0 && (
+                    <>
+                      {delegation && (
+                        <h2 className="mt-2 flex items-center gap-2 px-1 text-xs font-semibold uppercase tracking-wider text-[var(--navy)] lg:mt-3">
+                          My Tasks
+                          <span className="hidden min-w-6 rounded-full bg-slate-200/70 px-2 py-1 text-center text-[10px] text-slate-600 lg:inline-block">
+                            {filteredItems.length}
+                          </span>
+                        </h2>
+                      )}
+                      {filteredItems.map((item, index) =>
+                        renderItem(item, index, {
+                          isLast: index === filteredItems.length - 1,
+                        }),
+                      )}
+                    </>
+                  )}
+
+                  {/* Delegated to Others section */}
+                  {delegation && filteredDelegatedItems.length > 0 && (
+                    <>
+                      <h2 className="mt-2 flex items-center gap-2 px-1 text-xs font-semibold uppercase tracking-wider text-amber-600 lg:mt-3">
+                        Delegated to Others
+                        <span className="hidden min-w-6 rounded-full bg-amber-50 px-2 py-1 text-center text-[10px] lg:inline-block">
+                          {filteredDelegatedItems.length}
+                        </span>
+                      </h2>
+                      {filteredDelegatedItems.map((item, index) =>
+                        renderItem(item, index, {
+                          isLast: index === filteredDelegatedItems.length - 1,
+                          desktopCanReorder: false,
+                        }),
+                      )}
+                    </>
+                  )}
+
+                  {/* Empty state */}
+                  {filteredItems.length === 0 &&
+                    (!delegation ||
+                      (filteredAssignedItems.length === 0 &&
+                        filteredDelegatedItems.length === 0)) &&
+                    !loading && (
+                      <EmptyState
+                        type="no-items"
+                        message={
+                          hasProjectFilter
+                            ? "No tasks match the selected projects."
+                            : "Start your bullet journal journey by adding your first task!"
+                        }
+                      />
+                    )}
+                </>
+              );
+            })()}
           </div>
-          <button
-            type="button"
-            aria-label="Add a new task"
-            onClick={() => {
-              setEditingItem(null);
-              setShowEditModal(true);
-            }}
-            className="tap-target grid h-12 w-12 place-items-center rounded-full bg-[var(--blue)] text-white shadow-md hover:shadow-lg hover:bg-[var(--blue-600)] active:scale-95 transition-all duration-200"
-          >
-            <span className="sr-only">Add new task...</span>
-            <span className="text-2xl leading-none font-light">+</span>
-          </button>
-          <div className="flex items-center justify-end gap-1">
+
+          {/* Footer */}
+          <footer className="py-6 text-center text-sm text-slate-500 lg:pb-3 lg:pt-8 lg:text-xs">
+            Psycode Pty. Ltd. © {new Date().getFullYear()}
+          </footer>
+        </div>
+
+        {/* Filter Panel */}
+        {showFilter && (
+          <>
+            <div
+              className="fixed inset-0 z-[19] lg:hidden"
+              onClick={() => setShowFilter(false)}
+              aria-hidden="true"
+            />
+            <div className="fixed inset-x-0 bottom-[4.5rem] z-[21] lg:hidden">
+              <div className="mx-auto max-w-sm px-4">
+                <div className="rounded-xl bg-white shadow-xl border border-slate-200/50 p-4 space-y-4 animate-slide-in-up">
+                  {/* Project filter (multi-select, exclusion model) */}
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                        Projects
+                      </h3>
+                      {excludedProjectIds.size > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => setExcludedProjectIds(new Set())}
+                          className="text-xs text-[var(--blue)] hover:underline"
+                        >
+                          Show all
+                        </button>
+                      )}
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setExcludedProjectIds((prev) => {
+                            const next = new Set(prev);
+                            if (next.has(NO_PROJECT_FILTER_ID)) {
+                              next.delete(NO_PROJECT_FILTER_ID);
+                            } else {
+                              next.add(NO_PROJECT_FILTER_ID);
+                            }
+                            return next;
+                          })
+                        }
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                          excludedProjectIds.has(NO_PROJECT_FILTER_ID)
+                            ? "bg-slate-100 text-slate-400 line-through"
+                            : "bg-[var(--blue)] text-white"
+                        }`}
+                      >
+                        No project
+                      </button>
+                      {projects.map((project) => {
+                        const isExcluded = excludedProjectIds.has(project.id);
+                        return (
+                          <button
+                            key={project.id}
+                            type="button"
+                            onClick={() =>
+                              setExcludedProjectIds((prev) => {
+                                const next = new Set(prev);
+                                if (next.has(project.id)) {
+                                  next.delete(project.id);
+                                } else {
+                                  next.add(project.id);
+                                }
+                                return next;
+                              })
+                            }
+                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                              isExcluded
+                                ? "bg-slate-100 text-slate-400 line-through"
+                                : "bg-[var(--blue)] text-white"
+                            }`}
+                          >
+                            {project.color && (
+                              <span
+                                className={`inline-block h-2 w-2 rounded-full ${isExcluded ? "opacity-40" : ""}`}
+                                style={{ backgroundColor: project.color }}
+                              />
+                            )}
+                            {project.name}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Scope toggle (dates feature only) */}
+                  {dates && (
+                    <div>
+                      <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">
+                        Scope
+                      </h3>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setViewScope("active")}
+                          className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                            viewScope === "active"
+                              ? "bg-[var(--blue)] text-white"
+                              : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                          }`}
+                        >
+                          Active
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setViewScope("planned")}
+                          className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                            viewScope === "planned"
+                              ? "bg-[var(--blue)] text-white"
+                              : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                          }`}
+                        >
+                          Planned
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* Bottom Bar - Glassy style matching top bar */}
+        <div className="fixed inset-x-0 bottom-0 z-20 border-t border-slate-200/50 bg-[var(--page-bg)]/95 backdrop-blur lg:hidden">
+          <div className="mx-auto grid max-w-sm grid-cols-[1fr_auto_1fr] items-center px-4 py-3">
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                aria-label="Settings"
+                onClick={() => setShowSettings(true)}
+                className="tap-target grid h-10 w-10 place-items-center rounded-md hover:bg-slate-100 active:scale-95 transition-all duration-200"
+              >
+                {/* gear icon */}
+                <svg
+                  viewBox="0 0 24 24"
+                  width="20"
+                  height="20"
+                  fill="none"
+                  stroke="currentColor"
+                  className="text-[var(--navy)]"
+                >
+                  <path
+                    d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Zm7.4-3.5a7.4 7.4 0 0 0-.1-1l2.1-1.6-2-3.4-2.5 1a7.6 7.6 0 0 0-1.7-1l-.4-2.6H9.2L8.8 6a7.6 7.6 0 0 0-1.7 1l-2.5-1-2 3.4 2.1 1.6a7.4 7.4 0 0 0 0 2L2.6 14l2 3.4 2.5-1a7.6 7.6 0 0 0 1.7 1l.4 2.6h5.6l.4-2.6a7.6 7.6 0 0 0 1.7-1l2.5 1 2-3.4-2.1-1.6c.1-.3.1-.7.1-1Z"
+                    strokeWidth="1.4"
+                  />
+                </svg>
+              </button>
+              <button
+                type="button"
+                aria-label="Notes"
+                onClick={() => setShowNotes(true)}
+                className="tap-target grid h-10 w-10 place-items-center rounded-md hover:bg-slate-100 active:scale-95 transition-all duration-200"
+              >
+                {/* notepad icon */}
+                <svg
+                  viewBox="0 0 24 24"
+                  width="20"
+                  height="20"
+                  fill="none"
+                  stroke="currentColor"
+                  className="text-[var(--navy)]"
+                >
+                  <path
+                    d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6Z"
+                    strokeWidth="1.4"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                  <path
+                    d="M14 2v6h6M16 13H8M16 17H8M10 9H8"
+                    strokeWidth="1.4"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </button>
+              <button
+                type="button"
+                aria-label="Activity Log"
+                onClick={() => setShowActivityLog(true)}
+                className="tap-target grid h-10 w-10 place-items-center rounded-md hover:bg-slate-100 active:scale-95 transition-all duration-200"
+              >
+                {/* clock/history icon */}
+                <svg
+                  viewBox="0 0 24 24"
+                  width="20"
+                  height="20"
+                  fill="none"
+                  stroke="currentColor"
+                  className="text-[var(--navy)]"
+                >
+                  <path
+                    d="M12 8v4l3 3M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"
+                    strokeWidth="1.4"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                  <path
+                    d="M3 3v5h5"
+                    strokeWidth="1.4"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </button>
+            </div>
             <button
               type="button"
-              aria-label="Filter"
-              onClick={() => setShowFilter((prev) => !prev)}
-              className={`tap-target grid h-10 w-10 place-items-center rounded-md hover:bg-slate-100 active:scale-95 transition-all duration-200 ${showFilter || excludedProjectIds.size > 0 || (dates && viewScope === "planned") ? "bg-[var(--blue)] rounded-full shadow-sm" : ""}`}
+              aria-label="Add a new task"
+              onClick={openNewTask}
+              className="tap-target grid h-12 w-12 place-items-center rounded-full bg-[var(--blue)] text-white shadow-md hover:shadow-lg hover:bg-[var(--blue-600)] active:scale-95 transition-all duration-200"
             >
-              {/* funnel icon */}
-              <svg
-                viewBox="0 0 24 24"
-                width="20"
-                height="20"
-                fill="none"
-                stroke="currentColor"
-                className={
-                  showFilter ||
-                  excludedProjectIds.size > 0 ||
-                  (dates && viewScope === "planned")
-                    ? "text-white"
-                    : "text-[var(--navy)]"
-                }
-              >
-                <path d="M3 5h18l-7 8v5l-4 2v-7L3 5z" strokeWidth="1.5" />
-              </svg>
+              <span className="sr-only">Add new task...</span>
+              <span className="text-2xl leading-none font-light">+</span>
             </button>
-            <NotificationCentre delegation={delegation} />
-            <button
-              type="button"
-              aria-label="Profile"
-              onClick={() => setShowProfile(true)}
-              className="tap-target grid h-10 w-10 place-items-center rounded-md hover:bg-slate-100 active:scale-95 transition-all duration-200"
-            >
-              {/* person icon */}
-              <svg
-                viewBox="0 0 24 24"
-                width="20"
-                height="20"
-                fill="none"
-                stroke="currentColor"
-                className="text-[var(--navy)]"
+            <div className="flex items-center justify-end gap-1">
+              <button
+                type="button"
+                aria-label="Filter"
+                onClick={() => setShowFilter((prev) => !prev)}
+                className={`tap-target grid h-10 w-10 place-items-center rounded-md hover:bg-slate-100 active:scale-95 transition-all duration-200 ${showFilter || excludedProjectIds.size > 0 || (dates && viewScope === "planned") ? "bg-[var(--blue)] rounded-full shadow-sm" : ""}`}
               >
-                <path
-                  d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z"
-                  strokeWidth="1.4"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            </button>
+                {/* funnel icon */}
+                <svg
+                  viewBox="0 0 24 24"
+                  width="20"
+                  height="20"
+                  fill="none"
+                  stroke="currentColor"
+                  className={
+                    showFilter ||
+                    excludedProjectIds.size > 0 ||
+                    (dates && viewScope === "planned")
+                      ? "text-white"
+                      : "text-[var(--navy)]"
+                  }
+                >
+                  <path d="M3 5h18l-7 8v5l-4 2v-7L3 5z" strokeWidth="1.5" />
+                </svg>
+              </button>
+              <NotificationCentre delegation={delegation} />
+              <button
+                type="button"
+                aria-label="Profile"
+                onClick={() => setShowProfile(true)}
+                className="tap-target grid h-10 w-10 place-items-center rounded-md hover:bg-slate-100 active:scale-95 transition-all duration-200"
+              >
+                {/* person icon */}
+                <svg
+                  viewBox="0 0 24 24"
+                  width="20"
+                  height="20"
+                  fill="none"
+                  stroke="currentColor"
+                  className="text-[var(--navy)]"
+                >
+                  <path
+                    d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z"
+                    strokeWidth="1.4"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </button>
+            </div>
           </div>
         </div>
-      </div>
+      </main>
 
       {/* Settings Modal */}
       <SettingsModal
@@ -1054,6 +1190,17 @@ export default function Home() {
           }
         }}
       />
+    </div>
+  );
+}
+
+function DesktopStat({ label, value }: { label: string; value: number }) {
+  return (
+    <div>
+      <p className="text-lg font-bold leading-none text-[var(--navy)]">
+        {value}
+      </p>
+      <p className="mt-1 text-[11px] font-medium text-slate-400">{label}</p>
     </div>
   );
 }
