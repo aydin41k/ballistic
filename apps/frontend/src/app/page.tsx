@@ -62,13 +62,8 @@ export default function LandingPage() {
                 time.
               </p>
               <div className="mt-6 flex flex-wrap items-center gap-3">
-                <PrimaryLink>Start my list</PrimaryLink>
-                <Link
-                  href="#companion"
-                  className="inline-flex min-h-11 items-center rounded-full bg-white/90 px-5 text-sm font-semibold text-[var(--navy)] ring-1 ring-slate-200 backdrop-blur hover:bg-white"
-                >
-                  See how it connects
-                </Link>
+                <DownloadAppLink />
+                <PrimaryLink>Start on web</PrimaryLink>
               </div>
             </div>
           </div>
@@ -205,15 +200,15 @@ export default function LandingPage() {
               Make the list yours.
               <span className="block">Connect your AI when you are ready.</span>
             </h2>
-            <Link
-              href="/register"
-              className="group inline-flex min-h-16 shrink-0 items-center gap-5 rounded-full bg-[var(--blue)] px-7 text-base font-semibold text-white ring-1 ring-blue-900/10 shadow-[0_18px_50px_rgba(30,64,175,0.24)] hover:-translate-y-1 hover:bg-[var(--blue-600)]"
-            >
-              Start my list
-              <span className="grid h-9 w-9 place-items-center rounded-full bg-white/15 text-white transition-transform group-hover:translate-x-1">
-                <ArrowIcon />
-              </span>
-            </Link>
+            <div className="flex shrink-0 flex-col items-start gap-3 lg:items-end">
+              <DownloadAppLink large />
+              <Link
+                href="/register"
+                className="px-2 text-sm font-medium text-slate-500 hover:text-[var(--navy)]"
+              >
+                Or start with the web companion →
+              </Link>
+            </div>
           </div>
         </div>
       </section>
@@ -302,11 +297,12 @@ function FloatingHeader() {
             Sign in
           </Link>
           <Link
-            href="/register"
+            href="#"
+            aria-label="Download the Ballistic mobile app — link coming soon"
             className="inline-flex min-h-9 items-center gap-2 rounded-full bg-[var(--blue)] px-4 text-xs font-semibold text-white ring-1 ring-blue-900/10 hover:bg-[var(--blue-600)]"
           >
-            Start my list
-            <ArrowIcon />
+            Get the app
+            <PhoneIcon />
           </Link>
         </div>
       </div>
@@ -520,6 +516,32 @@ function PrimaryLink({ children }: { children: React.ReactNode }) {
   );
 }
 
+function DownloadAppLink({ large = false }: { large?: boolean }) {
+  return (
+    <Link
+      href="#"
+      aria-label="Download the Ballistic mobile app — link coming soon"
+      className={`group inline-flex items-center gap-3 rounded-full bg-[var(--navy)] text-white ring-1 ring-blue-950/10 shadow-[0_12px_30px_rgba(10,37,64,0.18)] hover:-translate-y-0.5 hover:bg-[#123654] ${large ? "min-h-16 px-7" : "min-h-11 px-5"}`}
+    >
+      <span
+        className={`grid shrink-0 place-items-center rounded-full bg-white/10 ${large ? "h-10 w-10" : "h-7 w-7"}`}
+      >
+        <PhoneIcon />
+      </span>
+      <span className="text-left leading-none">
+        <span
+          className={`block font-semibold ${large ? "text-base" : "text-sm"}`}
+        >
+          Download mobile app
+        </span>
+        <span className="mt-1.5 block text-[0.65rem] font-normal tracking-wide text-white/55">
+          Download link coming soon
+        </span>
+      </span>
+    </Link>
+  );
+}
+
 function ArrowIcon() {
   return (
     <svg
@@ -569,6 +591,25 @@ function PlusIcon() {
       aria-hidden="true"
     >
       <path d="M9 3v12M3 9h12" />
+    </svg>
+  );
+}
+
+function PhoneIcon() {
+  return (
+    <svg
+      viewBox="0 0 18 18"
+      width="15"
+      height="15"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <rect x="4.5" y="1.5" width="9" height="15" rx="2" />
+      <path d="M7.5 4h3M8.3 13.8h1.4" />
     </svg>
   );
 }
