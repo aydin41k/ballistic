@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import { LandingSignalField } from "@/components/LandingSignalField";
 
 const steps = [
   {
@@ -27,41 +28,13 @@ const optionalTools = [
   ["Notifications", "Hear about movement, not meaningless noise"],
 ] as const;
 
-const particleClusters = [
-  { x: 74, y: 22, rx: 19, ry: 18, count: 92, seed: 0.2 },
-  { x: 46, y: 57, rx: 17, ry: 25, count: 82, seed: 1.4 },
-  { x: 82, y: 73, rx: 13, ry: 18, count: 58, seed: 2.8 },
-] as const;
-
-const taskParticles = particleClusters.flatMap((cluster, clusterIndex) =>
-  Array.from({ length: cluster.count }, (_, index) => {
-    const angle = index * 2.3999632297 + cluster.seed;
-    const radius = Math.sqrt((index + 0.5) / cluster.count);
-    const wobble = 0.84 + Math.sin(index * 9.17 + cluster.seed) * 0.15;
-
-    return {
-      id: `${clusterIndex}-${index}`,
-      x:
-        cluster.x +
-        Math.cos(angle) * cluster.rx * radius * wobble +
-        Math.sin(index * 3.1) * 0.8,
-      y:
-        cluster.y +
-        Math.sin(angle) * cluster.ry * radius * wobble +
-        Math.cos(index * 2.7) * 0.8,
-      radius: 0.12 + (index % 5) * 0.035,
-      opacity: 0.28 + (index % 7) * 0.085,
-    };
-  }),
-);
-
 export default function LandingPage() {
   return (
     <main className="relative left-1/2 -my-4 min-h-dvh w-screen -translate-x-1/2 overflow-hidden bg-[var(--page-bg)] text-[var(--text)] selection:bg-[var(--blue-600)] selection:text-white lg:static lg:my-0 lg:w-auto lg:translate-x-0">
       <FloatingHeader />
 
       <section className="relative min-h-[54rem] overflow-hidden border-b border-slate-200 sm:min-h-[58rem] lg:min-h-[calc(100svh-1rem)]">
-        <TaskSignalField />
+        <LandingSignalField />
 
         <div className="relative z-10 mx-auto grid min-h-[54rem] max-w-7xl items-end gap-12 px-5 pb-16 pt-32 sm:min-h-[58rem] sm:px-8 sm:pb-20 lg:min-h-[calc(100svh-1rem)] lg:grid-cols-[0.88fr_1.12fr] lg:px-10 lg:pb-16 lg:pt-28">
           <div className="max-w-2xl lg:pb-12">
@@ -324,55 +297,6 @@ function FloatingHeader() {
         </div>
       </div>
     </header>
-  );
-}
-
-function TaskSignalField() {
-  return (
-    <div className="pointer-events-none absolute inset-0" aria-hidden="true">
-      <svg
-        viewBox="0 0 100 100"
-        preserveAspectRatio="xMidYMid slice"
-        className="h-full w-full"
-      >
-        <path
-          d="M 12 80 C 30 63, 36 57, 48 55 S 68 30, 75 23 S 82 61, 83 74"
-          fill="none"
-          stroke="#0a2540"
-          strokeOpacity="0.08"
-          strokeWidth="0.08"
-        />
-        <circle
-          cx="46"
-          cy="57"
-          r="22"
-          fill="none"
-          stroke="#0a2540"
-          strokeOpacity="0.07"
-          strokeWidth="0.08"
-        />
-        <circle
-          cx="75"
-          cy="22"
-          r="24"
-          fill="none"
-          stroke="#0a2540"
-          strokeOpacity="0.07"
-          strokeWidth="0.08"
-        />
-        {taskParticles.map((particle) => (
-          <circle
-            key={particle.id}
-            cx={particle.x}
-            cy={particle.y}
-            r={particle.radius}
-            fill="#2563eb"
-            fillOpacity={particle.opacity}
-          />
-        ))}
-      </svg>
-      <div className="absolute inset-x-0 bottom-0 h-56 bg-gradient-to-t from-[var(--page-bg)] via-[var(--page-bg)]/75 to-transparent" />
-    </div>
   );
 }
 
