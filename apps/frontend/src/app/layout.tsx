@@ -18,7 +18,7 @@ const sourceSans = Source_Sans_3({
 export const metadata: Metadata = {
   title: "Ballistic: The Simplest Bullet List",
   description:
-    "A beautifully simple mobile bullet list your AI can add to, organise, update and keep moving for you.",
+    "A beautifully simple mobile bullet list that lets you securely connect a compatible AI service you already use.",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,

@@ -308,7 +308,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                   `}
                     role="switch"
                     aria-checked={aiAssistant}
-                    aria-label="AI Assistant"
+                    aria-label="Connect your AI"
                   >
                     <span
                       className={`
@@ -320,11 +320,11 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                   </button>
                   <div className="flex flex-col">
                     <span className="text-sm font-medium text-gray-900">
-                      AI Assistant (MCP)
+                      Connect your AI (MCP)
                     </span>
                     <span className="text-xs text-gray-500">
                       {available.ai_assistant
-                        ? "Enable MCP token management for agent integrations"
+                        ? "Let a compatible AI service you use work with your list"
                         : "Coming soon"}
                     </span>
                   </div>
@@ -335,7 +335,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
             {aiAssistant && (
               <section>
                 <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wider mb-3">
-                  AI Assistant Tokens
+                  AI Connection Tokens
                 </h3>
                 <div className="bg-gray-50 rounded-lg p-4 space-y-4">
                   {newToken && (

@@ -5,30 +5,30 @@ import { LandingSignalField } from "@/components/LandingSignalField";
 const steps = [
   {
     number: "01",
-    title: "Add it",
+    title: "Use it on its own",
     description:
-      "Type it yourself or tell your AI. Either way, it lands in one clear list.",
+      "Ballistic starts as a clean mobile bullet list. No AI connection required.",
   },
   {
     number: "02",
-    title: "Put it in order",
+    title: "Connect your AI",
     description:
-      "Drag what matters up—or ask your AI to sort out what needs attention.",
+      "Choose a compatible AI service you already use and give it access when you are ready.",
   },
   {
     number: "03",
-    title: "Keep moving",
+    title: "Ask it to act",
     description:
-      "Do the work while your AI keeps dates, follow-ups and progress up to date.",
+      "Tell it to find, add, update, complete, organise or delegate work in your list.",
   },
 ] as const;
 
 const optionalTools = [
-  ["Let your AI run the admin", "Capture, organise, update and complete tasks"],
-  ["Dates + repeats", "Bring in time only when time matters"],
-  ["Projects", "Add structure without building a second job"],
-  ["Delegation", "Hand work over without losing the thread"],
-  ["Notifications", "Hear about movement, not meaningless noise"],
+  ["Bring your own AI", "Connect a compatible AI service you already use"],
+  ["Find + capture", "Ask what is overdue or add something before you forget"],
+  ["Update + complete", "Change dates, move work or mark it done"],
+  ["Projects + tags", "Create structure and keep related work together"],
+  ["Delegate", "Assign work to people you are connected with"],
 ] as const;
 
 export default function LandingPage() {
@@ -41,24 +41,25 @@ export default function LandingPage() {
 
         <div className="relative z-10 mx-auto grid min-h-[54rem] max-w-7xl items-end gap-12 px-5 pb-16 pt-32 sm:min-h-[58rem] sm:px-8 sm:pb-20 lg:min-h-[calc(100svh-1rem)] lg:grid-cols-[0.88fr_1.12fr] lg:px-10 lg:pb-16 lg:pt-28">
           <div className="max-w-2xl lg:pb-12">
-            <p className="text-[0.68rem] font-bold uppercase tracking-[0.18em] text-slate-500">
-              Your list · Your AI · Less admin
+            <p className="text-[0.68rem] font-medium uppercase tracking-[0.2em] text-slate-500">
+              Simple on its own · Better connected
             </p>
-            <h1 className="mt-5 text-balance text-5xl font-black leading-[0.93] tracking-[-0.065em] sm:text-6xl lg:text-[5.25rem]">
+            <h1 className="mt-5 text-balance text-5xl font-semibold leading-[0.97] tracking-[-0.045em] sm:text-6xl lg:text-[4.9rem]">
               <span className="block text-[var(--blue)]">Ballistic:</span>
               <span className="block">The Simplest</span>
               <span className="block">Bullet List</span>
             </h1>
 
-            <p className="mt-7 max-w-xl text-balance text-2xl font-bold leading-tight tracking-[-0.035em] text-[var(--navy)] sm:text-3xl">
-              Give your list to your AI. Let it run the admin.
+            <p className="mt-7 max-w-xl text-balance text-2xl font-medium leading-snug tracking-[-0.02em] text-[var(--navy)] sm:text-[1.75rem]">
+              Connect the AI you already use. Let it handle the list admin.
             </p>
 
             <div className="mt-6 max-w-xl border-l border-[var(--navy)] pl-5 sm:pl-6">
               <p className="text-lg leading-7 text-slate-600 sm:text-xl sm:leading-8">
-                Add things in seconds from your phone. When you want help, your
-                AI can capture tasks, organise priorities, update progress and
-                keep everything moving for you.
+                Ballistic does not include an AI assistant. It gives the
+                compatible AI service you choose a secure way to work with your
+                list. You decide when to connect it—and can disconnect it at any
+                time.
               </p>
               <div className="mt-6 flex flex-wrap items-center gap-3">
                 <PrimaryLink>Start my list</PrimaryLink>
@@ -66,7 +67,7 @@ export default function LandingPage() {
                   href="#companion"
                   className="inline-flex min-h-11 items-center rounded-full bg-white/90 px-5 text-sm font-semibold text-[var(--navy)] ring-1 ring-slate-200 backdrop-blur hover:bg-white"
                 >
-                  See what your AI can do
+                  See how it connects
                 </Link>
               </div>
             </div>
@@ -79,7 +80,7 @@ export default function LandingPage() {
 
         <div className="absolute bottom-5 right-5 z-20 hidden items-center gap-3 rounded-full bg-white/90 px-4 py-2 text-xs font-medium text-slate-500 ring-1 ring-slate-200 backdrop-blur sm:flex lg:right-8">
           <span className="h-2 w-2 rounded-full bg-[var(--blue-600)]" />
-          The phone is the product. Web is the companion.
+          Your list stays in Ballistic. Your AI connects when you choose.
         </div>
       </section>
 
@@ -87,12 +88,12 @@ export default function LandingPage() {
         <div className="mx-auto max-w-7xl px-5 py-24 sm:px-8 lg:px-10 lg:py-36">
           <div className="grid gap-16 lg:grid-cols-[0.78fr_1.22fr] lg:gap-24">
             <div className="max-w-xl">
-              <SectionLabel>Still just a simple list</SectionLabel>
-              <h2 className="mt-6 text-balance text-4xl font-black leading-[0.98] tracking-[-0.055em] sm:text-6xl">
-                Easy enough for you.
+              <SectionLabel>A complete app by itself</SectionLabel>
+              <h2 className="mt-6 text-balance text-4xl font-semibold leading-[1.03] tracking-[-0.04em] sm:text-5xl">
+                Simple before you connect anything.
                 <span className="text-slate-300">
                   {" "}
-                  Useful enough for your AI.
+                  More capable when you do.
                 </span>
               </h2>
             </div>
@@ -103,10 +104,10 @@ export default function LandingPage() {
                   key={step.number}
                   className="grid gap-3 border-b border-slate-200 py-7 sm:grid-cols-[3rem_9rem_1fr] sm:items-baseline sm:gap-5"
                 >
-                  <span className="text-[0.68rem] font-bold tracking-[0.16em] text-slate-400">
+                  <span className="text-[0.68rem] font-medium tracking-[0.16em] text-slate-400">
                     {step.number}
                   </span>
-                  <h3 className="text-lg font-bold tracking-[-0.025em]">
+                  <h3 className="text-lg font-semibold tracking-[-0.015em]">
                     {step.title}
                   </h3>
                   <p className="leading-7 text-slate-500">{step.description}</p>
@@ -127,17 +128,15 @@ export default function LandingPage() {
         />
         <div className="relative mx-auto grid max-w-7xl gap-16 px-5 py-24 sm:px-8 lg:grid-cols-[0.85fr_1.15fr] lg:gap-28 lg:px-10 lg:py-36">
           <div>
-            <SectionLabel>As much help as you want</SectionLabel>
-            <h2 className="mt-6 max-w-xl text-balance text-4xl font-black leading-[0.98] tracking-[-0.055em] sm:text-6xl">
-              Start with a list.
-              <span className="block text-slate-300">
-                Add the clever stuff later.
-              </span>
+            <SectionLabel>Bring your own AI</SectionLabel>
+            <h2 className="mt-6 max-w-xl text-balance text-4xl font-semibold leading-[1.03] tracking-[-0.04em] sm:text-5xl">
+              Your AI service.
+              <span className="block text-slate-300">Your Ballistic list.</span>
             </h2>
             <p className="mt-7 max-w-lg text-lg leading-8 text-slate-600">
-              Nothing gets in your way unless you want it. Give your AI more to
-              work with only when dates, projects or delegation will genuinely
-              save you time.
+              There is no new assistant to learn. Connect a compatible service
+              you already trust, then let it work with the same list you use on
+              your phone.
             </p>
             <div className="mt-9">
               <PrimaryLink>Make my list now</PrimaryLink>
@@ -150,10 +149,10 @@ export default function LandingPage() {
                 key={title}
                 className="group grid gap-3 border-b border-blue-200 py-6 sm:grid-cols-[2.4rem_10rem_1fr_auto] sm:items-center sm:gap-5"
               >
-                <span className="text-[0.65rem] font-bold tracking-[0.14em] text-slate-400">
+                <span className="text-[0.65rem] font-medium tracking-[0.14em] text-slate-400">
                   {String(index + 1).padStart(2, "0")}
                 </span>
-                <h3 className="font-bold tracking-[-0.02em]">{title}</h3>
+                <h3 className="font-semibold tracking-[-0.01em]">{title}</h3>
                 <p className="text-sm leading-6 text-slate-500">
                   {description}
                 </p>
@@ -170,18 +169,18 @@ export default function LandingPage() {
         <div className="mx-auto max-w-7xl px-5 py-24 sm:px-8 lg:px-10 lg:py-36">
           <div className="grid gap-16 lg:grid-cols-[0.82fr_1.18fr] lg:items-center lg:gap-24">
             <div>
-              <SectionLabel light>Your AI can do more than chat</SectionLabel>
-              <h2 className="mt-6 max-w-xl text-balance text-4xl font-black leading-[0.98] tracking-[-0.055em] sm:text-6xl">
-                Give it the list.
+              <SectionLabel light>A connection you control</SectionLabel>
+              <h2 className="mt-6 max-w-xl text-balance text-4xl font-semibold leading-[1.03] tracking-[-0.04em] sm:text-5xl">
+                Let your AI work with the list.
                 <span className="block text-white/35">
-                  Let it keep things moving.
+                  Ballistic remains the source of truth.
                 </span>
               </h2>
               <p className="mt-7 max-w-lg text-lg leading-8 text-white/60">
-                Ask your AI to capture an idea, move overdue work to the top,
-                change a date, delegate a follow-up or mark something done. It
-                works on the same live list you use on your phone—so you never
-                have to explain everything twice.
+                In the AI service you connected, ask it to capture an idea, find
+                overdue work, change a date, organise a project, delegate a
+                follow-up or mark something done. Access is limited to your
+                account, and you can disconnect it whenever you want.
               </p>
             </div>
 
@@ -198,17 +197,17 @@ export default function LandingPage() {
           <div className="absolute -bottom-40 right-[8%] h-80 w-80 rounded-full bg-blue-200 blur-[90px]" />
         </div>
         <div className="relative mx-auto max-w-7xl px-5 py-24 sm:px-8 lg:px-10 lg:py-36">
-          <p className="text-[0.68rem] font-bold uppercase tracking-[0.18em] text-slate-500">
-            One list. Much less list admin.
+          <p className="text-[0.68rem] font-medium uppercase tracking-[0.2em] text-slate-500">
+            Start simple · Connect when ready
           </p>
           <div className="mt-6 flex flex-col items-start justify-between gap-10 lg:flex-row lg:items-end">
-            <h2 className="max-w-4xl text-balance text-5xl font-black leading-[0.92] tracking-[-0.065em] sm:text-7xl lg:text-[6.5rem]">
-              Start the list.
-              <span className="block">Let your AI help run it.</span>
+            <h2 className="max-w-4xl text-balance text-5xl font-semibold leading-[0.98] tracking-[-0.045em] sm:text-6xl lg:text-[5.7rem]">
+              Make the list yours.
+              <span className="block">Connect your AI when you are ready.</span>
             </h2>
             <Link
               href="/register"
-              className="group inline-flex min-h-16 shrink-0 items-center gap-5 rounded-full bg-[var(--blue)] px-7 text-base font-bold text-white ring-1 ring-blue-900/10 shadow-[0_18px_50px_rgba(30,64,175,0.24)] hover:-translate-y-1 hover:bg-[var(--blue-600)]"
+              className="group inline-flex min-h-16 shrink-0 items-center gap-5 rounded-full bg-[var(--blue)] px-7 text-base font-semibold text-white ring-1 ring-blue-900/10 shadow-[0_18px_50px_rgba(30,64,175,0.24)] hover:-translate-y-1 hover:bg-[var(--blue-600)]"
             >
               Start my list
               <span className="grid h-9 w-9 place-items-center rounded-full bg-white/15 text-white transition-transform group-hover:translate-x-1">
@@ -229,11 +228,13 @@ export default function LandingPage() {
               height={26}
               className="h-6 w-6 rounded-lg"
             />
-            <span className="font-bold text-[var(--navy)]">Ballistic</span>
+            <span className="font-semibold text-[var(--navy)]">Ballistic</span>
             <span>© {new Date().getFullYear()} Psycode Pty. Ltd.</span>
           </div>
           <div className="flex items-center gap-5 font-medium">
-            <span>Simple for you · Ready for your AI · Mobile first</span>
+            <span>
+              Simple alone · More capable when connected · Mobile first
+            </span>
             <Link
               href="/login"
               className="text-slate-500 hover:text-[var(--navy)]"
@@ -264,7 +265,7 @@ function FloatingHeader() {
             className="h-7 w-7 rounded-lg"
             priority
           />
-          <span className="text-sm font-bold tracking-[-0.025em]">
+          <span className="text-sm font-semibold tracking-[-0.015em]">
             Ballistic
           </span>
         </Link>
@@ -302,7 +303,7 @@ function FloatingHeader() {
           </Link>
           <Link
             href="/register"
-            className="inline-flex min-h-9 items-center gap-2 rounded-full bg-[var(--blue)] px-4 text-xs font-bold text-white ring-1 ring-blue-900/10 hover:bg-[var(--blue-600)]"
+            className="inline-flex min-h-9 items-center gap-2 rounded-full bg-[var(--blue)] px-4 text-xs font-semibold text-white ring-1 ring-blue-900/10 hover:bg-[var(--blue-600)]"
           >
             Start my list
             <ArrowIcon />
@@ -332,11 +333,11 @@ function PhonePreview() {
                 <p className="text-[0.65rem] font-medium text-slate-400">
                   Good morning
                 </p>
-                <p className="mt-0.5 text-2xl font-black tracking-[-0.045em]">
+                <p className="mt-0.5 text-2xl font-semibold tracking-[-0.025em]">
                   Today
                 </p>
               </div>
-              <span className="grid h-9 w-9 place-items-center rounded-full bg-[var(--navy)] text-xs font-bold text-white">
+              <span className="grid h-9 w-9 place-items-center rounded-full bg-[var(--navy)] text-xs font-semibold text-white">
                 B
               </span>
             </div>
@@ -366,16 +367,16 @@ function PhonePreview() {
               ))}
             </div>
 
-            <div className="mt-5 rounded-2xl bg-[#f0f0ed] p-4">
-              <div className="flex items-center gap-2 text-[0.62rem] font-bold uppercase tracking-[0.13em] text-slate-500">
-                <SparkIcon /> AI, if you ask
+            <div className="mt-5 rounded-2xl bg-slate-100 p-4">
+              <div className="flex items-center gap-2 text-[0.62rem] font-medium uppercase tracking-[0.14em] text-slate-500">
+                <SparkIcon /> Connect your own AI
               </div>
               <p className="mt-2 text-sm leading-5 text-slate-600">
-                “Move anything overdue to the top.”
+                Optional. Controlled by you. Disconnect any time.
               </p>
             </div>
 
-            <div className="mt-5 flex min-h-12 items-center justify-center gap-2 rounded-full bg-[var(--blue)] text-sm font-bold text-white">
+            <div className="mt-5 flex min-h-12 items-center justify-center gap-2 rounded-full bg-[var(--blue)] text-sm font-semibold text-white">
               <PlusIcon /> Add a task
             </div>
           </div>
@@ -388,7 +389,7 @@ function PhonePreview() {
         </div>
       </div>
 
-      <div className="absolute -right-7 top-32 hidden rounded-full bg-white px-3 py-2 text-[0.62rem] font-bold uppercase tracking-[0.12em] text-[var(--navy)] shadow-lg ring-1 ring-slate-200 sm:block">
+      <div className="absolute -right-7 top-32 hidden rounded-full bg-white px-3 py-2 text-[0.62rem] font-medium uppercase tracking-[0.14em] text-[var(--navy)] shadow-lg ring-1 ring-slate-200 sm:block">
         Mobile first
       </div>
     </div>
@@ -422,7 +423,7 @@ function CompanionMap() {
 
       <div className="absolute left-[8%] top-[44%] w-24 rounded-[1.35rem] border-4 border-white bg-white p-2 text-[var(--navy)] shadow-2xl sm:w-28">
         <div className="mx-auto h-1.5 w-8 rounded-full bg-[var(--navy)]" />
-        <p className="mt-4 text-[0.5rem] font-bold uppercase tracking-[0.12em] text-slate-400">
+        <p className="mt-4 text-[0.5rem] font-medium uppercase tracking-[0.14em] text-slate-400">
           Today
         </p>
         {["Proposal", "Dentist", "Mum"].map((task, index) => (
@@ -436,7 +437,7 @@ function CompanionMap() {
             {task}
           </div>
         ))}
-        <p className="mt-2 text-center text-[0.42rem] font-bold text-slate-400">
+        <p className="mt-2 text-center text-[0.42rem] font-medium text-slate-400">
           MOBILE
         </p>
       </div>
@@ -446,7 +447,7 @@ function CompanionMap() {
           <span className="h-1.5 w-1.5 rounded-full bg-white/25" />
           <span className="h-1.5 w-1.5 rounded-full bg-white/25" />
           <span className="h-1.5 w-1.5 rounded-full bg-blue-400" />
-          <span className="ml-auto text-[0.42rem] font-bold tracking-[0.12em] text-white/35">
+          <span className="ml-auto text-[0.42rem] font-medium tracking-[0.14em] text-white/35">
             WEB COMPANION
           </span>
         </div>
@@ -473,10 +474,10 @@ function CompanionMap() {
       </div>
 
       <div className="absolute bottom-[13%] right-[11%] w-[54%] rounded-2xl bg-[var(--blue-600)] p-4 text-white shadow-2xl sm:p-5">
-        <div className="flex items-center gap-2 text-[0.58rem] font-bold uppercase tracking-[0.12em] text-white/65">
-          <SparkIcon /> Your AI at work
+        <div className="flex items-center gap-2 text-[0.58rem] font-medium uppercase tracking-[0.14em] text-white/65">
+          <SparkIcon /> Your connected AI service
         </div>
-        <p className="mt-2 text-xs font-semibold leading-5 sm:text-sm">
+        <p className="mt-2 text-xs font-medium leading-5 sm:text-sm">
           “Add the follow-up and put it after the proposal.”
         </p>
       </div>
@@ -497,7 +498,7 @@ function SectionLabel({
 }) {
   return (
     <p
-      className={`flex items-center gap-3 text-[0.68rem] font-bold uppercase tracking-[0.18em] ${light ? "text-white/45" : "text-slate-500"}`}
+      className={`flex items-center gap-3 text-[0.68rem] font-medium uppercase tracking-[0.2em] ${light ? "text-white/45" : "text-slate-500"}`}
     >
       <span className={`h-px w-8 ${light ? "bg-white/40" : "bg-slate-400"}`} />
       {children}
@@ -509,7 +510,7 @@ function PrimaryLink({ children }: { children: React.ReactNode }) {
   return (
     <Link
       href="/register"
-      className="inline-flex min-h-11 items-center gap-3 rounded-full bg-[var(--blue)] px-5 text-sm font-bold text-white ring-1 ring-blue-900/10 shadow-[0_12px_30px_rgba(30,64,175,0.2)] hover:-translate-y-0.5 hover:bg-[var(--blue-600)]"
+      className="inline-flex min-h-11 items-center gap-3 rounded-full bg-[var(--blue)] px-5 text-sm font-semibold text-white ring-1 ring-blue-900/10 shadow-[0_12px_30px_rgba(30,64,175,0.2)] hover:-translate-y-0.5 hover:bg-[var(--blue-600)]"
     >
       {children}
       <span className="grid h-7 w-7 place-items-center rounded-full bg-white/15 text-white">
