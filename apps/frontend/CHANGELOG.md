@@ -16,7 +16,8 @@
 - **Brand message**: made “Ballistic: The Simplest Bullet List” the dominant hero statement and rewrote the AI story in plain language around letting your AI run the list admin
 - **AI positioning accuracy**: clarified that Ballistic does not provide an AI service; users connect a compatible AI they already use, control its access, and can disconnect it at any time
 - **Japandi typography**: reduced heavy display weights and tightened the hierarchy around calmer medium and semibold type
-- **Mobile download placeholders**: added finished download CTAs in the header, hero and closing section with temporary `#` links ready to be replaced by the mobile store URL
+- **Mobile download journey**: added concise mobile CTAs and an illustrated closing card that lead to a dedicated mobile preview page, ready to redirect to the Play Store when the app is available
+- **Mobile preview page**: added a polished `/mobile` holding page that introduces the mobile experience and keeps availability messaging off the main landing page
 - **Product positioning**: made the mobile app the centre of the story and reframed desktop/web as a complementary bigger-screen experience
 - **Version label**: updated the settings footer to `v0.19.0`
 

@@ -200,11 +200,11 @@ export default function LandingPage() {
               Make the list yours.
               <span className="block">Connect your AI when you are ready.</span>
             </h2>
-            <div className="flex shrink-0 flex-col items-start gap-3 lg:items-end">
-              <DownloadAppLink large />
+            <div className="w-full shrink-0 lg:w-auto">
+              <MobileDownloadCard />
               <Link
                 href="/register"
-                className="px-2 text-sm font-medium text-slate-500 hover:text-[var(--navy)]"
+                className="mt-3 flex justify-center px-2 text-sm font-medium text-slate-500 hover:text-[var(--navy)]"
               >
                 Or start with the web companion →
               </Link>
@@ -297,8 +297,8 @@ function FloatingHeader() {
             Sign in
           </Link>
           <Link
-            href="#"
-            aria-label="Download the Ballistic mobile app — link coming soon"
+            href="/mobile"
+            aria-label="Explore the Ballistic mobile app"
             className="inline-flex min-h-9 items-center gap-2 rounded-full bg-[var(--blue)] px-4 text-xs font-semibold text-white ring-1 ring-blue-900/10 hover:bg-[var(--blue-600)]"
           >
             Get the app
@@ -516,26 +516,63 @@ function PrimaryLink({ children }: { children: React.ReactNode }) {
   );
 }
 
-function DownloadAppLink({ large = false }: { large?: boolean }) {
+function DownloadAppLink() {
   return (
     <Link
-      href="#"
-      aria-label="Download the Ballistic mobile app — link coming soon"
-      className={`group inline-flex items-center gap-3 rounded-full bg-[var(--navy)] text-white ring-1 ring-blue-950/10 shadow-[0_12px_30px_rgba(10,37,64,0.18)] hover:-translate-y-0.5 hover:bg-[#123654] ${large ? "min-h-16 px-7" : "min-h-11 px-5"}`}
+      href="/mobile"
+      aria-label="Explore the Ballistic mobile app"
+      className="group inline-flex min-h-11 items-center gap-3 rounded-full bg-[var(--navy)] px-5 text-white ring-1 ring-blue-950/10 shadow-[0_12px_30px_rgba(10,37,64,0.18)] hover:-translate-y-0.5 hover:bg-[#123654]"
     >
-      <span
-        className={`grid shrink-0 place-items-center rounded-full bg-white/10 ${large ? "h-10 w-10" : "h-7 w-7"}`}
-      >
+      <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-white/10">
         <PhoneIcon />
       </span>
-      <span className="text-left leading-none">
-        <span
-          className={`block font-semibold ${large ? "text-base" : "text-sm"}`}
-        >
-          Download mobile app
+      <span className="text-sm font-semibold">Download mobile app</span>
+    </Link>
+  );
+}
+
+function MobileDownloadCard() {
+  return (
+    <Link
+      href="/mobile"
+      aria-label="Explore the Ballistic mobile app"
+      className="group relative flex min-h-[13rem] w-full overflow-hidden rounded-[2rem] bg-[var(--navy)] p-6 text-white ring-1 ring-blue-950/10 shadow-[0_22px_60px_rgba(10,37,64,0.22)] hover:-translate-y-1 hover:shadow-[0_28px_70px_rgba(10,37,64,0.28)] sm:w-[23rem]"
+    >
+      <span
+        className="pointer-events-none absolute -right-16 -top-20 h-56 w-56 rounded-full bg-[var(--blue-600)]/35 blur-2xl transition-transform duration-500 group-hover:scale-110"
+        aria-hidden="true"
+      />
+
+      <span className="relative z-10 flex max-w-[12.5rem] flex-1 flex-col items-start">
+        <span className="text-[0.65rem] font-medium uppercase tracking-[0.2em] text-white/50">
+          Ballistic mobile
         </span>
-        <span className="mt-1.5 block text-[0.65rem] font-normal tracking-wide text-white/55">
-          Download link coming soon
+        <span className="mt-4 text-balance text-2xl font-medium leading-tight tracking-[-0.025em]">
+          Your list, always within reach.
+        </span>
+        <span className="mt-auto inline-flex items-center gap-3 text-sm font-semibold">
+          Download the app
+          <span className="grid h-8 w-8 place-items-center rounded-full bg-white text-[var(--navy)] transition-transform group-hover:translate-x-1">
+            <ArrowIcon />
+          </span>
+        </span>
+      </span>
+
+      <span
+        className="pointer-events-none absolute -bottom-10 right-5 h-[12rem] w-[6.4rem] rotate-[7deg] rounded-[1.5rem] border border-white/25 bg-white/10 p-2.5 shadow-2xl backdrop-blur-sm transition-transform duration-500 group-hover:-translate-y-2 group-hover:rotate-[4deg]"
+        aria-hidden="true"
+      >
+        <span className="mx-auto block h-1 w-5 rounded-full bg-white/35" />
+        <span className="mt-6 block space-y-2.5">
+          {["w-12", "w-16", "w-10"].map((width) => (
+            <span
+              key={width}
+              className="flex items-center gap-2 rounded-lg bg-white/10 px-2 py-2"
+            >
+              <span className="h-2 w-2 shrink-0 rounded-full border border-white/60" />
+              <span className={`h-1 rounded-full bg-white/55 ${width}`} />
+            </span>
+          ))}
         </span>
       </span>
     </Link>
