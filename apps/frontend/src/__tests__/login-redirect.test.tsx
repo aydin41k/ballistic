@@ -39,6 +39,6 @@ describe("LoginPage", () => {
   test("redirects authenticated users after render", async () => {
     isAuthed = true;
     render(<LoginPage />);
-    await waitFor(() => expect(replaceMock).toHaveBeenCalledWith("/"));
+    await waitFor(() => expect(replaceMock).toHaveBeenCalledWith("/app"));
   });
 });

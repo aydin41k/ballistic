@@ -95,7 +95,7 @@ self.addEventListener("push", (event: PushEvent) => {
 self.addEventListener("notificationclick", (event: NotificationEvent) => {
   event.notification.close();
 
-  const url = event.notification.data?.url || "/";
+  const url = event.notification.data?.url || "/app";
 
   event.waitUntil(
     self.clients

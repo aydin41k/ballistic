@@ -1,4 +1,4 @@
-# Ballistic — a colour-packed bullet journal that moves at your pace
+# Ballistic — the simplest AI-first to-do list
 
 Next.js + Tailwind + TypeScript frontend, paired with a Laravel-style REST API (Bearer token auth) so your tasks stay in sync everywhere.
 
@@ -7,6 +7,8 @@ Next.js + Tailwind + TypeScript frontend, paired with a Laravel-style REST API (
 ## 🌈 At a glance
 
 - 🧭 Quick capture with optimistic updates and drag-to-reorder lanes
+- ✨ Product-led landing page that introduces the simple-by-default, powerful-on-demand philosophy
+- 🤖 Optional MCP integration so compatible AI assistants can create, find, update and complete work
 - 🖥️ Responsive desktop workspace with a persistent sidebar and explicit task controls
 - 🎯 Status cycle made for focus: `todo → doing → done → wontdo`
 - 🗂️ Projects + descriptions so every thought has a home
@@ -38,7 +40,7 @@ Next.js + Tailwind + TypeScript frontend, paired with a Laravel-style REST API (
    ```bash
    npm run dev
    ```
-4. **Create an account** at `/register`, then log in and start firing tasks.
+4. **Visit the landing page** at `/`, create an account, then enter the journal at `/app`.
 
 ## 🔒 API & auth handshake
 

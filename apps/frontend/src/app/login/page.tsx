@@ -17,7 +17,7 @@ export default function LoginPage() {
   // Redirect if already authenticated (after mount)
   useEffect(() => {
     if (isAuthenticated) {
-      router.replace("/");
+      router.replace("/app");
     }
   }, [isAuthenticated, router]);
 
@@ -33,7 +33,7 @@ export default function LoginPage() {
 
     try {
       await login(email, password);
-      router.push("/");
+      router.push("/app");
     } catch (err) {
       if (err instanceof AuthError) {
         setError(err.message);
@@ -51,8 +51,12 @@ export default function LoginPage() {
       <div className="w-full max-w-sm animate-fade-in">
         {/* Logo / Title */}
         <div className="mb-8 text-center">
-          <h1 className="text-3xl font-bold text-[var(--navy)]">Ballistic</h1>
-          <p className="mt-2 text-slate-500">The Simplest Bullet Journal</p>
+          <Link href="/" className="inline-block text-[var(--navy)]">
+            <h1 className="text-3xl font-bold">Ballistic</h1>
+          </Link>
+          <p className="mt-2 text-slate-500">
+            The simplest AI-first to-do list
+          </p>
         </div>
 
         {/* Login Form */}

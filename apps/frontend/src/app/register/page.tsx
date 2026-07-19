@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth, AuthError } from "@/contexts/AuthContext";
@@ -16,11 +16,13 @@ export default function RegisterPage() {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Redirect if already authenticated
-  if (isAuthenticated) {
-    router.push("/");
-    return null;
-  }
+  useEffect(() => {
+    if (isAuthenticated) {
+      router.replace("/app");
+    }
+  }, [isAuthenticated, router]);
+
+  if (isAuthenticated) return null;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -42,7 +44,7 @@ export default function RegisterPage() {
 
     try {
       await register(name, email, password, passwordConfirmation);
-      router.push("/");
+      router.push("/app");
     } catch (err) {
       if (err instanceof AuthError) {
         setError(err.message);
@@ -60,7 +62,9 @@ export default function RegisterPage() {
       <div className="w-full max-w-sm animate-fade-in">
         {/* Logo / Title */}
         <div className="mb-8 text-center">
-          <h1 className="text-3xl font-bold text-[var(--navy)]">Ballistic</h1>
+          <Link href="/" className="inline-block text-[var(--navy)]">
+            <h1 className="text-3xl font-bold">Ballistic</h1>
+          </Link>
           <p className="mt-2 text-slate-500">Create your account</p>
         </div>
 

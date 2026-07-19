@@ -1,3 +1,22 @@
+## 0.19.0 - 2026-07-19
+
+### Added
+
+- **Marketing landing page**: added a responsive, product-led home page with original copy positioning Ballistic as a simple to-do list with optional AI and advanced features
+- **Product preview**: added code-native task, feature-toggle, and AI-assistant demonstrations that show the product without requiring screenshots or external assets
+- **Feature storytelling**: added focused sections for the core three-step workflow, optional power features, MCP-compatible AI support, and account conversion
+
+### Changed
+
+- **Application route**: moved the authenticated journal from `/` to `/app`; login and registration now continue into the new app route
+- **Authentication navigation**: linked the login and registration branding back to the public landing page
+- **Product metadata**: updated page and PWA metadata to describe Ballistic as an AI-first to-do list
+- **Version label**: updated the settings footer to `v0.19.0`
+
+### Tests
+
+- Updated authenticated journal imports and login redirect expectations for the `/app` route
+
 ## 0.18.0 - 2026-07-18
 
 ### Changed

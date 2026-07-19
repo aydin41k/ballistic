@@ -519,7 +519,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
             {/* Version Info */}
             <section className="pt-4 border-t border-gray-100">
               <p className="text-xs text-gray-400 text-center">
-                Ballistic v0.18.0
+                Ballistic v0.19.0
               </p>
             </section>
           </div>

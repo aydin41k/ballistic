@@ -1,1206 +1,622 @@
-"use client";
+import Image from "next/image";
+import Link from "next/link";
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import { useFeatureFlags } from "@/hooks/useFeatureFlags";
-import { useRouter } from "next/navigation";
-import type { Item, ItemScope, Project } from "@/types";
-import {
-  fetchItems,
-  createItem,
-  updateItem,
-  deleteItem,
-  reorderItems,
-  fetchProjects,
-  createProject,
-} from "@/lib/api";
-import { ItemRow } from "@/components/ItemRow";
-import { EmptyState } from "@/components/EmptyState";
-import { SplashScreen } from "@/components/SplashScreen";
-import { SettingsModal } from "@/components/SettingsModal";
-import { NotesModal } from "@/components/NotesModal";
-import { EditItemModal } from "@/components/EditItemModal";
-import { ProfileModal } from "@/components/ProfileModal";
-import { ActivityLogModal } from "@/components/ActivityLogModal";
-import { NotificationCentre } from "@/components/NotificationCentre";
-import { DesktopSidebar } from "@/components/DesktopSidebar";
-import { useAuth } from "@/contexts/AuthContext";
-import {
-  filterItemsByExcludedProjects,
-  NO_PROJECT_FILTER_ID,
-} from "@/lib/projectFilters";
+const optionalFeatures = [
+  {
+    title: "AI that can actually act",
+    description:
+      "Connect an MCP-compatible assistant to create, find, update, complete and delegate work through conversation.",
+    icon: "spark",
+    accent: "bg-violet-100 text-violet-700",
+  },
+  {
+    title: "Dates when time matters",
+    description:
+      "Add schedules, due dates and recurring tasks when a plain ordered list is no longer enough.",
+    icon: "calendar",
+    accent: "bg-blue-100 text-blue-700",
+  },
+  {
+    title: "Projects without the ceremony",
+    description:
+      "Group and filter tasks without turning your personal list into a project-management department.",
+    icon: "folder",
+    accent: "bg-amber-100 text-amber-700",
+  },
+  {
+    title: "Delegate without losing the thread",
+    description:
+      "Assign tasks, add context and get notified when work moves—only if collaboration belongs in your day.",
+    icon: "people",
+    accent: "bg-emerald-100 text-emerald-700",
+  },
+  {
+    title: "Notes, tags and history",
+    description:
+      "Keep the context you need nearby, then leave it out of sight when all you need is the next task.",
+    icon: "note",
+    accent: "bg-rose-100 text-rose-700",
+  },
+  {
+    title: "Fast everywhere",
+    description:
+      "Optimistic updates, drag ordering and a focused mobile view keep the list feeling immediate.",
+    icon: "bolt",
+    accent: "bg-cyan-100 text-cyan-700",
+  },
+] as const;
 
-function normaliseItemResponse(payload: Item | { data?: Item }): Item {
-  if (
-    payload &&
-    typeof payload === "object" &&
-    "data" in payload &&
-    (payload as { data?: Item }).data
-  ) {
-    return (payload as { data: Item }).data;
-  }
-  return payload as Item;
-}
+const principles = [
+  {
+    number: "01",
+    title: "Capture it",
+    description:
+      "A title is enough. Add the task before your brain opens another tab.",
+  },
+  {
+    number: "02",
+    title: "Put it in order",
+    description:
+      "Move what matters up. Let the rest wait without turning it into a planning workshop.",
+  },
+  {
+    number: "03",
+    title: "Move it forward",
+    description:
+      "Todo, doing, done or not worth doing. Four states. No interpretive dance.",
+  },
+] as const;
 
-function getUrgencyRank(item: Item, todayStr: string, in72hMs: number): number {
-  if (!item.due_date) return 4; // No deadline = lowest priority
-
-  const dueMs = new Date(item.due_date + "T23:59:59").getTime();
-
-  if (item.due_date < todayStr) return 1; // Overdue
-  if (dueMs <= in72hMs) return 2; // Due within 72 hours
-  return 3; // Has deadline, not urgent yet
-}
-
-function sortByUrgency(items: Item[]): Item[] {
-  const now = new Date();
-  const todayStr = now.toISOString().split("T")[0]; // YYYY-MM-DD
-  const in72hMs = now.getTime() + 72 * 60 * 60 * 1000;
-
-  return [...items].sort((a, b) => {
-    const urgencyA = getUrgencyRank(a, todayStr, in72hMs);
-    const urgencyB = getUrgencyRank(b, todayStr, in72hMs);
-
-    if (urgencyA !== urgencyB) {
-      return urgencyA - urgencyB; // Lower rank = higher priority
-    }
-
-    // Within the same urgency tier, sort by due_date ascending (nearest deadline first)
-    if (a.due_date && b.due_date) {
-      return a.due_date.localeCompare(b.due_date);
-    }
-    if (a.due_date) return -1;
-    if (b.due_date) return 1;
-
-    // Finally, fall back to position
-    return a.position - b.position;
-  });
-}
-
-export default function Home() {
-  const router = useRouter();
-  const {
-    isAuthenticated,
-    isLoading: authLoading,
-    logout,
-    user,
-    refreshUser,
-  } = useAuth();
-  const [items, setItems] = useState<Item[]>([]);
-  const [assignedItems, setAssignedItems] = useState<Item[]>([]);
-  const [delegatedItems, setDelegatedItems] = useState<Item[]>([]);
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [editingItem, setEditingItem] = useState<Item | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [scrollToItemId, setScrollToItemId] = useState<string | null>(null);
-  const [draggingId, setDraggingId] = useState<string | null>(null);
-  const [dragOverId, setDragOverId] = useState<string | null>(null);
-  const dragSourceRef = useRef<string | null>(null);
-  const dragOverRef = useRef<string | null>(null);
-  const dropHandledRef = useRef(false);
-  const [viewScope, setViewScope] = useState<ItemScope>("active");
-  const [excludedProjectIds, setExcludedProjectIds] = useState<Set<string>>(
-    new Set(),
-  );
-  const [showFilter, setShowFilter] = useState(false);
-  const [toast, setToast] = useState<string | null>(null);
-  const toastTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [showSettings, setShowSettings] = useState(false);
-  const [showNotes, setShowNotes] = useState(false);
-  const [showProfile, setShowProfile] = useState(false);
-  const [showActivityLog, setShowActivityLog] = useState(false);
-  const { dates, delegation } = useFeatureFlags();
-
-  const showError = useCallback((message: string) => {
-    if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
-    setToast(message);
-    toastTimeoutRef.current = setTimeout(() => setToast(null), 4000);
-  }, []);
-
-  // Reset view scope when dates feature is turned off
-  useEffect(() => {
-    if (!dates && viewScope !== "active") {
-      setViewScope("active");
-    }
-  }, [dates, viewScope]);
-
-  // Redirect to login if not authenticated
-  useEffect(() => {
-    if (!authLoading && !isAuthenticated) {
-      router.push("/login");
-    }
-  }, [authLoading, isAuthenticated, router]);
-
-  // Fetch items and projects when authenticated
-  useEffect(() => {
-    if (isAuthenticated) {
-      setLoading(true);
-      Promise.all([
-        fetchItems({ scope: viewScope }),
-        delegation
-          ? fetchItems({ assigned_to_me: true, scope: viewScope })
-          : Promise.resolve([]),
-        delegation
-          ? fetchItems({ delegated: true, scope: viewScope })
-          : Promise.resolve([]),
-        fetchProjects(),
-      ])
-        .then(([itemsData, assignedData, delegatedData, projectsData]) => {
-          setItems(itemsData);
-          setAssignedItems(assignedData);
-          setDelegatedItems(delegatedData);
-          setProjects(projectsData);
-        })
-        .catch((error) => {
-          console.error("Failed to fetch data:", error);
-        })
-        .finally(() => setLoading(false));
-    }
-  }, [isAuthenticated, viewScope, dates, delegation]);
-
-  // Handle scrolling to newly added items
-  useEffect(() => {
-    if (scrollToItemId) {
-      const timer = setTimeout(() => {
-        const element = document.querySelector(
-          `[data-item-id="${CSS.escape(scrollToItemId)}"]`,
-        );
-        if (element) {
-          element.scrollIntoView({ behavior: "smooth", block: "center" });
-        }
-        setScrollToItemId(null);
-      }, 100);
-
-      return () => clearTimeout(timer);
-    }
-  }, [scrollToItemId]);
-
-  // Listen for service worker messages (real-time task updates from push notifications)
-  useEffect(() => {
-    if (typeof navigator === "undefined" || !navigator.serviceWorker) return;
-
-    function handleSwMessage(event: MessageEvent) {
-      if (event.data?.type !== "TASK_UPDATE") return;
-
-      const notificationType: string = event.data.notificationType ?? "";
-
-      if (
-        notificationType === "task_unassigned" ||
-        notificationType === "task_rejected"
-      ) {
-        // Refresh both assigned and delegated lists
-        Promise.all([
-          fetchItems({ assigned_to_me: true, scope: viewScope }),
-          fetchItems({ delegated: true, scope: viewScope }),
-        ])
-          .then(([assignedData, delegatedData]) => {
-            setAssignedItems(assignedData);
-            setDelegatedItems(delegatedData);
-          })
-          .catch(console.error);
-      } else {
-        // task_assigned, task_updated, task_completed, etc.
-        fetchItems({ assigned_to_me: true, scope: viewScope })
-          .then(setAssignedItems)
-          .catch(console.error);
-      }
-    }
-
-    navigator.serviceWorker.addEventListener("message", handleSwMessage);
-    return () => {
-      navigator.serviceWorker.removeEventListener("message", handleSwMessage);
-    };
-  }, [viewScope]);
-
-  // Refresh all lists when the tab becomes visible again
-  useEffect(() => {
-    if (!isAuthenticated) return;
-
-    function handleVisibilityChange() {
-      if (document.visibilityState !== "visible") return;
-
-      Promise.all([
-        fetchItems({ scope: viewScope }),
-        delegation
-          ? fetchItems({ assigned_to_me: true, scope: viewScope })
-          : Promise.resolve([]),
-        delegation
-          ? fetchItems({ delegated: true, scope: viewScope })
-          : Promise.resolve([]),
-      ])
-        .then(([itemsData, assignedData, delegatedData]) => {
-          setItems(itemsData);
-          setAssignedItems(assignedData);
-          setDelegatedItems(delegatedData);
-        })
-        .catch(console.error);
-    }
-
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-    return () => {
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-    };
-  }, [isAuthenticated, viewScope, delegation]);
-
-  // Sort my tasks by urgency (only when dates feature is enabled)
-  const sortedItems = dates ? sortByUrgency(items) : items;
-
-  // Apply project filter client-side (exclusion model)
-  const hasProjectFilter = excludedProjectIds.size > 0;
-  const filteredItems = filterItemsByExcludedProjects(
-    sortedItems,
-    excludedProjectIds,
-  );
-  const filteredAssignedItems = filterItemsByExcludedProjects(
-    assignedItems,
-    excludedProjectIds,
-  );
-  const filteredDelegatedItems = filterItemsByExcludedProjects(
-    delegatedItems,
-    excludedProjectIds,
-  );
-
-  function onRowChange(itemOrUpdater: Item | ((current: Item) => Item)) {
-    const updater = (prev: Item[]) => {
-      if (!Array.isArray(prev)) return [];
-      if (typeof itemOrUpdater === "function") {
-        return prev.map(itemOrUpdater);
-      }
-      return prev.map((i) => (i.id === itemOrUpdater.id ? itemOrUpdater : i));
-    };
-
-    // Update all three arrays — the mapper is by ID so non-matching items are unchanged
-    setItems(updater);
-    setAssignedItems(updater);
-    setDelegatedItems(updater);
-  }
-
-  // Decline (reject) an assigned task — optimistically removes from assigned list
-  async function handleDecline(item: Item) {
-    const previousAssigned = [...assignedItems];
-    setAssignedItems((prev) => prev.filter((i) => i.id !== item.id));
-
-    try {
-      await updateItem(item.id, { assignee_id: null });
-    } catch (error) {
-      console.error("Failed to decline task:", error);
-      setAssignedItems(previousAssigned);
-      showError("Failed to decline task. Please try again.");
-    }
-  }
-
-  async function handleDelete(item: Item) {
-    if (!confirm(`Delete “${item.title}”? This cannot be undone.`)) return;
-
-    const previousItems = [...items];
-    const previousAssigned = [...assignedItems];
-    const previousDelegated = [...delegatedItems];
-    const removeItem = (current: Item[]) =>
-      current.filter((candidate) => candidate.id !== item.id);
-
-    setItems(removeItem);
-    setAssignedItems(removeItem);
-    setDelegatedItems(removeItem);
-
-    try {
-      await deleteItem(item.id);
-    } catch (error) {
-      console.error("Failed to delete task:", error);
-      setItems(previousItems);
-      setAssignedItems(previousAssigned);
-      setDelegatedItems(previousDelegated);
-      showError("Failed to delete task. Please try again.");
-    }
-  }
-
-  // Optimistic reordering function that updates UI immediately and persists via bulk API
-  function onOptimisticReorder(
-    itemId: string,
-    direction: "up" | "down" | "top",
-  ) {
-    setItems((prev) => {
-      if (!Array.isArray(prev)) return [];
-
-      const currentIndex = prev.findIndex((item) => item.id === itemId);
-      if (currentIndex === -1) return prev;
-
-      const newList = [...prev];
-      if (direction === "up" && currentIndex > 0) {
-        [newList[currentIndex], newList[currentIndex - 1]] = [
-          newList[currentIndex - 1],
-          newList[currentIndex],
-        ];
-      } else if (direction === "down" && currentIndex < newList.length - 1) {
-        [newList[currentIndex], newList[currentIndex + 1]] = [
-          newList[currentIndex + 1],
-          newList[currentIndex],
-        ];
-      } else if (direction === "top" && currentIndex > 0) {
-        const [item] = newList.splice(currentIndex, 1);
-        newList.unshift(item);
-      } else {
-        return prev;
-      }
-
-      const ordered = newList.map((item, index) => ({
-        ...item,
-        position: index,
-      }));
-
-      // Persist via single bulk reorder call
-      reorderItems(
-        ordered.map((item, i) => ({ id: item.id, position: i })),
-      ).catch((error) => {
-        console.error("Failed to persist reorder:", error);
-        setItems(prev);
-        showError("Failed to reorder. Changes reverted.");
-      });
-
-      return ordered;
-    });
-  }
-
-  async function handleLogout() {
-    await logout();
-    router.push("/login");
-  }
-
-  async function handleCreateProject(name: string): Promise<Project> {
-    const newProject = await createProject({ name });
-    setProjects((prev) => [...prev, newProject]);
-    return newProject;
-  }
-
-  function openNewTask() {
-    setEditingItem(null);
-    setShowEditModal(true);
-  }
-
-  function toggleProjectFilter(projectId: string) {
-    setExcludedProjectIds((previous) => {
-      const next = new Set(previous);
-      if (next.has(projectId)) next.delete(projectId);
-      else next.add(projectId);
-      return next;
-    });
-  }
-
-  function reorderList(
-    list: Item[],
-    sourceId: string,
-    targetId: string,
-  ): Item[] {
-    const current = [...list];
-    const fromIndex = current.findIndex((entry) => entry.id === sourceId);
-    const toIndex = current.findIndex((entry) => entry.id === targetId);
-
-    if (fromIndex === -1 || toIndex === -1 || fromIndex === toIndex) {
-      return current;
-    }
-
-    const [moved] = current.splice(fromIndex, 1);
-    current.splice(toIndex, 0, moved);
-
-    return current.map((entry, position) => ({ ...entry, position }));
-  }
-
-  function handleDragStart(id: string) {
-    setDraggingId(id);
-    setDragOverId(id);
-    dragSourceRef.current = id;
-    dragOverRef.current = id;
-  }
-
-  function handleDragEnter(id: string) {
-    setDragOverId(id);
-    dragOverRef.current = id;
-  }
-
-  function handleDragEnd() {
-    if (dropHandledRef.current) {
-      dropHandledRef.current = false;
-      setDraggingId(null);
-      setDragOverId(null);
-      dragSourceRef.current = null;
-      dragOverRef.current = null;
-      return;
-    }
-
-    setDraggingId(null);
-    setDragOverId(null);
-    dragSourceRef.current = null;
-    dragOverRef.current = null;
-  }
-
-  function handleDrop(targetId: string) {
-    dropHandledRef.current = true;
-
-    setItems((prev) => {
-      if (!Array.isArray(prev)) return [];
-
-      const sourceId = draggingId;
-
-      const ordered =
-        sourceId && sourceId !== targetId
-          ? reorderList(prev, sourceId, targetId)
-          : prev.map((entry, position) => ({ ...entry, position }));
-
-      // Persist via single bulk reorder call
-      reorderItems(
-        ordered.map((item, i) => ({ id: item.id, position: i })),
-      ).catch((error) => {
-        console.error("Failed to persist reorder:", error);
-        setItems(prev);
-        showError("Failed to reorder. Changes reverted.");
-      });
-
-      return ordered;
-    });
-
-    setDraggingId(null);
-    setDragOverId(null);
-    dragSourceRef.current = null;
-    dragOverRef.current = null;
-  }
-
-  // Show splash screen while checking auth or loading data
-  if (authLoading || (!isAuthenticated && !authLoading) || loading) {
-    return <SplashScreen />;
-  }
-
+export default function LandingPage() {
   return (
-    <div className="lg:grid lg:min-h-dvh lg:grid-cols-[17.5rem_minmax(0,1fr)]">
-      <DesktopSidebar
-        user={user}
-        projects={projects}
-        excludedProjectIds={excludedProjectIds}
-        dates={dates}
-        delegation={delegation}
-        viewScope={viewScope}
-        onSetViewScope={setViewScope}
-        onToggleProject={toggleProjectFilter}
-        onClearProjects={() => setExcludedProjectIds(new Set())}
-        onNewTask={openNewTask}
-        onOpenNotes={() => setShowNotes(true)}
-        onOpenActivity={() => setShowActivityLog(true)}
-        onOpenSettings={() => setShowSettings(true)}
-        onOpenProfile={() => setShowProfile(true)}
-        onLogout={() => {
-          if (confirm("Are you sure you want to log out?")) {
-            void handleLogout();
-          }
-        }}
-      />
+    <main className="relative left-1/2 -my-4 min-h-dvh w-screen -translate-x-1/2 overflow-hidden bg-[#f8f9ff] text-[#111b3f] lg:static lg:my-0 lg:w-auto lg:translate-x-0">
+      <div
+        className="pointer-events-none absolute inset-x-0 top-0 h-[46rem] overflow-hidden"
+        aria-hidden="true"
+      >
+        <div className="absolute -left-24 top-24 h-72 w-72 rounded-full bg-[#dfe7ff] blur-3xl" />
+        <div className="absolute right-[-8rem] top-[-4rem] h-[30rem] w-[30rem] rounded-full bg-[#eadfff] opacity-80 blur-3xl" />
+        <div className="absolute left-[46%] top-36 h-48 w-48 rounded-full bg-[#d9ff9f] opacity-60 blur-3xl" />
+      </div>
 
-      <main className="flex min-w-0 flex-col pb-24 lg:pb-0">
-        <div className="flex flex-col gap-3 lg:mx-auto lg:w-full lg:max-w-6xl lg:px-10 lg:py-8 xl:px-12">
-          {/* Error toast */}
-          {toast && (
-            <div className="fixed top-4 inset-x-4 z-30 mx-auto max-w-md animate-fade-in">
-              <div className="flex items-center gap-2 rounded-md bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700 shadow-lg">
-                <span className="flex-1">{toast}</span>
-                <button
-                  type="button"
-                  onClick={() => setToast(null)}
-                  className="shrink-0 text-red-400 hover:text-red-600 transition-colors"
-                  aria-label="Dismiss"
-                >
-                  <svg
-                    viewBox="0 0 24 24"
-                    width="16"
-                    height="16"
-                    fill="none"
-                    stroke="currentColor"
-                  >
-                    <path
-                      d="M18 6 6 18M6 6l12 12"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-                </button>
-              </div>
+      <header className="sticky top-0 z-40 border-b border-white/60 bg-[#f8f9ff]/80 backdrop-blur-xl">
+        <div className="mx-auto flex min-h-[4.5rem] max-w-7xl items-center justify-between px-5 py-4 sm:px-8 lg:px-10">
+          <Link
+            href="/"
+            className="flex items-center gap-3 text-[#111b3f]"
+            aria-label="Ballistic home"
+          >
+            <Image
+              src="/logo.png"
+              alt=""
+              width={38}
+              height={38}
+              className="h-9 w-9 rounded-xl shadow-sm"
+              priority
+            />
+            <span className="text-lg font-black tracking-tight">Ballistic</span>
+          </Link>
+
+          <nav
+            className="hidden items-center gap-8 text-sm font-semibold text-slate-600 md:flex"
+            aria-label="Main navigation"
+          >
+            <a href="#simple" className="hover:text-[#111b3f]">
+              Why simple
+            </a>
+            <a href="#features" className="hover:text-[#111b3f]">
+              Optional power
+            </a>
+            <a href="#ai" className="hover:text-[#111b3f]">
+              AI-first
+            </a>
+          </nav>
+
+          <div className="flex items-center gap-2 sm:gap-3">
+            <Link
+              href="/login"
+              className="hidden rounded-full px-3 py-2 text-sm font-bold text-[#111b3f] hover:bg-white min-[360px]:inline-flex sm:px-4"
+            >
+              Sign in
+            </Link>
+            <Link
+              href="/register"
+              className="inline-flex items-center gap-2 rounded-full bg-[#2547e8] px-4 py-2.5 text-sm font-bold text-white shadow-lg shadow-blue-900/15 hover:-translate-y-0.5 hover:bg-[#1838ce] sm:px-5"
+            >
+              Get started
+              <ArrowIcon />
+            </Link>
+          </div>
+        </div>
+      </header>
+
+      <section className="relative mx-auto max-w-7xl px-5 pb-24 pt-16 sm:px-8 sm:pt-24 lg:px-10 lg:pb-32 lg:pt-28">
+        <div className="grid items-center gap-16 lg:grid-cols-[0.9fr_1.1fr] lg:gap-14 xl:gap-24">
+          <div className="relative z-10 max-w-2xl">
+            <div className="mb-7 inline-flex items-center gap-2 rounded-full border border-[#cbd6ff] bg-white/80 px-3.5 py-2 text-xs font-black uppercase tracking-[0.14em] text-[#2547e8] shadow-sm backdrop-blur">
+              <span className="h-2 w-2 rounded-full bg-[#8bcf2f] shadow-[0_0_0_4px_rgba(139,207,47,0.15)]" />
+              To-dos without the productivity theatre
             </div>
-          )}
 
-          {/* Mobile header */}
-          <header className="sticky top-0 z-10 -mx-4 bg-[var(--page-bg)]/95 px-4 pb-2 pt-3 backdrop-blur lg:hidden">
-            <div className="flex items-center justify-between">
-              <h1 className="text-xl font-semibold text-[var(--navy)]">
-                Ballistic
-                <br />
-                <small>The Simplest Bullet Journal</small>
-              </h1>
-              <button
-                type="button"
-                aria-label="Logout"
-                onClick={() => {
-                  if (confirm("Are you sure you want to logout?")) {
-                    handleLogout();
-                  }
-                }}
-                className="tap-target grid h-9 w-9 place-items-center rounded-md bg-white shadow-sm hover:shadow-md active:scale-95"
-                title={`Logout ${user?.name || ""}`}
+            <h1 className="text-balance text-5xl font-black leading-[0.98] tracking-[-0.055em] text-[#101a3b] sm:text-6xl lg:text-7xl xl:text-[5.4rem]">
+              The simplest to-do list.
+              <span className="mt-2 block bg-gradient-to-r from-[#2547e8] via-[#6d3be8] to-[#ab38c9] bg-clip-text text-transparent">
+                AI-first when you want more.
+              </span>
+            </h1>
+
+            <p className="mt-7 max-w-xl text-lg leading-8 text-slate-600 sm:text-xl">
+              Capture a task, put it in order, get on with your day. Turn on AI,
+              dates, projects, recurring work, delegation and notifications only
+              when they earn their place.
+            </p>
+
+            <div className="mt-9 flex flex-col gap-3 sm:flex-row sm:items-center">
+              <Link
+                href="/register"
+                className="inline-flex min-h-[3.25rem] items-center justify-center gap-2 rounded-full bg-[#2547e8] px-7 py-3.5 text-base font-extrabold text-white shadow-xl shadow-blue-900/20 hover:-translate-y-1 hover:bg-[#1838ce]"
               >
-                {/* logout icon */}
-                <svg
-                  viewBox="0 0 24 24"
-                  width="18"
-                  height="18"
-                  fill="none"
-                  stroke="currentColor"
-                  className="text-[var(--navy)]"
-                >
-                  <path
-                    d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"
-                    strokeWidth="1.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              </button>
-            </div>
-          </header>
-
-          {/* Desktop workspace header */}
-          <header className="hidden items-end justify-between gap-8 border-b border-slate-200/80 pb-6 lg:flex">
-            <div>
-              <p className="mb-2 text-xs font-bold uppercase tracking-[0.16em] text-[var(--blue-600)]">
-                Workspace
-              </p>
-              <h1 className="text-4xl font-bold tracking-tight text-[var(--navy)]">
-                Journal
-              </h1>
-              <p className="mt-2 text-sm text-slate-500">
-                Keep today&apos;s work clear, ordered, and moving.
-              </p>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="hidden items-center gap-6 rounded-xl border border-slate-200 bg-white px-5 py-3 xl:flex">
-                <DesktopStat label="My tasks" value={filteredItems.length} />
-                {delegation && (
-                  <>
-                    <span className="h-8 w-px bg-slate-200" />
-                    <DesktopStat
-                      label="Assigned"
-                      value={filteredAssignedItems.length}
-                    />
-                  </>
-                )}
-              </div>
-              <button
-                type="button"
-                onClick={openNewTask}
-                className="inline-flex h-11 items-center gap-2 rounded-xl bg-[var(--blue)] px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-[var(--blue-600)] hover:shadow-md active:scale-[0.98]"
+                Start with one task
+                <ArrowIcon />
+              </Link>
+              <Link
+                href="/app"
+                className="inline-flex min-h-[3.25rem] items-center justify-center rounded-full border border-slate-300 bg-white/70 px-7 py-3.5 text-base font-extrabold text-[#111b3f] hover:border-slate-400 hover:bg-white"
               >
-                <span className="text-xl font-light leading-none">+</span>
-                Add task
-              </button>
+                Open the app
+              </Link>
             </div>
-          </header>
 
-          {/* Planned view banner */}
-          {dates && viewScope === "planned" && (
-            <div className="flex items-center justify-between rounded-md border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-700 lg:mt-2 lg:rounded-xl lg:px-4 lg:py-3">
-              <span>Showing planned items (future scheduled dates)</span>
-              <button
-                type="button"
-                onClick={() => setViewScope("active")}
-                className="text-xs font-medium text-sky-600 hover:text-sky-800 underline"
-              >
-                Back to active
-              </button>
+            <div className="mt-7 flex flex-wrap gap-x-5 gap-y-2 text-sm font-semibold text-slate-500">
+              <span className="inline-flex items-center gap-2">
+                <CheckIcon /> No setup ritual
+              </span>
+              <span className="inline-flex items-center gap-2">
+                <CheckIcon /> No feature avalanche
+              </span>
+              <span className="inline-flex items-center gap-2">
+                <CheckIcon /> Complexity stays optional
+              </span>
             </div>
-          )}
-
-          {/* List */}
-          <div className="flex flex-col gap-2 lg:gap-3 lg:pt-3">
-            {/* Render a single item as a row */}
-            {(() => {
-              function renderItem(
-                item: Item,
-                index: number,
-                options: {
-                  isLast?: boolean;
-                  onDecline?: () => void;
-                  desktopCanReorder?: boolean;
-                } = {},
-              ) {
-                return (
-                  <ItemRow
-                    key={item.id || `item-${index}`}
-                    item={item}
-                    onChange={onRowChange}
-                    onOptimisticReorder={onOptimisticReorder}
-                    index={index}
-                    onEdit={() => {
-                      setEditingItem(item);
-                      setShowEditModal(true);
-                    }}
-                    isFirst={index === 0}
-                    isLast={options.isLast}
-                    onDecline={options.onDecline}
-                    onDelete={
-                      item.user_id === user?.id
-                        ? () => void handleDelete(item)
-                        : undefined
-                    }
-                    desktopCanReorder={options.desktopCanReorder}
-                    onDragStart={handleDragStart}
-                    onDragEnter={handleDragEnter}
-                    onDropItem={handleDrop}
-                    onDragEnd={handleDragEnd}
-                    draggingId={draggingId}
-                    dragOverId={dragOverId}
-                    onError={showError}
-                  />
-                );
-              }
-
-              return (
-                <>
-                  {/* Assigned to Me section */}
-                  {delegation && filteredAssignedItems.length > 0 && (
-                    <>
-                      <div className="mt-2 flex items-center justify-between lg:mt-3 lg:px-1">
-                        <h2 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-emerald-600">
-                          Assigned to Me
-                          <span className="hidden min-w-6 rounded-full bg-emerald-50 px-2 py-1 text-center text-[10px] lg:inline-block">
-                            {filteredAssignedItems.length}
-                          </span>
-                        </h2>
-                      </div>
-                      {filteredAssignedItems.map((item, index) => (
-                        <div key={item.id || `assigned-${index}`}>
-                          {renderItem(item, index, {
-                            isLast: index === filteredAssignedItems.length - 1,
-                            onDecline: () => handleDecline(item),
-                            desktopCanReorder: false,
-                          })}
-                          <button
-                            type="button"
-                            onClick={() => handleDecline(item)}
-                            className="mt-1 px-3 text-xs text-red-500 transition-colors hover:text-red-700 lg:hidden"
-                          >
-                            Decline
-                          </button>
-                        </div>
-                      ))}
-                    </>
-                  )}
-
-                  {/* My Tasks section */}
-                  {filteredItems.length > 0 && (
-                    <>
-                      {delegation && (
-                        <h2 className="mt-2 flex items-center gap-2 px-1 text-xs font-semibold uppercase tracking-wider text-[var(--navy)] lg:mt-3">
-                          My Tasks
-                          <span className="hidden min-w-6 rounded-full bg-slate-200/70 px-2 py-1 text-center text-[10px] text-slate-600 lg:inline-block">
-                            {filteredItems.length}
-                          </span>
-                        </h2>
-                      )}
-                      {filteredItems.map((item, index) =>
-                        renderItem(item, index, {
-                          isLast: index === filteredItems.length - 1,
-                        }),
-                      )}
-                    </>
-                  )}
-
-                  {/* Delegated to Others section */}
-                  {delegation && filteredDelegatedItems.length > 0 && (
-                    <>
-                      <h2 className="mt-2 flex items-center gap-2 px-1 text-xs font-semibold uppercase tracking-wider text-amber-600 lg:mt-3">
-                        Delegated to Others
-                        <span className="hidden min-w-6 rounded-full bg-amber-50 px-2 py-1 text-center text-[10px] lg:inline-block">
-                          {filteredDelegatedItems.length}
-                        </span>
-                      </h2>
-                      {filteredDelegatedItems.map((item, index) =>
-                        renderItem(item, index, {
-                          isLast: index === filteredDelegatedItems.length - 1,
-                          desktopCanReorder: false,
-                        }),
-                      )}
-                    </>
-                  )}
-
-                  {/* Empty state */}
-                  {filteredItems.length === 0 &&
-                    (!delegation ||
-                      (filteredAssignedItems.length === 0 &&
-                        filteredDelegatedItems.length === 0)) &&
-                    !loading && (
-                      <EmptyState
-                        type="no-items"
-                        message={
-                          hasProjectFilter
-                            ? "No tasks match the selected projects."
-                            : "Start your bullet journal journey by adding your first task!"
-                        }
-                      />
-                    )}
-                </>
-              );
-            })()}
           </div>
 
-          {/* Footer */}
-          <footer className="py-6 text-center text-sm text-slate-500 lg:pb-3 lg:pt-8 lg:text-xs">
-            Psycode Pty. Ltd. © {new Date().getFullYear()}
-          </footer>
+          <ProductPreview />
         </div>
+      </section>
 
-        {/* Filter Panel */}
-        {showFilter && (
-          <>
+      <section
+        id="simple"
+        className="relative border-y border-slate-200/80 bg-white"
+      >
+        <div className="mx-auto max-w-7xl px-5 py-20 sm:px-8 lg:px-10 lg:py-28">
+          <div className="grid gap-12 lg:grid-cols-[0.8fr_1.2fr] lg:gap-20">
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.18em] text-[#2547e8]">
+                Simple on purpose
+              </p>
+              <h2 className="mt-4 text-4xl font-black leading-tight tracking-[-0.04em] text-[#111b3f] sm:text-5xl">
+                Not another productivity operating system.
+              </h2>
+              <p className="mt-5 max-w-lg text-lg leading-8 text-slate-600">
+                Ballistic starts as the thing most apps eventually bury: a clear
+                list of what you need to do next.
+              </p>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-3">
+              {principles.map((principle) => (
+                <article
+                  key={principle.number}
+                  className="group rounded-[1.75rem] border border-slate-200 bg-[#f8f9ff] p-6 transition hover:-translate-y-1 hover:border-[#b9c7ff] hover:shadow-xl hover:shadow-blue-900/5"
+                >
+                  <span className="text-xs font-black tracking-[0.16em] text-[#2547e8]">
+                    {principle.number}
+                  </span>
+                  <h3 className="mt-10 text-xl font-black tracking-tight text-[#111b3f]">
+                    {principle.title}
+                  </h3>
+                  <p className="mt-3 text-sm leading-6 text-slate-600">
+                    {principle.description}
+                  </p>
+                </article>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="features" className="relative overflow-hidden bg-[#f8f9ff]">
+        <div
+          className="pointer-events-none absolute inset-x-0 top-20 mx-auto h-80 max-w-5xl rounded-full bg-gradient-to-r from-blue-100 via-violet-100 to-lime-100 opacity-70 blur-3xl"
+          aria-hidden="true"
+        />
+        <div className="relative mx-auto max-w-7xl px-5 py-20 sm:px-8 lg:px-10 lg:py-28">
+          <div className="mx-auto max-w-3xl text-center">
+            <p className="text-xs font-black uppercase tracking-[0.18em] text-[#2547e8]">
+              Power on demand
+            </p>
+            <h2 className="mt-4 text-4xl font-black tracking-[-0.045em] text-[#111b3f] sm:text-5xl">
+              Start tiny. Switch on the clever stuff later.
+            </h2>
+            <p className="mx-auto mt-5 max-w-2xl text-lg leading-8 text-slate-600">
+              Every extra exists to remove work—not create a new system for you
+              to maintain.
+            </p>
+          </div>
+
+          <div className="mt-14 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+            {optionalFeatures.map((feature) => (
+              <article
+                key={feature.title}
+                className="rounded-[1.75rem] border border-white bg-white/85 p-6 shadow-lg shadow-slate-900/[0.04] backdrop-blur transition hover:-translate-y-1 hover:shadow-2xl hover:shadow-blue-900/[0.08]"
+              >
+                <span
+                  className={`grid h-11 w-11 place-items-center rounded-2xl ${feature.accent}`}
+                >
+                  <FeatureIcon name={feature.icon} />
+                </span>
+                <h3 className="mt-6 text-xl font-black tracking-tight text-[#111b3f]">
+                  {feature.title}
+                </h3>
+                <p className="mt-3 text-sm leading-6 text-slate-600">
+                  {feature.description}
+                </p>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section id="ai" className="bg-[#0d1738] text-white">
+        <div className="mx-auto grid max-w-7xl items-center gap-14 px-5 py-20 sm:px-8 lg:grid-cols-2 lg:px-10 lg:py-28">
+          <div>
+            <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3.5 py-2 text-xs font-black uppercase tracking-[0.16em] text-[#caddff]">
+              <SparkIcon /> AI-first, never AI-forced
+            </div>
+            <h2 className="mt-6 max-w-xl text-4xl font-black leading-tight tracking-[-0.045em] sm:text-5xl">
+              Let your AI handle the list admin.
+            </h2>
+            <p className="mt-6 max-w-xl text-lg leading-8 text-slate-300">
+              Connect your preferred MCP-compatible assistant. Ask it to capture
+              ideas, find overdue work, update priorities, complete tasks or
+              delegate the follow-up—while Ballistic stays the clear source of
+              truth.
+            </p>
+            <p className="mt-5 text-sm font-bold text-[#b8c8ff]">
+              Don&apos;t want AI? Leave it off. The list remains brilliantly
+              boring.
+            </p>
+          </div>
+
+          <div className="relative rounded-[2rem] border border-white/10 bg-[#141f46] p-4 shadow-2xl shadow-black/25 sm:p-6">
             <div
-              className="fixed inset-0 z-[19] lg:hidden"
-              onClick={() => setShowFilter(false)}
+              className="absolute -right-8 -top-8 h-28 w-28 rounded-full bg-[#8f5cff] opacity-30 blur-3xl"
               aria-hidden="true"
             />
-            <div className="fixed inset-x-0 bottom-[4.5rem] z-[21] lg:hidden">
-              <div className="mx-auto max-w-sm px-4">
-                <div className="rounded-xl bg-white shadow-xl border border-slate-200/50 p-4 space-y-4 animate-slide-in-up">
-                  {/* Project filter (multi-select, exclusion model) */}
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-                        Projects
-                      </h3>
-                      {excludedProjectIds.size > 0 && (
-                        <button
-                          type="button"
-                          onClick={() => setExcludedProjectIds(new Set())}
-                          className="text-xs text-[var(--blue)] hover:underline"
-                        >
-                          Show all
-                        </button>
-                      )}
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setExcludedProjectIds((prev) => {
-                            const next = new Set(prev);
-                            if (next.has(NO_PROJECT_FILTER_ID)) {
-                              next.delete(NO_PROJECT_FILTER_ID);
-                            } else {
-                              next.add(NO_PROJECT_FILTER_ID);
-                            }
-                            return next;
-                          })
-                        }
-                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
-                          excludedProjectIds.has(NO_PROJECT_FILTER_ID)
-                            ? "bg-slate-100 text-slate-400 line-through"
-                            : "bg-[var(--blue)] text-white"
-                        }`}
-                      >
-                        No project
-                      </button>
-                      {projects.map((project) => {
-                        const isExcluded = excludedProjectIds.has(project.id);
-                        return (
-                          <button
-                            key={project.id}
-                            type="button"
-                            onClick={() =>
-                              setExcludedProjectIds((prev) => {
-                                const next = new Set(prev);
-                                if (next.has(project.id)) {
-                                  next.delete(project.id);
-                                } else {
-                                  next.add(project.id);
-                                }
-                                return next;
-                              })
-                            }
-                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
-                              isExcluded
-                                ? "bg-slate-100 text-slate-400 line-through"
-                                : "bg-[var(--blue)] text-white"
-                            }`}
-                          >
-                            {project.color && (
-                              <span
-                                className={`inline-block h-2 w-2 rounded-full ${isExcluded ? "opacity-40" : ""}`}
-                                style={{ backgroundColor: project.color }}
-                              />
-                            )}
-                            {project.name}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  {/* Scope toggle (dates feature only) */}
-                  {dates && (
-                    <div>
-                      <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">
-                        Scope
-                      </h3>
-                      <div className="flex gap-2">
-                        <button
-                          type="button"
-                          onClick={() => setViewScope("active")}
-                          className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
-                            viewScope === "active"
-                              ? "bg-[var(--blue)] text-white"
-                              : "bg-slate-100 text-slate-700 hover:bg-slate-200"
-                          }`}
-                        >
-                          Active
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setViewScope("planned")}
-                          className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
-                            viewScope === "planned"
-                              ? "bg-[var(--blue)] text-white"
-                              : "bg-slate-100 text-slate-700 hover:bg-slate-200"
-                          }`}
-                        >
-                          Planned
-                        </button>
-                      </div>
-                    </div>
-                  )}
+            <div className="flex items-center justify-between border-b border-white/10 pb-4">
+              <div className="flex items-center gap-3">
+                <span className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-[#7d5cff] to-[#2c58ff]">
+                  <SparkIcon />
+                </span>
+                <div>
+                  <p className="text-sm font-extrabold">
+                    Ballistic AI connection
+                  </p>
+                  <p className="text-xs text-slate-400">MCP tools ready</p>
                 </div>
               </div>
+              <span className="rounded-full bg-emerald-400/15 px-3 py-1 text-[11px] font-black text-emerald-300">
+                Optional · On
+              </span>
             </div>
-          </>
-        )}
 
-        {/* Bottom Bar - Glassy style matching top bar */}
-        <div className="fixed inset-x-0 bottom-0 z-20 border-t border-slate-200/50 bg-[var(--page-bg)]/95 backdrop-blur lg:hidden">
-          <div className="mx-auto grid max-w-sm grid-cols-[1fr_auto_1fr] items-center px-4 py-3">
-            <div className="flex items-center gap-1">
-              <button
-                type="button"
-                aria-label="Settings"
-                onClick={() => setShowSettings(true)}
-                className="tap-target grid h-10 w-10 place-items-center rounded-md hover:bg-slate-100 active:scale-95 transition-all duration-200"
-              >
-                {/* gear icon */}
-                <svg
-                  viewBox="0 0 24 24"
-                  width="20"
-                  height="20"
-                  fill="none"
-                  stroke="currentColor"
-                  className="text-[var(--navy)]"
-                >
-                  <path
-                    d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Zm7.4-3.5a7.4 7.4 0 0 0-.1-1l2.1-1.6-2-3.4-2.5 1a7.6 7.6 0 0 0-1.7-1l-.4-2.6H9.2L8.8 6a7.6 7.6 0 0 0-1.7 1l-2.5-1-2 3.4 2.1 1.6a7.4 7.4 0 0 0 0 2L2.6 14l2 3.4 2.5-1a7.6 7.6 0 0 0 1.7 1l.4 2.6h5.6l.4-2.6a7.6 7.6 0 0 0 1.7-1l2.5 1 2-3.4-2.1-1.6c.1-.3.1-.7.1-1Z"
-                    strokeWidth="1.4"
-                  />
-                </svg>
-              </button>
-              <button
-                type="button"
-                aria-label="Notes"
-                onClick={() => setShowNotes(true)}
-                className="tap-target grid h-10 w-10 place-items-center rounded-md hover:bg-slate-100 active:scale-95 transition-all duration-200"
-              >
-                {/* notepad icon */}
-                <svg
-                  viewBox="0 0 24 24"
-                  width="20"
-                  height="20"
-                  fill="none"
-                  stroke="currentColor"
-                  className="text-[var(--navy)]"
-                >
-                  <path
-                    d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6Z"
-                    strokeWidth="1.4"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                  <path
-                    d="M14 2v6h6M16 13H8M16 17H8M10 9H8"
-                    strokeWidth="1.4"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              </button>
-              <button
-                type="button"
-                aria-label="Activity Log"
-                onClick={() => setShowActivityLog(true)}
-                className="tap-target grid h-10 w-10 place-items-center rounded-md hover:bg-slate-100 active:scale-95 transition-all duration-200"
-              >
-                {/* clock/history icon */}
-                <svg
-                  viewBox="0 0 24 24"
-                  width="20"
-                  height="20"
-                  fill="none"
-                  stroke="currentColor"
-                  className="text-[var(--navy)]"
-                >
-                  <path
-                    d="M12 8v4l3 3M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"
-                    strokeWidth="1.4"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                  <path
-                    d="M3 3v5h5"
-                    strokeWidth="1.4"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              </button>
-            </div>
-            <button
-              type="button"
-              aria-label="Add a new task"
-              onClick={openNewTask}
-              className="tap-target grid h-12 w-12 place-items-center rounded-full bg-[var(--blue)] text-white shadow-md hover:shadow-lg hover:bg-[var(--blue-600)] active:scale-95 transition-all duration-200"
-            >
-              <span className="sr-only">Add new task...</span>
-              <span className="text-2xl leading-none font-light">+</span>
-            </button>
-            <div className="flex items-center justify-end gap-1">
-              <button
-                type="button"
-                aria-label="Filter"
-                onClick={() => setShowFilter((prev) => !prev)}
-                className={`tap-target grid h-10 w-10 place-items-center rounded-md hover:bg-slate-100 active:scale-95 transition-all duration-200 ${showFilter || excludedProjectIds.size > 0 || (dates && viewScope === "planned") ? "bg-[var(--blue)] rounded-full shadow-sm" : ""}`}
-              >
-                {/* funnel icon */}
-                <svg
-                  viewBox="0 0 24 24"
-                  width="20"
-                  height="20"
-                  fill="none"
-                  stroke="currentColor"
-                  className={
-                    showFilter ||
-                    excludedProjectIds.size > 0 ||
-                    (dates && viewScope === "planned")
-                      ? "text-white"
-                      : "text-[var(--navy)]"
-                  }
-                >
-                  <path d="M3 5h18l-7 8v5l-4 2v-7L3 5z" strokeWidth="1.5" />
-                </svg>
-              </button>
-              <NotificationCentre delegation={delegation} />
-              <button
-                type="button"
-                aria-label="Profile"
-                onClick={() => setShowProfile(true)}
-                className="tap-target grid h-10 w-10 place-items-center rounded-md hover:bg-slate-100 active:scale-95 transition-all duration-200"
-              >
-                {/* person icon */}
-                <svg
-                  viewBox="0 0 24 24"
-                  width="20"
-                  height="20"
-                  fill="none"
-                  stroke="currentColor"
-                  className="text-[var(--navy)]"
-                >
-                  <path
-                    d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z"
-                    strokeWidth="1.4"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              </button>
+            <div className="space-y-4 py-5">
+              <div className="ml-auto max-w-[88%] rounded-2xl rounded-br-md bg-[#3156df] px-4 py-3 text-sm leading-6">
+                What should I focus on today? Move anything overdue to the top.
+              </div>
+              <div className="max-w-[92%] rounded-2xl rounded-bl-md bg-white/10 px-4 py-4 text-sm leading-6 text-slate-200">
+                <p>
+                  I found three active tasks and moved the overdue one to the
+                  top.
+                </p>
+                <div className="mt-4 rounded-xl border border-white/10 bg-black/15 p-3">
+                  <p className="text-[10px] font-black uppercase tracking-[0.14em] text-[#aebfff]">
+                    Now first
+                  </p>
+                  <p className="mt-1 font-bold text-white">
+                    Send revised proposal
+                  </p>
+                  <p className="mt-1 text-xs text-rose-300">
+                    Overdue · Client work
+                  </p>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-2 pt-1">
+                {[
+                  "Capture these notes",
+                  "What is overdue?",
+                  "Delegate the follow-up",
+                ].map((prompt) => (
+                  <span
+                    key={prompt}
+                    className="rounded-full border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-slate-300"
+                  >
+                    {prompt}
+                  </span>
+                ))}
+              </div>
             </div>
           </div>
         </div>
-      </main>
+      </section>
 
-      {/* Settings Modal */}
-      <SettingsModal
-        isOpen={showSettings}
-        onClose={() => setShowSettings(false)}
+      <section className="bg-[#caff62]">
+        <div className="mx-auto flex max-w-7xl flex-col items-start justify-between gap-8 px-5 py-16 sm:px-8 lg:flex-row lg:items-center lg:px-10 lg:py-20">
+          <div className="max-w-3xl">
+            <p className="text-xs font-black uppercase tracking-[0.18em] text-[#34520a]">
+              Less organising. More doing.
+            </p>
+            <h2 className="mt-3 text-4xl font-black leading-tight tracking-[-0.045em] text-[#101a3b] sm:text-5xl">
+              Your next task does not need a strategy deck.
+            </h2>
+          </div>
+          <Link
+            href="/register"
+            className="inline-flex shrink-0 items-center gap-2 rounded-full bg-[#111b3f] px-7 py-4 text-base font-extrabold text-white shadow-xl shadow-lime-950/15 hover:-translate-y-1 hover:bg-[#2547e8]"
+          >
+            Create your list
+            <ArrowIcon />
+          </Link>
+        </div>
+      </section>
+
+      <footer className="bg-white">
+        <div className="mx-auto flex max-w-7xl flex-col gap-6 px-5 py-9 text-sm text-slate-500 sm:px-8 md:flex-row md:items-center md:justify-between lg:px-10">
+          <div className="flex items-center gap-3">
+            <Image
+              src="/logo.png"
+              alt=""
+              width={30}
+              height={30}
+              className="h-7 w-7 rounded-lg"
+            />
+            <span className="font-black text-[#111b3f]">Ballistic</span>
+            <span>© {new Date().getFullYear()} Psycode Pty. Ltd.</span>
+          </div>
+          <div className="flex items-center gap-5 font-semibold">
+            <Link href="/login" className="text-slate-500 hover:text-[#111b3f]">
+              Sign in
+            </Link>
+            <Link
+              href="/register"
+              className="text-slate-500 hover:text-[#111b3f]"
+            >
+              Create account
+            </Link>
+          </div>
+        </div>
+      </footer>
+    </main>
+  );
+}
+
+function ProductPreview() {
+  const tasks = [
+    {
+      title: "Send revised proposal",
+      meta: "Client work",
+      colour: "bg-blue-500",
+      status: "doing",
+    },
+    {
+      title: "Book dentist",
+      meta: "Personal",
+      colour: "bg-amber-400",
+      status: "todo",
+    },
+    {
+      title: "Write launch notes",
+      meta: "Ballistic",
+      colour: "bg-violet-500",
+      status: "todo",
+    },
+  ] as const;
+
+  return (
+    <div className="relative mx-auto w-full max-w-2xl lg:mx-0">
+      <div
+        className="absolute -inset-6 rounded-[3rem] bg-gradient-to-br from-[#cbd8ff] via-[#e8dcff] to-[#ddffab] opacity-75 blur-2xl"
+        aria-hidden="true"
       />
+      <div className="relative overflow-hidden rounded-[2rem] border border-white/80 bg-white/90 p-4 shadow-[0_30px_80px_rgba(25,42,110,0.18)] backdrop-blur sm:p-6">
+        <div className="flex items-center justify-between border-b border-slate-200/80 pb-4">
+          <div className="flex items-center gap-3">
+            <span className="grid h-10 w-10 place-items-center rounded-xl bg-[#111b3f] text-sm font-black text-white">
+              B
+            </span>
+            <div>
+              <p className="text-sm font-black text-[#111b3f]">Today</p>
+              <p className="text-xs text-slate-400">
+                Three things. Nice and clear.
+              </p>
+            </div>
+          </div>
+          <span className="rounded-full bg-[#eef1ff] px-3 py-1.5 text-xs font-black text-[#2547e8]">
+            + Add task
+          </span>
+        </div>
 
-      {/* Notes Modal */}
-      <NotesModal isOpen={showNotes} onClose={() => setShowNotes(false)} />
+        <div className="space-y-3 py-5">
+          {tasks.map((task, index) => (
+            <div
+              key={task.title}
+              className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-3 py-3 shadow-sm sm:px-4"
+            >
+              <span
+                className={`grid h-8 w-8 shrink-0 place-items-center rounded-full border-2 ${task.status === "doing" ? "border-[#2547e8] bg-[#eef1ff]" : "border-slate-300"}`}
+              >
+                {task.status === "doing" && (
+                  <span className="h-2 w-2 rounded-full bg-[#2547e8]" />
+                )}
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-extrabold text-[#111b3f]">
+                  {task.title}
+                </p>
+                <p className="mt-1 flex items-center gap-1.5 text-xs text-slate-400">
+                  <span className={`h-2 w-2 rounded-full ${task.colour}`} />
+                  {task.meta}
+                </p>
+              </div>
+              <span className="hidden rounded-lg bg-slate-50 px-2 py-1 text-[10px] font-bold text-slate-400 sm:block">
+                {index === 0 ? "Doing" : "Todo"}
+              </span>
+            </div>
+          ))}
+        </div>
 
-      {/* Profile Modal */}
-      <ProfileModal
-        isOpen={showProfile}
-        onClose={() => setShowProfile(false)}
-      />
+        <div className="grid gap-3 border-t border-slate-200/80 pt-4 sm:grid-cols-3">
+          {[
+            ["AI assistant", "On"],
+            ["Dates", "Off"],
+            ["Delegation", "Off"],
+          ].map(([label, state]) => (
+            <div
+              key={label}
+              className="flex items-center justify-between rounded-xl bg-[#f7f8fc] px-3 py-2.5"
+            >
+              <span className="text-xs font-bold text-slate-600">{label}</span>
+              <span
+                className={`relative h-5 w-9 rounded-full ${state === "On" ? "bg-violet-500" : "bg-slate-300"}`}
+              >
+                <span
+                  className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow-sm ${state === "On" ? "right-0.5" : "left-0.5"}`}
+                />
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
 
-      {/* Activity Log Modal */}
-      <ActivityLogModal
-        isOpen={showActivityLog}
-        onClose={() => setShowActivityLog(false)}
-      />
-
-      {/* Edit/Create Item Modal */}
-      <EditItemModal
-        isOpen={showEditModal}
-        onClose={() => {
-          setShowEditModal(false);
-          setEditingItem(null);
-        }}
-        item={editingItem}
-        projects={projects}
-        onCreateProject={handleCreateProject}
-        showAssignment={delegation}
-        favourites={user?.favourites}
-        onFavouriteToggled={refreshUser}
-        onSubmit={async (v) => {
-          if (editingItem) {
-            // Update existing item
-            const selectedProject = v.project_id
-              ? projects.find((p) => p.id === v.project_id)
-              : null;
-            const optimisticUpdate: Item = {
-              ...editingItem,
-              title: v.title,
-              description: v.description || null,
-              assignee_notes:
-                v.assignee_notes !== undefined
-                  ? v.assignee_notes
-                  : editingItem.assignee_notes,
-              project_id: v.project_id ?? null,
-              project: selectedProject ?? null,
-              scheduled_date: v.scheduled_date ?? null,
-              due_date: v.due_date ?? null,
-              recurrence_rule: v.recurrence_rule ?? null,
-              recurrence_strategy:
-                (v.recurrence_strategy as Item["recurrence_strategy"]) ?? null,
-              is_recurring_template: !!v.recurrence_rule,
-              assignee_id: v.assignee_id ?? null,
-            };
-
-            // Update all arrays optimistically
-            const updater = (prev: Item[]) =>
-              prev.map((i) => (i.id === editingItem.id ? optimisticUpdate : i));
-            setItems(updater);
-            setAssignedItems(updater);
-            setDelegatedItems(updater);
-
-            updateItem(editingItem.id, {
-              title: v.title,
-              description: v.description || null,
-              assignee_notes: v.assignee_notes,
-              project_id: v.project_id,
-              scheduled_date: v.scheduled_date,
-              due_date: v.due_date,
-              recurrence_rule: v.recurrence_rule,
-              recurrence_strategy:
-                (v.recurrence_strategy as Item["recurrence_strategy"]) ?? null,
-              assignee_id: v.assignee_id,
-            }).catch((error) => {
-              console.error("Failed to update item:", error);
-              const revert = (prev: Item[]) =>
-                prev.map((i) => (i.id === editingItem.id ? editingItem : i));
-              setItems(revert);
-              setAssignedItems(revert);
-              setDelegatedItems(revert);
-              showError("Failed to update task. Changes reverted.");
-            });
-          } else {
-            // Create new item
-            const tempId = `temp-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
-            const selectedProject = v.project_id
-              ? projects.find((p) => p.id === v.project_id)
-              : null;
-            const optimisticItem: Item = {
-              id: tempId,
-              user_id: user?.id || "",
-              assignee_id: v.assignee_id ?? null,
-              project_id: v.project_id ?? null,
-              title: v.title,
-              description: v.description || null,
-              status: "todo",
-              position: items.length,
-              scheduled_date: v.scheduled_date ?? null,
-              due_date: v.due_date ?? null,
-              completed_at: null,
-              recurrence_rule: v.recurrence_rule ?? null,
-              recurrence_parent_id: null,
-              recurrence_strategy:
-                (v.recurrence_strategy as Item["recurrence_strategy"]) ?? null,
-              is_recurring_template: !!v.recurrence_rule,
-              is_recurring_instance: false,
-              assignee_notes: null,
-              is_assigned: !!v.assignee_id,
-              is_delegated: !!v.assignee_id,
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
-              deleted_at: null,
-              project: selectedProject ?? null,
-            };
-
-            // Update UI immediately
-            setItems((prev) => {
-              if (!Array.isArray(prev)) {
-                return [optimisticItem];
-              }
-              const hasDuplicate = prev.some((item) => item.id === tempId);
-              if (hasDuplicate) {
-                console.warn("Duplicate ID detected, skipping optimistic item");
-                return prev;
-              }
-              return [...prev, optimisticItem];
-            });
-
-            // Set the item to scroll to
-            setScrollToItemId(tempId);
-
-            // Send API request in background
-            createItem({
-              title: v.title,
-              description: v.description,
-              status: "todo",
-              project_id: v.project_id,
-              position: items.length,
-              scheduled_date: v.scheduled_date,
-              due_date: v.due_date,
-              recurrence_rule: v.recurrence_rule,
-              recurrence_strategy: v.recurrence_strategy,
-              assignee_id: v.assignee_id,
-            })
-              .then((created) => {
-                const resolvedItem = normaliseItemResponse(created);
-                setItems((prev) => {
-                  if (!Array.isArray(prev)) {
-                    return [resolvedItem];
-                  }
-                  return prev.map((item) =>
-                    item.id === tempId ? resolvedItem : item,
-                  );
-                });
-              })
-              .catch((error) => {
-                console.error("Failed to create item:", error);
-                setItems((prev) => prev.filter((item) => item.id !== tempId));
-                showError("Failed to create task. Please try again.");
-              });
-          }
-        }}
-      />
+      <div className="relative -mt-2 ml-auto w-[88%] rounded-2xl border border-violet-200 bg-[#171e42] p-4 text-white shadow-2xl sm:absolute sm:-bottom-20 sm:-right-5 sm:mt-0 sm:w-[72%]">
+        <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.14em] text-violet-300">
+          <SparkIcon /> Your AI, connected
+        </div>
+        <p className="mt-3 text-sm font-semibold leading-6">
+          “Add ‘renew passport’ for next month and keep it below the dentist.”
+        </p>
+        <div className="mt-3 flex items-center gap-2 rounded-xl bg-white/10 px-3 py-2 text-xs text-slate-200">
+          <CheckIcon light /> Task added in the right place
+        </div>
+      </div>
     </div>
   );
 }
 
-function DesktopStat({ label, value }: { label: string; value: number }) {
+function FeatureIcon({
+  name,
+}: {
+  name: (typeof optionalFeatures)[number]["icon"];
+}) {
+  const paths = {
+    spark: (
+      <path d="m12 3 1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3Zm6 11 .8 2.2L21 17l-2.2.8L18 20l-.8-2.2L15 17l2.2-.8L18 14Z" />
+    ),
+    calendar: (
+      <>
+        <rect x="3" y="5" width="18" height="16" rx="3" />
+        <path d="M8 3v4M16 3v4M3 10h18M8 14h.01M12 14h.01M16 14h.01M8 17h.01M12 17h.01" />
+      </>
+    ),
+    folder: (
+      <path d="M3 7a2 2 0 0 1 2-2h5l2 2h7a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z" />
+    ),
+    people: (
+      <>
+        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z" />
+        <path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
+      </>
+    ),
+    note: (
+      <>
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z" />
+        <path d="M14 2v6h6M8 13h8M8 17h6" />
+      </>
+    ),
+    bolt: <path d="m13 2-9 12h7l-1 8 9-12h-7l1-8Z" />,
+  };
+
   return (
-    <div>
-      <p className="text-lg font-bold leading-none text-[var(--navy)]">
-        {value}
-      </p>
-      <p className="mt-1 text-[11px] font-medium text-slate-400">{label}</p>
-    </div>
+    <svg
+      viewBox="0 0 24 24"
+      width="21"
+      height="21"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      {paths[name]}
+    </svg>
+  );
+}
+
+function ArrowIcon() {
+  return (
+    <svg
+      viewBox="0 0 20 20"
+      width="16"
+      height="16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M4 10h12M11 5l5 5-5 5" />
+    </svg>
+  );
+}
+
+function CheckIcon({ light = false }: { light?: boolean }) {
+  return (
+    <span
+      className={`grid h-4 w-4 shrink-0 place-items-center rounded-full ${light ? "bg-emerald-400/20 text-emerald-300" : "bg-emerald-100 text-emerald-700"}`}
+      aria-hidden="true"
+    >
+      <svg
+        viewBox="0 0 16 16"
+        width="11"
+        height="11"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2.2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <path d="m4 8 2.5 2.5L12 5" />
+      </svg>
+    </span>
+  );
+}
+
+function SparkIcon() {
+  return (
+    <svg
+      viewBox="0 0 20 20"
+      width="16"
+      height="16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="m10 2 1.3 4.2L15.5 7.5l-4.2 1.3L10 13l-1.3-4.2-4.2-1.3 4.2-1.3L10 2ZM16 12l.7 2.3L19 15l-2.3.7L16 18l-.7-2.3L13 15l2.3-.7L16 12Z" />
+    </svg>
   );
 }

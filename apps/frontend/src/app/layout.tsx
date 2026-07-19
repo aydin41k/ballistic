@@ -16,8 +16,9 @@ const sourceSans = Source_Sans_3({
 });
 
 export const metadata: Metadata = {
-  title: "Ballistic – Bullet Journal",
-  description: "Simplest bullet journal",
+  title: "Ballistic — The simplest AI-first to-do list",
+  description:
+    "A beautifully simple to-do list with optional AI, dates, projects, recurring tasks and delegation.",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
@@ -31,7 +32,7 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
-  themeColor: "#000000",
+  themeColor: "#111b3f",
 };
 
 export default function RootLayout({
