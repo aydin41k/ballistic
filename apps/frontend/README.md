@@ -7,7 +7,7 @@ Next.js + Tailwind + TypeScript frontend, paired with a Laravel-style REST API (
 ## 🌈 At a glance
 
 - 🧭 Quick capture with optimistic updates and drag-to-reorder lanes
-- ✨ High-contrast editorial landing page with floating navigation, a generative task field and mobile-first product storytelling
+- ✨ High-contrast editorial landing page using the app's navy, blue, white and light-grey palette with mobile-first product storytelling
 - 🤖 Optional MCP integration so compatible AI assistants can create, find, update and complete work
 - 🖥️ Responsive desktop workspace with a persistent sidebar and explicit task controls
 - 🎯 Status cycle made for focus: `todo → doing → done → wontdo`

@@ -11,7 +11,7 @@
 - **Application route**: moved the authenticated journal from `/` to `/app`; login and registration now continue into the new app route
 - **Authentication navigation**: linked the login and registration branding back to the public landing page
 - **Product metadata**: updated page and PWA metadata to describe Ballistic as an AI-first to-do list
-- **Landing-page direction**: rebuilt the visual system around sparse editorial layouts, floating pill navigation, monochrome product UI and a generative lime task field, with a clearer persistent account-creation call to action
+- **Landing-page direction**: rebuilt the visual system around sparse editorial layouts, floating pill navigation and a generative task field, all using the app's established navy, blue, white and light-grey palette with a clearer persistent account-creation call to action
 - **Product positioning**: made the mobile app the centre of the story and reframed desktop/web as a complementary bigger-screen experience
 - **Version label**: updated the settings footer to `v0.19.0`
 
