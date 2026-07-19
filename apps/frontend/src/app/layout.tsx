@@ -18,7 +18,7 @@ const sourceSans = Source_Sans_3({
 export const metadata: Metadata = {
   title: "Ballistic — The simplest AI-first to-do list",
   description:
-    "A beautifully simple to-do list with optional AI, dates, projects, recurring tasks and delegation.",
+    "A mobile-first to-do app that stays beautifully simple, with optional AI, dates, projects, recurring tasks and delegation.",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,

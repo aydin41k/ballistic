@@ -7,7 +7,7 @@ Next.js + Tailwind + TypeScript frontend, paired with a Laravel-style REST API (
 ## 🌈 At a glance
 
 - 🧭 Quick capture with optimistic updates and drag-to-reorder lanes
-- ✨ Product-led landing page that introduces the simple-by-default, powerful-on-demand philosophy
+- ✨ Minimal Japandi-inspired landing page that positions the mobile app first and web as its companion
 - 🤖 Optional MCP integration so compatible AI assistants can create, find, update and complete work
 - 🖥️ Responsive desktop workspace with a persistent sidebar and explicit task controls
 - 🎯 Status cycle made for focus: `todo → doing → done → wontdo`
