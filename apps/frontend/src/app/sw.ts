@@ -58,8 +58,8 @@ self.addEventListener("push", (event: PushEvent) => {
 
   const options: NotificationOptions = {
     body,
-    icon: icon || "/icons/icon-192x192.png",
-    badge: badge || "/icons/badge-72x72.png",
+    icon: icon || "/icon-192.png",
+    badge: badge || "/icon-192.png",
     data,
     // Keep notification visible until user interacts
     requireInteraction: true,
