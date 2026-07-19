@@ -6,6 +6,7 @@ import type { Item } from "@/types";
 import { useOptimistic, startTransition, useEffect, useRef } from "react";
 import { StatusCircle } from "./StatusCircle";
 import { useFeatureFlags } from "@/hooks/useFeatureFlags";
+import { localEndOfDayMs, toLocalDateString } from "@/lib/dateUtils";
 
 type Props = {
   item: Item;
@@ -147,8 +148,8 @@ export function ItemRow({
   const urgency = (() => {
     if (!optimisticItem.due_date || isCompleted || isCancelled) return "none";
     const today = new Date();
-    const todayStr = today.toISOString().split("T")[0];
-    const dueMs = new Date(optimisticItem.due_date + "T23:59:59").getTime();
+    const todayStr = toLocalDateString(today);
+    const dueMs = localEndOfDayMs(optimisticItem.due_date);
     const in72hMs = today.getTime() + 72 * 60 * 60 * 1000;
 
     if (optimisticItem.due_date < todayStr) return "overdue";

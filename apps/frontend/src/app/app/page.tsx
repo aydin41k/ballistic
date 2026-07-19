@@ -24,6 +24,7 @@ import { ActivityLogModal } from "@/components/ActivityLogModal";
 import { NotificationCentre } from "@/components/NotificationCentre";
 import { DesktopSidebar } from "@/components/DesktopSidebar";
 import { useAuth } from "@/contexts/AuthContext";
+import { localEndOfDayMs, toLocalDateString } from "@/lib/dateUtils";
 import {
   filterItemsByExcludedProjects,
   NO_PROJECT_FILTER_ID,
@@ -44,7 +45,7 @@ function normaliseItemResponse(payload: Item | { data?: Item }): Item {
 function getUrgencyRank(item: Item, todayStr: string, in72hMs: number): number {
   if (!item.due_date) return 4; // No deadline = lowest priority
 
-  const dueMs = new Date(item.due_date + "T23:59:59").getTime();
+  const dueMs = localEndOfDayMs(item.due_date);
 
   if (item.due_date < todayStr) return 1; // Overdue
   if (dueMs <= in72hMs) return 2; // Due within 72 hours
@@ -53,7 +54,7 @@ function getUrgencyRank(item: Item, todayStr: string, in72hMs: number): number {
 
 function sortByUrgency(items: Item[]): Item[] {
   const now = new Date();
-  const todayStr = now.toISOString().split("T")[0]; // YYYY-MM-DD
+  const todayStr = toLocalDateString(now);
   const in72hMs = now.getTime() + 72 * 60 * 60 * 1000;
 
   return [...items].sort((a, b) => {
