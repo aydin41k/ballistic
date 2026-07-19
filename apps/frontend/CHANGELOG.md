@@ -13,6 +13,7 @@
 - **Product metadata**: updated page and PWA metadata to describe Ballistic as an AI-first to-do list
 - **Landing-page direction**: rebuilt the visual system around sparse editorial layouts, floating pill navigation and a generative task field, all using the app's established navy, blue, white and light-grey palette with a clearer persistent account-creation call to action
 - **Dynamic hero field**: replaced the static task bubbles with a continuously drifting, breathing particle system that responds subtly to the pointer and respects reduced-motion preferences
+- **Brand message**: made “Ballistic: The Simplest Bullet List” the dominant hero statement and rewrote the AI story in plain language around letting your AI run the list admin
 - **Product positioning**: made the mobile app the centre of the story and reframed desktop/web as a complementary bigger-screen experience
 - **Version label**: updated the settings footer to `v0.19.0`
 

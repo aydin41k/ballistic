@@ -75,7 +75,7 @@ export function DesktopSidebar({
               Ballistic
             </p>
             <p className="text-[11px] font-medium text-slate-400">
-              The Simplest Bullet Journal
+              The Simplest Bullet List
             </p>
           </div>
         </div>

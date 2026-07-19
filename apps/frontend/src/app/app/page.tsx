@@ -530,7 +530,7 @@ export default function JournalPage() {
               <h1 className="text-xl font-semibold text-[var(--navy)]">
                 Ballistic
                 <br />
-                <small>The Simplest Bullet Journal</small>
+                <small>The Simplest Bullet List</small>
               </h1>
               <button
                 type="button"

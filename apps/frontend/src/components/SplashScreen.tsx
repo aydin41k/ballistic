@@ -29,7 +29,7 @@ export function SplashScreen() {
         Ballistic
       </h1>
       <p className="mt-2 text-white/70 text-sm animate-fade-in-up animation-delay-200">
-        The Simplest Bullet Journal
+        The Simplest Bullet List
       </p>
 
       {/* Loading dots */}

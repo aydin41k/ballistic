@@ -54,9 +54,7 @@ export default function LoginPage() {
           <Link href="/" className="inline-block text-[var(--navy)]">
             <h1 className="text-3xl font-bold">Ballistic</h1>
           </Link>
-          <p className="mt-2 text-slate-500">
-            The simplest AI-first to-do list
-          </p>
+          <p className="mt-2 text-slate-500">The Simplest Bullet List</p>
         </div>
 
         {/* Login Form */}

@@ -16,9 +16,9 @@ const sourceSans = Source_Sans_3({
 });
 
 export const metadata: Metadata = {
-  title: "Ballistic — The simplest AI-first to-do list",
+  title: "Ballistic: The Simplest Bullet List",
   description:
-    "A mobile-first to-do app that stays beautifully simple, with optional AI, dates, projects, recurring tasks and delegation.",
+    "A beautifully simple mobile bullet list your AI can add to, organise, update and keep moving for you.",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,

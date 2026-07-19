@@ -5,23 +5,26 @@ import { LandingSignalField } from "@/components/LandingSignalField";
 const steps = [
   {
     number: "01",
-    title: "Capture",
-    description: "Type the thing before your brain opens another tab.",
+    title: "Add it",
+    description:
+      "Type it yourself or tell your AI. Either way, it lands in one clear list.",
   },
   {
     number: "02",
-    title: "Order",
-    description: "Move what matters up. Let the rest wait its turn.",
+    title: "Put it in order",
+    description:
+      "Drag what matters up—or ask your AI to sort out what needs attention.",
   },
   {
     number: "03",
-    title: "Move",
-    description: "Todo, doing, done or not worth doing. That is the system.",
+    title: "Keep moving",
+    description:
+      "Do the work while your AI keeps dates, follow-ups and progress up to date.",
   },
 ] as const;
 
 const optionalTools = [
-  ["AI assistant", "Create, find and update tasks through conversation"],
+  ["Let your AI run the admin", "Capture, organise, update and complete tasks"],
   ["Dates + repeats", "Bring in time only when time matters"],
   ["Projects", "Add structure without building a second job"],
   ["Delegation", "Hand work over without losing the thread"],
@@ -39,26 +42,31 @@ export default function LandingPage() {
         <div className="relative z-10 mx-auto grid min-h-[54rem] max-w-7xl items-end gap-12 px-5 pb-16 pt-32 sm:min-h-[58rem] sm:px-8 sm:pb-20 lg:min-h-[calc(100svh-1rem)] lg:grid-cols-[0.88fr_1.12fr] lg:px-10 lg:pb-16 lg:pt-28">
           <div className="max-w-2xl lg:pb-12">
             <p className="text-[0.68rem] font-bold uppercase tracking-[0.18em] text-slate-500">
-              Mobile-first · AI when invited
+              Your list · Your AI · Less admin
             </p>
             <h1 className="mt-5 text-balance text-5xl font-black leading-[0.93] tracking-[-0.065em] sm:text-6xl lg:text-[5.25rem]">
-              Your tasks.
-              <span className="block">Nothing else</span>
-              <span className="block">in the way.</span>
+              <span className="block text-[var(--blue)]">Ballistic:</span>
+              <span className="block">The Simplest</span>
+              <span className="block">Bullet List</span>
             </h1>
 
-            <div className="mt-8 max-w-xl border-l border-[var(--navy)] pl-5 sm:pl-6">
+            <p className="mt-7 max-w-xl text-balance text-2xl font-bold leading-tight tracking-[-0.035em] text-[var(--navy)] sm:text-3xl">
+              Give your list to your AI. Let it run the admin.
+            </p>
+
+            <div className="mt-6 max-w-xl border-l border-[var(--navy)] pl-5 sm:pl-6">
               <p className="text-lg leading-7 text-slate-600 sm:text-xl sm:leading-8">
-                Ballistic is the simplest to-do list on your phone. Add AI,
-                dates, projects and delegation only when they make life easier.
+                Add things in seconds from your phone. When you want help, your
+                AI can capture tasks, organise priorities, update progress and
+                keep everything moving for you.
               </p>
               <div className="mt-6 flex flex-wrap items-center gap-3">
                 <PrimaryLink>Start my list</PrimaryLink>
                 <Link
-                  href="/login"
+                  href="#companion"
                   className="inline-flex min-h-11 items-center rounded-full bg-white/90 px-5 text-sm font-semibold text-[var(--navy)] ring-1 ring-slate-200 backdrop-blur hover:bg-white"
                 >
-                  I already have one
+                  See what your AI can do
                 </Link>
               </div>
             </div>
@@ -79,10 +87,13 @@ export default function LandingPage() {
         <div className="mx-auto max-w-7xl px-5 py-24 sm:px-8 lg:px-10 lg:py-36">
           <div className="grid gap-16 lg:grid-cols-[0.78fr_1.22fr] lg:gap-24">
             <div className="max-w-xl">
-              <SectionLabel>Designed to disappear</SectionLabel>
+              <SectionLabel>Still just a simple list</SectionLabel>
               <h2 className="mt-6 text-balance text-4xl font-black leading-[0.98] tracking-[-0.055em] sm:text-6xl">
-                A list should reduce the noise.
-                <span className="text-slate-300"> Not become more of it.</span>
+                Easy enough for you.
+                <span className="text-slate-300">
+                  {" "}
+                  Useful enough for your AI.
+                </span>
               </h2>
             </div>
 
@@ -116,16 +127,17 @@ export default function LandingPage() {
         />
         <div className="relative mx-auto grid max-w-7xl gap-16 px-5 py-24 sm:px-8 lg:grid-cols-[0.85fr_1.15fr] lg:gap-28 lg:px-10 lg:py-36">
           <div>
-            <SectionLabel>Power, on request</SectionLabel>
+            <SectionLabel>As much help as you want</SectionLabel>
             <h2 className="mt-6 max-w-xl text-balance text-4xl font-black leading-[0.98] tracking-[-0.055em] sm:text-6xl">
               Start with a list.
               <span className="block text-slate-300">
-                Turn on the rest later.
+                Add the clever stuff later.
               </span>
             </h2>
             <p className="mt-7 max-w-lg text-lg leading-8 text-slate-600">
-              Every extra is optional. Ballistic stays calm until a feature can
-              genuinely remove work from your day.
+              Nothing gets in your way unless you want it. Give your AI more to
+              work with only when dates, projects or delegation will genuinely
+              save you time.
             </p>
             <div className="mt-9">
               <PrimaryLink>Make my list now</PrimaryLink>
@@ -158,17 +170,18 @@ export default function LandingPage() {
         <div className="mx-auto max-w-7xl px-5 py-24 sm:px-8 lg:px-10 lg:py-36">
           <div className="grid gap-16 lg:grid-cols-[0.82fr_1.18fr] lg:items-center lg:gap-24">
             <div>
-              <SectionLabel light>One list. Three ways in.</SectionLabel>
+              <SectionLabel light>Your AI can do more than chat</SectionLabel>
               <h2 className="mt-6 max-w-xl text-balance text-4xl font-black leading-[0.98] tracking-[-0.055em] sm:text-6xl">
-                Mobile at the centre.
+                Give it the list.
                 <span className="block text-white/35">
-                  AI and web around it.
+                  Let it keep things moving.
                 </span>
               </h2>
               <p className="mt-7 max-w-lg text-lg leading-8 text-white/60">
-                Reach for the app when life happens. Use your AI assistant when
-                talking is faster. Open the web companion when a keyboard and a
-                bigger screen help.
+                Ask your AI to capture an idea, move overdue work to the top,
+                change a date, delegate a follow-up or mark something done. It
+                works on the same live list you use on your phone—so you never
+                have to explain everything twice.
               </p>
             </div>
 
@@ -186,12 +199,12 @@ export default function LandingPage() {
         </div>
         <div className="relative mx-auto max-w-7xl px-5 py-24 sm:px-8 lg:px-10 lg:py-36">
           <p className="text-[0.68rem] font-bold uppercase tracking-[0.18em] text-slate-500">
-            You already know the first task
+            One list. Much less list admin.
           </p>
           <div className="mt-6 flex flex-col items-start justify-between gap-10 lg:flex-row lg:items-end">
             <h2 className="max-w-4xl text-balance text-5xl font-black leading-[0.92] tracking-[-0.065em] sm:text-7xl lg:text-[6.5rem]">
-              Stop organising.
-              <span className="block">Put it down.</span>
+              Start the list.
+              <span className="block">Let your AI help run it.</span>
             </h2>
             <Link
               href="/register"
@@ -220,7 +233,7 @@ export default function LandingPage() {
             <span>© {new Date().getFullYear()} Psycode Pty. Ltd.</span>
           </div>
           <div className="flex items-center gap-5 font-medium">
-            <span>Mobile first · AI optional · Web included</span>
+            <span>Simple for you · Ready for your AI · Mobile first</span>
             <Link
               href="/login"
               className="text-slate-500 hover:text-[var(--navy)]"
@@ -276,7 +289,7 @@ function FloatingHeader() {
             href="#companion"
             className="rounded-full px-4 py-2 text-xs font-medium text-slate-500 hover:bg-blue-50 hover:text-[var(--navy)]"
           >
-            AI + web
+            Your AI
           </a>
         </nav>
 
@@ -461,7 +474,7 @@ function CompanionMap() {
 
       <div className="absolute bottom-[13%] right-[11%] w-[54%] rounded-2xl bg-[var(--blue-600)] p-4 text-white shadow-2xl sm:p-5">
         <div className="flex items-center gap-2 text-[0.58rem] font-bold uppercase tracking-[0.12em] text-white/65">
-          <SparkIcon /> Your AI connection
+          <SparkIcon /> Your AI at work
         </div>
         <p className="mt-2 text-xs font-semibold leading-5 sm:text-sm">
           “Add the follow-up and put it after the proposal.”

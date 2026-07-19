@@ -1,7 +1,7 @@
 {
-  "name": "Ballistic – AI-first to-do list",
+  "name": "Ballistic: The Simplest Bullet List",
   "short_name": "Ballistic",
-  "description": "The simplest to-do list, with optional AI and power features",
+  "description": "A simple mobile bullet list your AI can help run for you",
   "start_url": "/app",
   "display": "standalone",
   "background_color": "#f8f9ff",

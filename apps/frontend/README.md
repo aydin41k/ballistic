@@ -1,4 +1,4 @@
-# Ballistic — the simplest AI-first to-do list
+# Ballistic: The Simplest Bullet List
 
 Next.js + Tailwind + TypeScript frontend, paired with a Laravel-style REST API (Bearer token auth) so your tasks stay in sync everywhere.
 
