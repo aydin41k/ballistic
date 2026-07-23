@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Backend dependency baseline** — upgraded the backend onto the latest compatible Composer set, including Laravel 13, Inertia Laravel 3, Laravel MCP 0.6, Boost 2, Tinker 3, and PHPUnit 12
 - **MCP package integration** — migrated Ballistic MCP tools and resources onto the current Laravel MCP request/response API, updated the MCP route registration to the explicit `/mcp` endpoint, and aligned the server metadata with the new package contract
+- **Offline mobile replay** — item and project creation endpoints now accept client-generated UUIDs and return the existing owner record when the same create is safely replayed after a dropped connection
+- **Mobile profile photos** — added an authenticated image upload endpoint that validates and stores phone gallery or camera photos on the public application disk
 
 ### Fixed
 
@@ -20,6 +22,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Tests
 
+- Added item and project coverage for idempotent offline create replay and cross-account UUID collision protection
+- Added profile photo upload coverage for storage, same-account replacement cleanup, cross-account file isolation, validation, and authentication
 - Regenerated Wayfinder route/action helpers
 - Re-ran the full backend Sail suite successfully
 - Re-ran frontend type-checking successfully

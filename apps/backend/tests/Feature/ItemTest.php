@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Services\RecurrenceService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 final class ItemTest extends TestCase
@@ -45,6 +46,51 @@ final class ItemTest extends TestCase
             'title' => 'Test Item',
             'user_id' => $user->id,
             'project_id' => $project->id,
+        ]);
+    }
+
+    public function test_offline_item_create_can_be_replayed_safely(): void
+    {
+        $user = User::factory()->create();
+        $itemId = (string) Str::uuid();
+        $payload = [
+            'id' => $itemId,
+            'title' => 'Captured offline',
+            'status' => 'todo',
+            'position' => 0,
+        ];
+
+        $this->actingAs($user)->postJson('/api/items', $payload)
+            ->assertCreated()
+            ->assertJsonPath('data.id', $itemId);
+
+        $this->actingAs($user)->postJson('/api/items', $payload)
+            ->assertOk()
+            ->assertJsonPath('data.id', $itemId);
+
+        $this->assertDatabaseCount('items', 1);
+        $this->assertDatabaseHas('items', [
+            'id' => $itemId,
+            'user_id' => $user->id,
+            'title' => 'Captured offline',
+        ]);
+    }
+
+    public function test_user_cannot_claim_another_users_offline_item_identifier(): void
+    {
+        $owner = User::factory()->create();
+        $otherUser = User::factory()->create();
+        $item = Item::factory()->create(['user_id' => $owner->id]);
+
+        $this->actingAs($otherUser)->postJson('/api/items', [
+            'id' => $item->id,
+            'title' => 'Identifier collision',
+            'status' => 'todo',
+        ])->assertConflict();
+
+        $this->assertDatabaseHas('items', [
+            'id' => $item->id,
+            'user_id' => $owner->id,
         ]);
     }
 

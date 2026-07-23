@@ -1,17 +1,17 @@
-import { useQueryClient } from '@tanstack/react-query';
 import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
 import { useEffect } from 'react';
-import { AppState } from 'react-native';
 
 import { useAuth } from '@/contexts/AuthContext';
+import { useSync } from '@/contexts/SyncContext';
 import { useFeatureFlags } from '@/hooks/useFeatureFlags';
+import { authStorage } from '@/lib/auth-storage';
 import { supportsNativeNotifications } from '@/lib/push';
 
 export function NotificationSync() {
   const { isAuthenticated } = useAuth();
   const { delegation } = useFeatureFlags();
-  const client = useQueryClient();
+  const { syncNow } = useSync();
   const router = useRouter();
 
   useEffect(() => {
@@ -22,12 +22,15 @@ export function NotificationSync() {
       .then((Notifications) => {
         if (disposed) return;
         Notifications.setNotificationHandler({
-          handleNotification: async () => ({
-            shouldShowBanner: true,
-            shouldShowList: true,
-            shouldPlaySound: true,
-            shouldSetBadge: true,
-          }),
+          handleNotification: async () => {
+            const hasServerSession = Boolean(await authStorage.getToken());
+            return {
+              shouldShowBanner: hasServerSession,
+              shouldShowList: hasServerSession,
+              shouldPlaySound: hasServerSession,
+              shouldSetBadge: hasServerSession,
+            };
+          },
         });
       })
       .catch((error) => console.warn('Could not configure notification handling.', error));
@@ -48,8 +51,7 @@ export function NotificationSync() {
         if (disposed) return;
         const received = Notifications.addNotificationReceivedListener(() => {
           void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-          void client.invalidateQueries({ queryKey: ['notifications'] });
-          void client.invalidateQueries({ queryKey: ['journal'] });
+          void syncNow();
         });
         const responded = Notifications.addNotificationResponseReceivedListener(() => {
           router.push('/notifications');
@@ -65,17 +67,7 @@ export function NotificationSync() {
       disposed = true;
       removeListeners?.();
     };
-  }, [client, delegation, isAuthenticated, router]);
-
-  useEffect(() => {
-    if (!isAuthenticated) return;
-    const subscription = AppState.addEventListener('change', (state) => {
-      if (state !== 'active') return;
-      void client.invalidateQueries({ queryKey: ['journal'] });
-      if (delegation) void client.invalidateQueries({ queryKey: ['notifications'] });
-    });
-    return () => subscription.remove();
-  }, [client, delegation, isAuthenticated]);
+  }, [delegation, isAuthenticated, router, syncNow]);
 
   return null;
 }

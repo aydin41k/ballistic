@@ -5,6 +5,7 @@ import ReanimatedSwipeable, {
   type SwipeableMethods,
 } from 'react-native-gesture-handler/ReanimatedSwipeable';
 import Animated, {
+  Easing,
   FadeInDown,
   LinearTransition,
   useAnimatedStyle,
@@ -35,6 +36,7 @@ interface TaskCardProps {
   isActive?: boolean;
   isDeparting?: boolean;
   isFading?: boolean;
+  isFocused?: boolean;
 }
 
 export function TaskCard({
@@ -51,9 +53,10 @@ export function TaskCard({
   isActive = false,
   isDeparting = false,
   isFading = false,
+  isFocused = false,
 }: TaskCardProps) {
   const completed = item.status === 'done' || item.status === 'wontdo';
-  const urgency = getUrgency(item);
+  const urgency = getUrgency(isDeparting && completed ? { ...item, status: 'doing' } : item);
   const projectName = item.project?.name;
   const showAssigneeBadge = Boolean(delegation && item.is_delegated && item.assignee);
   const showOwnerBadge = Boolean(
@@ -63,15 +66,22 @@ export function TaskCard({
     projectName || item.tags?.length || showAssigneeBadge || showOwnerBadge,
   );
   const longPressTriggered = useRef(false);
-  const departureOpacity = useSharedValue(1);
+  const departureProgress = useSharedValue(0);
 
   useEffect(() => {
-    departureOpacity.value = withTiming(isFading ? 0 : 1, {
-      duration: isFading ? 1200 : 150,
+    departureProgress.value = withTiming(isFading ? 1 : 0, {
+      duration: isFading ? 650 : 160,
+      easing: Easing.inOut(Easing.cubic),
     });
-  }, [departureOpacity, isFading]);
+  }, [departureProgress, isFading]);
 
-  const departureStyle = useAnimatedStyle(() => ({ opacity: departureOpacity.value }));
+  const departureStyle = useAnimatedStyle(() => ({
+    opacity: 1 - departureProgress.value,
+    transform: [
+      { translateY: -2 * departureProgress.value },
+      { scale: 1 - 0.01 * departureProgress.value },
+    ],
+  }));
 
   const rightActions = (_progress: unknown, _translation: unknown, methods: SwipeableMethods) => (
     <View style={styles.actionsRow}>
@@ -135,10 +145,14 @@ export function TaskCard({
 
   const card = (
     <Animated.View
-      entering={FadeInDown.delay(Math.min(index, 8) * 35)
-        .springify()
-        .damping(19)}
-      layout={LinearTransition.springify().damping(20)}
+      entering={
+        isDeparting
+          ? undefined
+          : FadeInDown.delay(Math.min(index, 8) * 18)
+              .duration(180)
+              .withInitialValues({ opacity: 0, transform: [{ translateY: 6 }] })
+      }
+      layout={LinearTransition.duration(280)}
     >
       <Animated.View style={departureStyle}>
         <ReanimatedSwipeable
@@ -180,6 +194,7 @@ export function TaskCard({
               styles.card,
               urgency === 'overdue' && styles.overdue,
               urgency === 'soon' && styles.soon,
+              isFocused && styles.focused,
               isActive && styles.active,
             ]}
           >
@@ -245,7 +260,7 @@ export function TaskCard({
                   Note: {item.assignee_notes}
                 </AppText>
               ) : null}
-              {dates && item.due_date && !completed ? (
+              {dates && item.due_date && (!completed || isDeparting) ? (
                 <View style={styles.dateRow}>
                   {urgency === 'overdue' ? <View style={styles.pulseDot} /> : null}
                   <AppText
@@ -262,7 +277,7 @@ export function TaskCard({
                   </AppText>
                 </View>
               ) : null}
-              {dates && item.scheduled_date && !completed ? (
+              {dates && item.scheduled_date && (!completed || isDeparting) ? (
                 <AppText variant="caption" colour={colours.textFaint}>
                   Scheduled {formatDateKey(item.scheduled_date)}
                 </AppText>
@@ -274,7 +289,7 @@ export function TaskCard({
     </Animated.View>
   );
 
-  return drag ? <ScaleDecorator activeScale={1.025}>{card}</ScaleDecorator> : card;
+  return drag ? <ScaleDecorator activeScale={1.012}>{card}</ScaleDecorator> : card;
 }
 
 function Badge({
@@ -335,6 +350,7 @@ const styles = StyleSheet.create({
   },
   overdue: { borderLeftWidth: 4, borderLeftColor: colours.danger, backgroundColor: '#FFFAFA' },
   soon: { borderLeftWidth: 4, borderLeftColor: '#FBBF24', backgroundColor: '#FFFEF8' },
+  focused: { borderColor: colours.blueBright, backgroundColor: '#F8FAFF' },
   active: { borderColor: colours.blueBright, backgroundColor: colours.blueSoft },
   content: { flex: 1, alignSelf: 'center', gap: 5, minWidth: 0 },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },

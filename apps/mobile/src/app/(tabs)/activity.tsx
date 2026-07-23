@@ -1,4 +1,5 @@
 import { useInfiniteQuery } from '@tanstack/react-query';
+import { useState } from 'react';
 import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 
@@ -9,17 +10,22 @@ import { ErrorNotice } from '@/components/ui/ErrorNotice';
 import { MotionPressable } from '@/components/ui/MotionPressable';
 import { Screen } from '@/components/ui/Screen';
 import { colours, radii, spacing } from '@/constants/theme';
-import { fetchActivityLog } from '@/lib/api';
+import { useSync } from '@/contexts/SyncContext';
 import { formatDateTime } from '@/lib/date';
+import { offlineStore } from '@/lib/offline-store';
 import { statusMeta } from '@/lib/status';
 import type { ActivityLogItem } from '@/types';
 
 export default function ActivityScreen() {
+  const sync = useSync();
+  const [pullRefreshing, setPullRefreshing] = useState(false);
   const activity = useInfiniteQuery({
     queryKey: ['activity'],
-    queryFn: ({ pageParam }) => fetchActivityLog(pageParam),
+    queryFn: () => offlineStore.getActivity(),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (page) => page.meta.next_cursor ?? undefined,
+    staleTime: Infinity,
+    networkMode: 'always',
   });
   const items = activity.data?.pages.flatMap((page) => page.data) ?? [];
 
@@ -32,9 +38,15 @@ export default function ActivityScreen() {
         contentContainerStyle={styles.content}
         refreshControl={
           <RefreshControl
-            refreshing={activity.isRefetching && !activity.isFetchingNextPage}
+            refreshing={pullRefreshing}
             tintColor={colours.blue}
-            onRefresh={() => void activity.refetch()}
+            onRefresh={() => {
+              setPullRefreshing(true);
+              void sync
+                .syncNow()
+                .then(() => activity.refetch())
+                .finally(() => setPullRefreshing(false));
+            }}
           />
         }
         ListHeaderComponent={
@@ -106,7 +118,12 @@ function ActivityCard({ item, index }: { item: ActivityLogItem; index: number })
   const timestamp = item.activity_at || item.completed_at || item.updated_at;
 
   return (
-    <Animated.View entering={FadeInDown.delay(Math.min(index, 8) * 30)} style={styles.card}>
+    <Animated.View
+      entering={FadeInDown.delay(Math.min(index, 8) * 18)
+        .duration(180)
+        .withInitialValues({ opacity: 0, transform: [{ translateY: 8 }] })}
+      style={styles.card}
+    >
       <View style={[styles.statusIcon, { backgroundColor: meta.background }]}>
         <AppText variant="bodyStrong" colour={meta.colour}>
           {meta.symbol}

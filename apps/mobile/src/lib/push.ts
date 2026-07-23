@@ -4,6 +4,7 @@ import { Platform } from 'react-native';
 
 import { subscribeMobilePush, unsubscribeMobilePush } from '@/lib/api';
 import { authStorage } from '@/lib/auth-storage';
+import { offlineStore } from '@/lib/offline-store';
 
 export type PushState = 'unsupported' | 'prompt' | 'denied' | 'disabled' | 'enabled';
 
@@ -72,17 +73,29 @@ export async function registerCurrentDevicePush(): Promise<void> {
   }
 
   const token = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
-  await subscribeMobilePush({
+  const payload = {
     expo_push_token: token,
     platform: Platform.OS as 'ios' | 'android',
     device_name: Device.deviceName || Device.modelName || `Ballistic on ${Platform.OS}`,
-  });
+  };
   await authStorage.setPushToken(token);
+  await subscribeMobilePush(payload).catch(() => offlineStore.queuePushSubscription(payload));
 }
 
 export async function unregisterCurrentDevicePush(): Promise<void> {
   const token = await authStorage.getPushToken();
   if (!token) return;
-  await unsubscribeMobilePush(token);
   await authStorage.clearPushToken();
+  await unsubscribeMobilePush(token).catch(() => offlineStore.queuePushUnsubscription(token));
+}
+
+export async function clearLocalNotifications(): Promise<void> {
+  if (!supportsNativeNotifications()) return;
+  const Notifications = await loadNotifications();
+  await Promise.allSettled([
+    Notifications.cancelAllScheduledNotificationsAsync(),
+    Notifications.dismissAllNotificationsAsync(),
+    Notifications.setBadgeCountAsync(0),
+    Notifications.unregisterForNotificationsAsync(),
+  ]);
 }

@@ -27,7 +27,10 @@ export function StatusOrb({
   const terminal = status === 'done' || status === 'wontdo';
 
   useEffect(() => {
-    pulse.value = withSequence(withSpring(1.22, { damping: 10 }), withSpring(1, { damping: 12 }));
+    pulse.value = withSequence(
+      withSpring(1.1, { damping: 18, stiffness: 260 }),
+      withSpring(1, { damping: 20, stiffness: 240 }),
+    );
   }, [pulse, status]);
 
   const animatedStyle = useAnimatedStyle(() => ({ transform: [{ scale: pulse.value }] }));

@@ -7,7 +7,7 @@ namespace App\Http\Requests;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
-final class StoreProjectRequest extends FormRequest
+final class UploadAvatarRequest extends FormRequest
 {
     /**
      * Determine if the user is authorized to make this request.
@@ -25,21 +25,13 @@ final class StoreProjectRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'id' => ['sometimes', 'uuid'],
-            'name' => ['required', 'string', 'max:255'],
-            'color' => ['nullable', 'string', 'max:7', 'regex:/^#[0-9A-Fa-f]{6}$/'],
-        ];
-    }
-
-    /**
-     * Get custom messages for validator errors.
-     *
-     * @return array<string, string>
-     */
-    public function messages(): array
-    {
-        return [
-            'color.regex' => 'The colour must be a valid hex colour code (e.g., #FF5733).',
+            'avatar' => [
+                'required',
+                'image',
+                'mimes:jpg,jpeg,png,webp',
+                'max:5120',
+                'dimensions:min_width=64,min_height=64,max_width=8192,max_height=8192',
+            ],
         ];
     }
 }

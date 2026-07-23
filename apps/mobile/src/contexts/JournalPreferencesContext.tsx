@@ -9,6 +9,7 @@ import {
   useState,
 } from 'react';
 
+import { useAuth } from '@/contexts/AuthContext';
 import type { ItemScope } from '@/types';
 
 const storageKey = 'ballistic_journal_preferences';
@@ -26,29 +27,47 @@ interface JournalPreferencesValue {
 const JournalPreferencesContext = createContext<JournalPreferencesValue | null>(null);
 
 export function JournalPreferencesProvider({ children }: PropsWithChildren) {
+  const { user } = useAuth();
+  const userId = user?.id;
   const [scope, setScopeState] = useState<ItemScope>('active');
   const [excludedProjectIds, setExcludedProjectIds] = useState<Set<string>>(new Set());
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
+    if (!userId) {
+      setScopeState('active');
+      setExcludedProjectIds(new Set());
+      setHydrated(false);
+      return;
+    }
+
+    let active = true;
+    setScopeState('active');
+    setExcludedProjectIds(new Set());
+    setHydrated(false);
     AsyncStorage.getItem(storageKey)
       .then((raw) => {
-        if (!raw) return;
+        if (!active || !raw) return;
         const saved = JSON.parse(raw) as { scope?: ItemScope; excludedProjectIds?: string[] };
         if (saved.scope) setScopeState(saved.scope);
         if (saved.excludedProjectIds) setExcludedProjectIds(new Set(saved.excludedProjectIds));
       })
       .catch(() => undefined)
-      .finally(() => setHydrated(true));
-  }, []);
+      .finally(() => {
+        if (active) setHydrated(true);
+      });
+    return () => {
+      active = false;
+    };
+  }, [userId]);
 
   useEffect(() => {
-    if (!hydrated) return;
+    if (!userId || !hydrated) return;
     void AsyncStorage.setItem(
       storageKey,
       JSON.stringify({ scope, excludedProjectIds: [...excludedProjectIds] }),
     );
-  }, [excludedProjectIds, hydrated, scope]);
+  }, [excludedProjectIds, hydrated, scope, userId]);
 
   const setScope = useCallback((nextScope: ItemScope) => setScopeState(nextScope), []);
   const toggleProject = useCallback((projectId: string) => {

@@ -41,11 +41,33 @@ final class ProjectController extends Controller
     public function store(StoreProjectRequest $request): JsonResponse
     {
         $validated = $request->validated();
+        $requestedId = $validated['id'] ?? null;
+        unset($validated['id']);
 
-        $project = Project::create([
+        if ($requestedId !== null) {
+            $existing = Project::withTrashed()->find($requestedId);
+
+            if ($existing !== null) {
+                abort_unless(
+                    (string) $existing->user_id === (string) Auth::id(),
+                    Response::HTTP_CONFLICT,
+                    'That offline project identifier is already in use.'
+                );
+
+                return (new ProjectResource($existing))
+                    ->response()
+                    ->setStatusCode(Response::HTTP_OK);
+            }
+        }
+
+        $project = new Project([
             ...$validated,
             'user_id' => Auth::id(),
         ]);
+        if ($requestedId !== null) {
+            $project->id = $requestedId;
+        }
+        $project->save();
 
         return (new ProjectResource($project))
             ->response()

@@ -27,7 +27,10 @@ export function AuthScaffold({
               <BrandMark inverted />
             </Animated.View>
             <Animated.View
-              entering={FadeInDown.delay(100).springify().damping(18)}
+              entering={FadeInDown.delay(80)
+                .springify(240)
+                .dampingRatio(0.9)
+                .withInitialValues({ opacity: 0, transform: [{ translateY: 10 }] })}
               style={styles.card}
             >
               <View style={styles.heading}>

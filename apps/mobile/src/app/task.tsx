@@ -19,14 +19,19 @@ import { Screen } from '@/components/ui/Screen';
 import { SheetHeader } from '@/components/ui/SheetHeader';
 import { colours, radii, spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
-import { useJournalPreferences } from '@/contexts/JournalPreferencesContext';
+import { noProjectFilterId, useJournalPreferences } from '@/contexts/JournalPreferencesContext';
+import { useSync } from '@/contexts/SyncContext';
 import { useFeatureFlags } from '@/hooks/useFeatureFlags';
+import { useHardwareBackDismiss } from '@/hooks/useHardwareBackDismiss';
 import { findCachedItem, useJournalActions } from '@/hooks/useJournal';
-import { fetchItem, fetchProjects, type ItemInput } from '@/lib/api';
-import { fromDateKey } from '@/lib/date';
+import { fromDateKey, toDateKey } from '@/lib/date';
+import { focusJournalItem } from '@/lib/journal-focus';
+import { offlineStore } from '@/lib/offline-store';
 import {
   recurrenceRules,
   type Item,
+  type ItemInput,
+  type ItemScope,
   type Project,
   type RecurrencePreset,
   type UserLookup,
@@ -47,17 +52,24 @@ function presetFromRule(rule: string | null | undefined): RecurrencePreset {
 
 export default function TaskScreen() {
   const router = useRouter();
+  useHardwareBackDismiss(() => router.back());
   const params = useLocalSearchParams<{ id?: string }>();
   const id = Array.isArray(params.id) ? params.id[0] : params.id;
   const client = useQueryClient();
   const cached = id ? findCachedItem(client, id) : undefined;
   const itemQuery = useQuery({
     queryKey: ['item', id],
-    queryFn: () => fetchItem(id!),
+    queryFn: () => offlineStore.getItem(id!),
     enabled: Boolean(id && !cached),
     initialData: cached,
+    networkMode: 'always',
   });
-  const projectsQuery = useQuery({ queryKey: ['projects'], queryFn: fetchProjects });
+  const projectsQuery = useQuery({
+    queryKey: ['projects'],
+    queryFn: offlineStore.getProjects,
+    staleTime: Infinity,
+    networkMode: 'always',
+  });
   const item = itemQuery.data;
 
   if (id && itemQuery.isLoading && !item) return <LoadingScreen />;
@@ -84,9 +96,10 @@ export default function TaskScreen() {
 function TaskEditor({ item, projects }: { item?: Item; projects: Project[] }) {
   const router = useRouter();
   const client = useQueryClient();
-  const { user, refreshUser } = useAuth();
+  const { user, refreshUser, isAuthenticated } = useAuth();
+  const { isOnline } = useSync();
   const { dates, delegation } = useFeatureFlags();
-  const { scope } = useJournalPreferences();
+  const { scope, setScope, excludedProjectIds, toggleProject } = useJournalPreferences();
   const actions = useJournalActions(user);
 
   const [title, setTitle] = useState(item?.title ?? '');
@@ -112,7 +125,7 @@ function TaskEditor({ item, projects }: { item?: Item; projects: Project[] }) {
 
   const isAssignee = Boolean(item?.is_assigned && !item.is_delegated);
   const ownsTask = !item || item.user_id === user?.id;
-  const canAssign = delegation && ownsTask;
+  const canAssign = delegation && ownsTask && isAuthenticated && isOnline !== false;
   const busy = saving || actions.updateTask.isPending || actions.createTask.isPending;
   const minimumDueDate = scheduledDate ? fromDateKey(scheduledDate) : undefined;
   const projectList = useMemo(() => {
@@ -144,8 +157,19 @@ function TaskEditor({ item, projects }: { item?: Item; projects: Project[] }) {
       : ownerPayload;
 
     try {
-      if (item) await actions.updateTask.mutateAsync({ id: item.id, payload });
-      else await actions.createTask.mutateAsync(ownerPayload);
+      if (item) {
+        await actions.updateTask.mutateAsync({ id: item.id, payload });
+      } else {
+        const created = await actions.createTask.mutateAsync(ownerPayload);
+        const nextScope: ItemScope =
+          dates && created.scheduled_date && created.scheduled_date > toDateKey(new Date())
+            ? 'planned'
+            : 'active';
+        if (scope !== nextScope) setScope(nextScope);
+        const projectFilterId = created.project_id ?? noProjectFilterId;
+        if (excludedProjectIds.has(projectFilterId)) toggleProject(projectFilterId);
+        focusJournalItem(created.id);
+      }
       router.back();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Could not save this task.');
@@ -212,8 +236,11 @@ function TaskEditor({ item, projects }: { item?: Item; projects: Project[] }) {
 
             {moreOpen ? (
               <Animated.View
-                entering={FadeInDown.duration(220)}
-                layout={LinearTransition}
+                entering={FadeInDown.duration(180).withInitialValues({
+                  opacity: 0,
+                  transform: [{ translateY: 8 }],
+                })}
+                layout={LinearTransition.duration(180)}
                 style={styles.fields}
               >
                 {!isAssignee ? (
@@ -349,8 +376,7 @@ function TaskEditor({ item, projects }: { item?: Item; projects: Project[] }) {
             <View style={styles.primaryAction}>
               <AppButton
                 label={item ? 'Save changes' : 'Add task'}
-                loading={busy}
-                disabled={!title.trim()}
+                disabled={busy || !title.trim()}
                 onPress={() => void save()}
               />
             </View>

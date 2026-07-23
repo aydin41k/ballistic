@@ -1,0 +1,83 @@
+# syntax=docker/dockerfile:1.7
+
+FROM php:8.4-apache-bookworm AS php-base
+
+ENV APP_ENV=production \
+    COMPOSER_ALLOW_SUPERUSER=1
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        curl \
+        git \
+        libcurl4-openssl-dev \
+        libfreetype6-dev \
+        libgmp-dev \
+        libicu-dev \
+        libjpeg62-turbo-dev \
+        libonig-dev \
+        libpng-dev \
+        libpq-dev \
+        libzip-dev \
+        unzip \
+    && docker-php-ext-configure gd --with-freetype --with-jpeg \
+    && docker-php-ext-install -j"$(nproc)" \
+        bcmath \
+        curl \
+        gd \
+        gmp \
+        intl \
+        mbstring \
+        opcache \
+        pcntl \
+        pdo_pgsql \
+        zip \
+    && a2enmod expires headers rewrite \
+    && mv "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini" \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=composer:2 /usr/bin/composer /usr/local/bin/composer
+
+WORKDIR /var/www/html
+
+COPY apps/backend/composer.json apps/backend/composer.lock ./
+RUN composer install \
+    --no-dev \
+    --no-interaction \
+    --no-progress \
+    --no-scripts \
+    --optimize-autoloader \
+    --prefer-dist
+
+COPY apps/backend ./
+
+RUN composer dump-autoload --classmap-authoritative --no-dev --no-interaction \
+    && php artisan package:discover --ansi \
+    && php artisan wayfinder:generate \
+    && composer check-platform-reqs --no-dev \
+    && sed -ri -e 's!/var/www/html!/var/www/html/public!g' /etc/apache2/sites-available/*.conf \
+    && sed -ri -e 's!<Directory /var/www/>!<Directory /var/www/html/public/>!g' /etc/apache2/apache2.conf \
+    && sed -ri -e 's!AllowOverride None!AllowOverride All!g' /etc/apache2/apache2.conf \
+    && printf 'ServerName localhost\n' > /etc/apache2/conf-available/servername.conf \
+    && a2enconf servername \
+    && mkdir -p storage/framework/cache/data storage/framework/sessions storage/framework/views storage/logs bootstrap/cache \
+    && ln -sfn ../storage/app/public public/storage \
+    && chown -R www-data:www-data storage bootstrap/cache
+
+FROM node:24-bookworm-slim AS backend-assets
+
+WORKDIR /app
+
+COPY --from=php-base /var/www/html ./
+RUN npm ci \
+    && npm run build
+
+FROM php-base AS runtime
+
+COPY --from=backend-assets --chown=www-data:www-data /app/public/build ./public/build
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
+    CMD curl --fail --silent http://127.0.0.1/up > /dev/null || exit 1
+
+EXPOSE 80
+
+CMD ["apache2-foreground"]

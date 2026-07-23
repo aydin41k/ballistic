@@ -6,6 +6,8 @@ namespace Tests\Feature;
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 final class UserProfileTest extends TestCase
@@ -68,6 +70,94 @@ final class UserProfileTest extends TestCase
             ->assertJsonFragment([
                 'avatar_url' => 'https://example.com/new-avatar.png',
             ]);
+    }
+
+    public function test_user_can_upload_avatar_from_device(): void
+    {
+        Storage::fake('public');
+        $user = User::factory()->create();
+
+        $response = $this->actingAs($user)
+            ->post('/api/user/avatar', [
+                'avatar' => UploadedFile::fake()->image('profile.jpg', 512, 512),
+            ], ['Accept' => 'application/json']);
+
+        $response->assertOk()
+            ->assertJsonPath('data.id', (string) $user->id)
+            ->assertJsonPath(
+                'data.avatar_url',
+                fn (mixed $value): bool => is_string($value)
+                    && str_contains($value, "/storage/avatars/{$user->id}/")
+            );
+
+        $storedPath = str_replace('/storage/', '', (string) parse_url(
+            (string) $response->json('data.avatar_url'),
+            PHP_URL_PATH
+        ));
+        Storage::disk('public')->assertExists($storedPath);
+    }
+
+    public function test_uploading_avatar_replaces_managed_previous_file(): void
+    {
+        Storage::fake('public');
+        $user = User::factory()->create();
+        $oldPath = "avatars/{$user->id}/old.jpg";
+        Storage::disk('public')->put($oldPath, 'old');
+        $user->forceFill(['avatar_url' => url("/storage/{$oldPath}")])->save();
+
+        $response = $this->actingAs($user)
+            ->post('/api/user/avatar', [
+                'avatar' => UploadedFile::fake()->image('replacement.png', 320, 320),
+            ], ['Accept' => 'application/json']);
+
+        $response->assertOk();
+        Storage::disk('public')->assertMissing($oldPath);
+    }
+
+    public function test_uploading_avatar_does_not_delete_another_users_managed_file(): void
+    {
+        Storage::fake('public');
+        $otherUser = User::factory()->create();
+        $otherPath = "avatars/{$otherUser->id}/profile.jpg";
+        Storage::disk('public')->put($otherPath, 'other');
+        $user = User::factory()->create([
+            'avatar_url' => url("/storage/{$otherPath}"),
+        ]);
+
+        $this->actingAs($user)
+            ->post('/api/user/avatar', [
+                'avatar' => UploadedFile::fake()->image('replacement.jpg', 320, 320),
+            ], ['Accept' => 'application/json'])
+            ->assertOk();
+
+        Storage::disk('public')->assertExists($otherPath);
+    }
+
+    public function test_avatar_upload_validates_image_type_and_dimensions(): void
+    {
+        Storage::fake('public');
+        $user = User::factory()->create();
+
+        $this->actingAs($user)
+            ->post('/api/user/avatar', [
+                'avatar' => UploadedFile::fake()->create('profile.txt', 20, 'text/plain'),
+            ], ['Accept' => 'application/json'])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['avatar']);
+
+        $this->actingAs($user)
+            ->post('/api/user/avatar', [
+                'avatar' => UploadedFile::fake()->image('tiny.jpg', 32, 32),
+            ], ['Accept' => 'application/json'])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['avatar']);
+    }
+
+    public function test_avatar_upload_requires_authentication(): void
+    {
+        $this->post('/api/user/avatar', [
+            'avatar' => UploadedFile::fake()->image('profile.jpg', 256, 256),
+        ], ['Accept' => 'application/json'])->assertUnauthorized();
     }
 
     public function test_bio_cannot_exceed_500_characters(): void

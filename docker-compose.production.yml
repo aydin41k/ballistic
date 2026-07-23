@@ -1,0 +1,140 @@
+name: ballistic-prod
+
+x-backend: &backend
+    image: ballistic-backend:production
+    build:
+        context: .
+        dockerfile: Dockerfile.backend
+    env_file:
+        - '${BALLISTIC_ENV_FILE:-/Users/vic/.config/ballistic/production.env}'
+    environment:
+        APP_DEBUG: 'false'
+        APP_ENV: production
+        APP_URL: 'https://ballistic-api.psycode.com.au'
+        DB_HOST: database
+        DB_PORT: '5432'
+        FRONTEND_URL: 'https://ballistic.psycode.com.au'
+        LOG_LEVEL: warning
+    volumes:
+        - ballistic-storage:/var/www/html/storage
+    networks:
+        - ballistic
+    restart: unless-stopped
+
+services:
+    database:
+        image: postgres:17
+        env_file:
+            - '${BALLISTIC_ENV_FILE:-/Users/vic/.config/ballistic/production.env}'
+        environment:
+            POSTGRES_DB: '${DB_DATABASE}'
+            POSTGRES_PASSWORD: '${DB_PASSWORD}'
+            POSTGRES_USER: '${DB_USERNAME}'
+        volumes:
+            - ballistic-database:/var/lib/postgresql/data
+        networks:
+            - ballistic
+        restart: unless-stopped
+        healthcheck:
+            test: ['CMD-SHELL', 'pg_isready -q -d "$${POSTGRES_DB}" -U "$${POSTGRES_USER}"']
+            interval: 5s
+            timeout: 5s
+            retries: 20
+
+    migrate:
+        <<: *backend
+        healthcheck:
+            disable: true
+        command: >-
+            sh -lc 'php artisan config:cache
+            && php artisan migrate --force --no-interaction'
+        depends_on:
+            database:
+                condition: service_healthy
+        restart: 'no'
+
+    backend:
+        <<: *backend
+        ports:
+            - '127.0.0.1:8081:80'
+        command: >-
+            sh -lc 'php artisan config:cache
+            && php artisan view:cache
+            && exec apache2-foreground'
+        depends_on:
+            database:
+                condition: service_healthy
+            migrate:
+                condition: service_completed_successfully
+
+    queue:
+        <<: *backend
+        healthcheck:
+            disable: true
+        command: >-
+            sh -lc 'php artisan config:cache
+            && exec php artisan queue:work
+            --sleep=3 --tries=3 --timeout=90 --max-time=3600 --no-interaction'
+        depends_on:
+            database:
+                condition: service_healthy
+            migrate:
+                condition: service_completed_successfully
+
+    scheduler:
+        <<: *backend
+        healthcheck:
+            disable: true
+        command: >-
+            sh -lc 'php artisan config:cache
+            && exec php artisan schedule:work --no-interaction'
+        depends_on:
+            database:
+                condition: service_healthy
+            migrate:
+                condition: service_completed_successfully
+
+    frontend:
+        image: ballistic-frontend:production
+        build:
+            context: .
+            dockerfile: Dockerfile.frontend
+            args:
+                NEXT_PUBLIC_API_BASE_URL: 'https://ballistic-api.psycode.com.au'
+        environment:
+            NEXT_PUBLIC_API_BASE_URL: 'https://ballistic-api.psycode.com.au'
+            NEXT_TELEMETRY_DISABLED: '1'
+            NODE_ENV: production
+            PORT: '3000'
+        ports:
+            - '127.0.0.1:3001:3000'
+        networks:
+            - ballistic
+        restart: unless-stopped
+        depends_on:
+            backend:
+                condition: service_healthy
+
+    tunnel:
+        image: cloudflare/cloudflared:latest
+        command: >-
+            tunnel --no-autoupdate run
+            --token-file /run/secrets/cloudflare-tunnel-token
+        volumes:
+            - '${BALLISTIC_TUNNEL_TOKEN_FILE:-/Users/vic/.config/ballistic/cloudflare-tunnel-token}:/run/secrets/cloudflare-tunnel-token:ro'
+        networks:
+            - ballistic
+        restart: unless-stopped
+        depends_on:
+            backend:
+                condition: service_healthy
+            frontend:
+                condition: service_healthy
+        profiles: ['tunnel']
+
+networks:
+    ballistic:
+
+volumes:
+    ballistic-database:
+    ballistic-storage:

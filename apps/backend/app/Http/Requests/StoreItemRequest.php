@@ -27,6 +27,7 @@ final class StoreItemRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'id' => ['sometimes', 'uuid'],
             'title' => ['required', 'string', 'max:65535'],
             'description' => ['nullable', 'string', 'max:65535'],
             'status' => ['required', Rule::in(['todo', 'doing', 'done', 'wontdo'])],

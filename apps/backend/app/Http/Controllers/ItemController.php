@@ -145,11 +145,30 @@ final class ItemController extends Controller
     public function store(StoreItemRequest $request, NotificationServiceInterface $notificationService): JsonResponse
     {
         $validated = $request->validated();
+        $requestedId = $validated['id'] ?? null;
         $tagIds = $validated['tag_ids'] ?? [];
-        unset($validated['tag_ids']);
+        unset($validated['id'], $validated['tag_ids']);
 
         /** @var User $owner */
         $owner = Auth::user();
+
+        if ($requestedId !== null) {
+            $existing = Item::withTrashed()->find($requestedId);
+
+            if ($existing !== null) {
+                abort_unless(
+                    (string) $existing->user_id === (string) $owner->id,
+                    Response::HTTP_CONFLICT,
+                    'That offline item identifier is already in use.'
+                );
+
+                $existing->load(['project', 'tags', 'assignee']);
+
+                return (new ItemResource($existing))
+                    ->response()
+                    ->setStatusCode(Response::HTTP_OK);
+            }
+        }
 
         // Ensure a connection exists with the assignee (auto-create if needed)
         if (! empty($validated['assignee_id'])) {
@@ -161,12 +180,16 @@ final class ItemController extends Controller
             $validated['completed_at'] = now();
         }
 
-        $item = DB::transaction(function () use ($validated, $tagIds): Item {
-            $item = Item::create([
+        $item = DB::transaction(function () use ($requestedId, $validated, $tagIds): Item {
+            $item = new Item([
                 ...$validated,
                 'user_id' => Auth::id(),
                 'position' => $validated['position'] ?? 0,
             ]);
+            if ($requestedId !== null) {
+                $item->id = $requestedId;
+            }
+            $item->save();
 
             if (! empty($tagIds)) {
                 $item->tags()->sync($tagIds);

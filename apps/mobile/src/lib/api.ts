@@ -1,12 +1,16 @@
 import * as Device from 'expo-device';
+import { fetch as expoFetch } from 'expo/fetch';
+import { File } from 'expo-file-system';
 import { Platform } from 'react-native';
 
 import { authStorage } from '@/lib/auth-storage';
 import type {
   ActivityLogItem,
+  AvatarUploadPayload,
   AuthResponse,
   CursorPaginatedResponse,
   Item,
+  ItemInput,
   ItemScope,
   McpToken,
   MobilePushSubscription,
@@ -14,6 +18,7 @@ import type {
   Project,
   Status,
   User,
+  UserUpdatePayload,
   UserLookup,
   ValidationError,
 } from '@/types';
@@ -89,9 +94,12 @@ async function request<T>(
   }
 
   if (response.status === 401 && authenticated) {
-    await authStorage.clearSession();
+    await authStorage.clearToken();
     await onUnauthorised?.();
-    throw new ApiError('Your session has expired. Please sign in again.', 401);
+    throw new ApiError(
+      'Your session has expired. You can keep working offline and sign in again when ready.',
+      401,
+    );
   }
 
   if (!response.ok) throw await parseError(response);
@@ -140,12 +148,6 @@ export async function fetchUser(): Promise<User> {
   return unwrap(await request<User | { data?: User }>('/api/user'));
 }
 
-export type UserUpdatePayload = Partial<
-  Pick<User, 'name' | 'email' | 'phone' | 'notes' | 'bio' | 'avatar_url'> & {
-    feature_flags: Partial<User['feature_flags']> | null;
-  }
->;
-
 export async function updateUser(payload: UserUpdatePayload): Promise<User> {
   return unwrap(
     await request<User | { data?: User }>('/api/user', {
@@ -153,6 +155,41 @@ export async function updateUser(payload: UserUpdatePayload): Promise<User> {
       body: JSON.stringify(payload),
     }),
   );
+}
+
+export async function uploadAvatar(payload: AvatarUploadPayload): Promise<User> {
+  const token = await authStorage.getToken();
+  if (!token) throw new ApiError('Sign in to upload your profile photo.', 401);
+
+  const headers = new Headers();
+  headers.set('Accept', 'application/json');
+  headers.set('Authorization', `Bearer ${token}`);
+  headers.set('X-Ballistic-Client', `mobile/${Platform.OS}`);
+  const form = new FormData();
+  form.append('avatar', new File(payload.fileUri), payload.fileName);
+
+  let response: Response;
+  try {
+    response = await expoFetch(buildUrl('/api/user/avatar'), {
+      method: 'POST',
+      headers,
+      body: form,
+    });
+  } catch {
+    throw new ApiError('Could not reach Ballistic. Check your connection and try again.', 0);
+  }
+
+  if (response.status === 401) {
+    await authStorage.clearToken();
+    await onUnauthorised?.();
+    throw new ApiError(
+      'Your session has expired. You can keep working offline and sign in again when ready.',
+      401,
+    );
+  }
+  if (!response.ok) throw await parseError(response);
+
+  return unwrap((await response.json()) as User | { data?: User });
 }
 
 export async function fetchItems(params?: {
@@ -181,20 +218,6 @@ export async function fetchItems(params?: {
 
 export async function fetchItem(id: string): Promise<Item> {
   return unwrap(await request<Item | { data?: Item }>(`/api/items/${id}`));
-}
-
-export interface ItemInput {
-  title: string;
-  description?: string | null;
-  status?: Status;
-  project_id?: string | null;
-  position?: number;
-  scheduled_date?: string | null;
-  due_date?: string | null;
-  recurrence_rule?: string | null;
-  recurrence_strategy?: Item['recurrence_strategy'];
-  assignee_id?: string | null;
-  assignee_notes?: string | null;
 }
 
 export async function createItem(payload: ItemInput): Promise<Item> {
@@ -233,6 +256,7 @@ export async function fetchProjects(): Promise<Project[]> {
 }
 
 export async function createProject(payload: {
+  id?: string;
   name: string;
   color?: string | null;
 }): Promise<Project> {

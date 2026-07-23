@@ -1,6 +1,6 @@
 # Ballistic mobile
 
-The native iOS and Android client for Ballistic. It targets Expo SDK 54 for compatibility with the current App Store and Play Store Expo Go client, while retaining native navigation, sheets, haptics, swipe actions, long-press reordering, pull-to-refresh, secure token storage, date controls, and push notifications.
+The native iOS and Android client for Ballistic. It is fully usable offline without registration: tasks, projects, notes, profile preferences, activity, and notification actions are saved on the device, then merged and synced when an account is connected. It targets Expo SDK 54 while retaining native navigation, sheets, haptics, swipe actions, long-press reordering, pull-to-refresh, secure token storage, date controls, and push notifications.
 
 ## Setup
 
@@ -22,6 +22,9 @@ Run `npm run check` to perform formatting, lint, TypeScript, and production bund
 
 ## Core interactions
 
+- On first launch, choose Create account, Log in, or Continue offline; registration is optional.
+- Create an account or log in later to merge the on-device journal and enable server sync.
+- Keep working after logout, token expiry, or connection loss; queued changes sync automatically after reconnection.
 - Tap the status orb to cycle `To do → Doing → Done → Won't do`.
 - Swipe a task for contextual actions.
 - Long-press anywhere on a task to reorder it.

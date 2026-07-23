@@ -13,8 +13,8 @@ import { ApiError } from '@/lib/api';
 
 export default function LoginScreen() {
   const router = useRouter();
-  const { login } = useAuth();
-  const [email, setEmail] = useState('');
+  const { login, startOffline, user } = useAuth();
+  const [email, setEmail] = useState(user?.email ?? '');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({});
@@ -39,6 +39,11 @@ export default function LoginScreen() {
     }
   }
 
+  async function continueOffline() {
+    await startOffline();
+    router.replace('/journal');
+  }
+
   return (
     <AuthScaffold title="Welcome back" subtitle="Pick up exactly where you left off.">
       <View style={styles.form}>
@@ -58,16 +63,27 @@ export default function LoginScreen() {
           value={password}
           onChangeText={setPassword}
           secureTextEntry
+          autoCapitalize="none"
+          autoCorrect={false}
+          spellCheck={false}
           autoComplete="current-password"
+          textContentType="password"
+          keyboardType="default"
+          returnKeyType="go"
           placeholder="Your password"
           error={fieldErrors.password?.[0]}
           onSubmitEditing={() => void submit()}
         />
         <AppButton
-          label={submitting ? 'Signing in…' : 'Sign in'}
+          label={submitting ? 'Logging in…' : 'Log in'}
           onPress={() => void submit()}
           loading={submitting}
           disabled={!email.trim() || !password}
+        />
+        <AppButton
+          label="Continue offline"
+          variant="secondary"
+          onPress={() => void continueOffline()}
         />
       </View>
       <View style={styles.footer}>
@@ -75,10 +91,10 @@ export default function LoginScreen() {
           New to Ballistic?
         </AppText>
         <AppButton
-          label="Create an account"
+          label="Create account"
           variant="ghost"
           compact
-          onPress={() => router.push('/register')}
+          onPress={() => router.replace('/register')}
         />
       </View>
     </AuthScaffold>

@@ -1,12 +1,13 @@
-import { useQueryClient } from '@tanstack/react-query';
 import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, RefreshControl, StyleSheet, View } from 'react-native';
 import DraggableFlatList, { type DragEndParams } from 'react-native-draggable-flatlist';
+import type { FlatList } from 'react-native-gesture-handler';
 import Animated, { FadeIn } from 'react-native-reanimated';
 
 import { BrandMark } from '@/components/BrandMark';
+import { SyncStatusBanner } from '@/components/SyncStatusBanner';
 import { TaskCard } from '@/components/tasks/TaskCard';
 import { AppIcon } from '@/components/ui/AppIcon';
 import { AppText } from '@/components/ui/AppText';
@@ -18,10 +19,12 @@ import { Screen } from '@/components/ui/Screen';
 import { colours, radii, spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
 import { noProjectFilterId, useJournalPreferences } from '@/contexts/JournalPreferencesContext';
+import { useSync } from '@/contexts/SyncContext';
 import { useFeatureFlags } from '@/hooks/useFeatureFlags';
 import { useJournal, useJournalActions } from '@/hooks/useJournal';
 import { useNotifications } from '@/hooks/useNotifications';
 import { sortByUrgency } from '@/lib/date';
+import { subscribeToJournalFocus } from '@/lib/journal-focus';
 import type { Item, ItemScope, Status } from '@/types';
 
 type JournalSection = 'mine' | 'assigned' | 'delegated';
@@ -40,8 +43,8 @@ interface DepartureTimers {
   remove: ReturnType<typeof setTimeout>;
 }
 
-const departureHoldMs = 4000;
-const departureFadeMs = 1200;
+const departureHoldMs = 3000;
+const departureFadeMs = 650;
 
 function getDepartureKey(scope: ItemScope, section: JournalSection, itemId: string): string {
   return `${scope}:${section}:${itemId}`;
@@ -59,8 +62,8 @@ function insertDepartures(items: Item[], departures: DepartingItem[]): Item[] {
 
 export default function JournalScreen() {
   const router = useRouter();
-  const client = useQueryClient();
   const { user } = useAuth();
+  const sync = useSync();
   const { dates, delegation } = useFeatureFlags();
   const { scope, setScope, excludedProjectIds, activeFilterCount } = useJournalPreferences();
   const journal = useJournal(scope, delegation);
@@ -68,6 +71,21 @@ export default function JournalScreen() {
   const notifications = useNotifications(delegation);
   const [departures, setDepartures] = useState<Record<string, DepartingItem>>({});
   const departureTimers = useRef(new Map<string, DepartureTimers>());
+  const listRef = useRef<FlatList<Item>>(null);
+  const [focusedItemId, setFocusedItemId] = useState<string | null>(null);
+  const [pullRefreshing, setPullRefreshing] = useState(false);
+  const handledFocusId = useRef<string | null>(null);
+  const focusTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(
+    () =>
+      subscribeToJournalFocus((itemId) => {
+        handledFocusId.current = null;
+        if (focusTimer.current) clearTimeout(focusTimer.current);
+        setFocusedItemId(itemId);
+      }),
+    [],
+  );
 
   const clearDepartureTimers = useCallback((key: string) => {
     const timers = departureTimers.current.get(key);
@@ -125,7 +143,7 @@ export default function JournalScreen() {
           });
           departureTimers.current.delete(key);
         },
-        departureHoldMs + departureFadeMs + 100,
+        departureHoldMs + departureFadeMs + 60,
       );
 
       departureTimers.current.set(key, { fade, remove });
@@ -198,6 +216,33 @@ export default function JournalScreen() {
   }, [departuresBySection.delegated, filter, journal.data?.delegated]);
   const empty = mine.length === 0 && assigned.length === 0 && delegated.length === 0;
 
+  useEffect(() => {
+    if (!focusedItemId || handledFocusId.current === focusedItemId) return;
+    const index = mine.findIndex((item) => item.id === focusedItemId);
+    const isDelegated = delegated.some((item) => item.id === focusedItemId);
+    if (index < 0 && !isDelegated) return;
+
+    handledFocusId.current = focusedItemId;
+    requestAnimationFrame(() => {
+      if (index >= 0) {
+        listRef.current?.scrollToIndex({ index, animated: true, viewPosition: 0.5 });
+      } else {
+        listRef.current?.scrollToEnd({ animated: true });
+      }
+    });
+    focusTimer.current = setTimeout(() => {
+      setFocusedItemId(null);
+      focusTimer.current = null;
+    }, 1800);
+  }, [delegated, focusedItemId, mine]);
+
+  useEffect(
+    () => () => {
+      if (focusTimer.current) clearTimeout(focusTimer.current);
+    },
+    [],
+  );
+
   function updateStatus(item: Item, status: Status, section: JournalSection, index: number) {
     const key = getDepartureKey(scope, section, item.id);
     if (status === 'done' || status === 'wontdo') {
@@ -253,31 +298,38 @@ export default function JournalScreen() {
         onDelete={item.user_id === user?.id ? () => confirmDelete(item) : undefined}
         isDeparting={Boolean(departure)}
         isFading={departure?.phase === 'fading'}
+        isFocused={item.id === focusedItemId}
       />
     );
   };
 
-  const refreshing = journal.isRefetching && !journal.isLoading;
-
   return (
     <Screen>
       <DraggableFlatList
+        ref={listRef}
         data={mine}
         keyExtractor={(item) => item.id}
         onDragEnd={handleDragEnd}
         activationDistance={8}
+        animationConfig={{ damping: 18, mass: 0.45, stiffness: 240 }}
         autoscrollThreshold={90}
         autoscrollSpeed={180}
+        onScrollToIndexFailed={({ index, averageItemLength }) => {
+          listRef.current?.scrollToOffset({ offset: index * averageItemLength, animated: true });
+        }}
         contentInsetAdjustmentBehavior="automatic"
         contentContainerStyle={styles.listContent}
         refreshControl={
           <RefreshControl
-            refreshing={refreshing}
+            refreshing={pullRefreshing}
             tintColor={colours.blue}
             onRefresh={() => {
               void Haptics.selectionAsync();
-              void client.invalidateQueries({ queryKey: ['journal'] });
-              if (delegation) void client.invalidateQueries({ queryKey: ['notifications'] });
+              setPullRefreshing(true);
+              void sync
+                .syncNow()
+                .then(() => journal.refetch())
+                .finally(() => setPullRefreshing(false));
             }}
           />
         }
@@ -303,6 +355,7 @@ export default function JournalScreen() {
                 ) : null}
               </View>
             </View>
+            <SyncStatusBanner />
             {dates && scope === 'planned' ? (
               <Animated.View entering={FadeIn} style={styles.banner}>
                 <AppIcon name="calendar-clock" size={18} colour={colours.sky} />
@@ -367,6 +420,7 @@ export default function JournalScreen() {
               isActive={isActive}
               isDeparting={Boolean(departure)}
               isFading={departure?.phase === 'fading'}
+              isFocused={item.id === focusedItemId}
             />
           );
         }}

@@ -17,7 +17,12 @@ export function EmptyState({
   message,
 }: EmptyStateProps) {
   return (
-    <Animated.View entering={FadeInDown.springify().damping(18)} style={styles.container}>
+    <Animated.View
+      entering={FadeInDown.springify(220)
+        .dampingRatio(0.9)
+        .withInitialValues({ opacity: 0, transform: [{ translateY: 8 }] })}
+      style={styles.container}
+    >
       <View style={styles.icon}>
         <AppIcon name={icon} size={34} colour={colours.blue} />
       </View>

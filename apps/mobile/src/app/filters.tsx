@@ -10,14 +10,21 @@ import { SheetHeader } from '@/components/ui/SheetHeader';
 import { colours, spacing } from '@/constants/theme';
 import { noProjectFilterId, useJournalPreferences } from '@/contexts/JournalPreferencesContext';
 import { useFeatureFlags } from '@/hooks/useFeatureFlags';
-import { fetchProjects } from '@/lib/api';
+import { useHardwareBackDismiss } from '@/hooks/useHardwareBackDismiss';
+import { offlineStore } from '@/lib/offline-store';
 
 export default function FiltersScreen() {
   const router = useRouter();
+  useHardwareBackDismiss(() => router.back());
   const { dates } = useFeatureFlags();
   const { scope, setScope, excludedProjectIds, toggleProject, clearProjects } =
     useJournalPreferences();
-  const projects = useQuery({ queryKey: ['projects'], queryFn: fetchProjects });
+  const projects = useQuery({
+    queryKey: ['projects'],
+    queryFn: offlineStore.getProjects,
+    staleTime: Infinity,
+    networkMode: 'always',
+  });
 
   return (
     <Screen safeBottom>

@@ -7,6 +7,8 @@ import type { User } from '@/types';
 const tokenKey = 'ballistic_auth_token';
 const userKey = 'ballistic_user';
 const pushTokenKey = 'ballistic_expo_push_token';
+const onboardingCompleteKey = 'ballistic_onboarding_complete';
+const listeners = new Set<(user: User | null) => void>();
 
 async function setSecret(key: string, value: string): Promise<void> {
   if (Platform.OS === 'web') {
@@ -35,11 +37,20 @@ async function removeSecret(key: string): Promise<void> {
 }
 
 export const authStorage = {
+  subscribe(listener: (user: User | null) => void): () => void {
+    listeners.add(listener);
+    return () => listeners.delete(listener);
+  },
   getToken: () => getSecret(tokenKey),
   setToken: (token: string) => setSecret(tokenKey, token),
+  clearToken: () => removeSecret(tokenKey),
   getPushToken: () => getSecret(pushTokenKey),
   setPushToken: (token: string) => setSecret(pushTokenKey, token),
   clearPushToken: () => removeSecret(pushTokenKey),
+  async getOnboardingComplete(): Promise<boolean> {
+    return (await AsyncStorage.getItem(onboardingCompleteKey)) === 'true';
+  },
+  setOnboardingComplete: () => AsyncStorage.setItem(onboardingCompleteKey, 'true'),
   async getUser(): Promise<User | null> {
     const raw = await AsyncStorage.getItem(userKey);
     if (!raw) return null;
@@ -51,8 +62,12 @@ export const authStorage = {
       return null;
     }
   },
-  setUser: (user: User) => AsyncStorage.setItem(userKey, JSON.stringify(user)),
+  async setUser(user: User): Promise<void> {
+    await AsyncStorage.setItem(userKey, JSON.stringify(user));
+    listeners.forEach((listener) => listener(user));
+  },
   async clearSession(): Promise<void> {
-    await Promise.all([removeSecret(tokenKey), AsyncStorage.removeItem(userKey)]);
+    await Promise.all([removeSecret(tokenKey), removeSecret(pushTokenKey), AsyncStorage.clear()]);
+    listeners.forEach((listener) => listener(null));
   },
 };

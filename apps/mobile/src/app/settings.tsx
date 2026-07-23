@@ -14,14 +14,20 @@ import { ErrorNotice } from '@/components/ui/ErrorNotice';
 import { Screen } from '@/components/ui/Screen';
 import { SheetHeader } from '@/components/ui/SheetHeader';
 import { colours, radii, spacing } from '@/constants/theme';
+import { useAuth } from '@/contexts/AuthContext';
+import { useSync } from '@/contexts/SyncContext';
 import { useFeatureFlags } from '@/hooks/useFeatureFlags';
+import { useHardwareBackDismiss } from '@/hooks/useHardwareBackDismiss';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
 import { createMcpToken, fetchMcpTokens, getApiBaseUrl, revokeMcpToken } from '@/lib/api';
 import { formatDateTime } from '@/lib/date';
 
 export default function SettingsScreen() {
   const router = useRouter();
+  useHardwareBackDismiss(() => router.back());
   const client = useQueryClient();
+  const { isAuthenticated, isRegistered } = useAuth();
+  const sync = useSync();
   const { dates, delegation, aiAssistant, available, setFlag } = useFeatureFlags();
   const push = usePushNotifications();
   const [savingFlag, setSavingFlag] = useState<string | null>(null);
@@ -29,10 +35,11 @@ export default function SettingsScreen() {
   const [tokenName, setTokenName] = useState('');
   const [newToken, setNewToken] = useState<string | null>(null);
   const [showConfig, setShowConfig] = useState(false);
+  const [manualSyncing, setManualSyncing] = useState(false);
   const tokens = useQuery({
     queryKey: ['mcp-tokens'],
     queryFn: fetchMcpTokens,
-    enabled: aiAssistant,
+    enabled: aiAssistant && isAuthenticated && sync.isOnline !== false,
   });
   const createToken = useMutation({
     mutationFn: createMcpToken,
@@ -84,14 +91,20 @@ export default function SettingsScreen() {
   }
 
   const pushEnabled = push.state === 'enabled';
-  const pushDescription =
-    push.state === 'unsupported'
+  const pushDescription = !isAuthenticated
+    ? 'Sign in to connect this device to server notifications.'
+    : push.state === 'unsupported'
       ? 'Use a physical device and development build.'
       : push.state === 'denied'
         ? 'Blocked in system settings.'
         : pushEnabled
           ? 'Native task updates are enabled on this device.'
           : 'Get notified when delegated tasks change.';
+
+  function syncManually() {
+    setManualSyncing(true);
+    void sync.syncNow().finally(() => setManualSyncing(false));
+  }
 
   return (
     <Screen safeBottom>
@@ -102,6 +115,56 @@ export default function SettingsScreen() {
       />
       <ScrollView contentContainerStyle={styles.content}>
         {error ? <ErrorNotice message={error} /> : null}
+        <Section title="Offline & sync">
+          <View style={styles.syncCard}>
+            <View style={styles.tokenIcon}>
+              <AppIcon
+                name={
+                  sync.isOnline === false || !isAuthenticated
+                    ? 'cloud-off-outline'
+                    : 'cloud-sync-outline'
+                }
+                size={20}
+                colour={colours.blue}
+              />
+            </View>
+            <View style={styles.tokenCopy}>
+              <AppText variant="bodyStrong">
+                {!isRegistered
+                  ? 'On-device journal'
+                  : !isAuthenticated
+                    ? 'Sync paused'
+                    : sync.pendingCount > 0
+                      ? 'Saved on device'
+                      : 'Account connected'}
+              </AppText>
+              <AppText variant="caption" colour={colours.textMuted}>
+                {!isRegistered
+                  ? 'Everything works locally. Create an account only if you want sync.'
+                  : !isAuthenticated
+                    ? 'Sign in to resume sync.'
+                    : sync.lastSyncError ||
+                      (sync.pendingCount > 0
+                        ? 'Changes will upload automatically in the background.'
+                        : null) ||
+                      (sync.lastSyncedAt
+                        ? `Last synced ${formatDateTime(sync.lastSyncedAt)}`
+                        : 'Ready for the first sync.')}
+              </AppText>
+            </View>
+            <AppButton
+              label={!isRegistered ? 'Create' : !isAuthenticated ? 'Sign in' : 'Sync'}
+              variant="secondary"
+              compact
+              loading={manualSyncing}
+              onPress={() => {
+                if (!isRegistered) router.push('/register');
+                else if (!isAuthenticated) router.push('/login');
+                else syncManually();
+              }}
+            />
+          </View>
+        </Section>
         <Section title="Features">
           <FeatureToggle
             icon="calendar-range"
@@ -145,14 +208,22 @@ export default function SettingsScreen() {
             title="Native notifications"
             description={pushDescription}
             value={pushEnabled}
-            disabled={push.busy || push.state === 'unsupported' || push.state === 'denied'}
+            disabled={
+              !isAuthenticated ||
+              push.busy ||
+              push.state === 'unsupported' ||
+              push.state === 'denied'
+            }
             onChange={(value) => void (value ? push.enable() : push.disable())}
           />
           {push.error ? <ErrorNotice message={push.error} /> : null}
         </Section>
 
-        {aiAssistant ? (
+        {aiAssistant && isAuthenticated ? (
           <Section title="AI assistant tokens">
+            {sync.isOnline === false ? (
+              <ErrorNotice message="Reconnect to manage AI assistant tokens." />
+            ) : null}
             {newToken ? (
               <View style={styles.tokenReveal}>
                 <AppText variant="bodyStrong" colour={colours.success}>
@@ -183,7 +254,7 @@ export default function SettingsScreen() {
                 label="Create"
                 compact
                 loading={createToken.isPending}
-                disabled={!tokenName.trim()}
+                disabled={!tokenName.trim() || sync.isOnline === false}
                 onPress={() => createToken.mutate(tokenName.trim())}
               />
             </View>
@@ -213,6 +284,7 @@ export default function SettingsScreen() {
                       label="Revoke"
                       variant="danger"
                       compact
+                      disabled={sync.isOnline === false}
                       onPress={() => confirmRevoke(token.id, token.name)}
                     />
                   </View>
@@ -269,6 +341,16 @@ const styles = StyleSheet.create({
   content: { padding: spacing.lg, paddingBottom: spacing.huge, gap: spacing.xl },
   section: { gap: spacing.sm },
   sectionContent: { gap: spacing.xs },
+  syncCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: colours.border,
+    backgroundColor: colours.surface,
+    padding: spacing.sm,
+  },
   tokenReveal: {
     borderRadius: radii.lg,
     borderWidth: 1,

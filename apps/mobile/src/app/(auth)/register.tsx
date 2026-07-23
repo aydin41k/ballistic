@@ -13,9 +13,9 @@ import { ApiError } from '@/lib/api';
 
 export default function RegisterScreen() {
   const router = useRouter();
-  const { register } = useAuth();
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
+  const { register, startOffline, user } = useAuth();
+  const [name, setName] = useState(user?.name === 'You' ? '' : (user?.name ?? ''));
+  const [email, setEmail] = useState(user?.email ?? '');
   const [password, setPassword] = useState('');
   const [confirmation, setConfirmation] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -50,8 +50,16 @@ export default function RegisterScreen() {
     }
   }
 
+  async function continueOffline() {
+    await startOffline();
+    router.replace('/journal');
+  }
+
   return (
-    <AuthScaffold title="Create your journal" subtitle="A calm place for everything in motion.">
+    <AuthScaffold
+      title="Sync your journal"
+      subtitle="Your on-device tasks and notes will be kept and added to your account."
+    >
       <View style={styles.form}>
         {error ? <ErrorNotice message={error} /> : null}
         <AppTextField
@@ -77,7 +85,13 @@ export default function RegisterScreen() {
           value={password}
           onChangeText={setPassword}
           secureTextEntry
+          autoCapitalize="none"
+          autoCorrect={false}
+          spellCheck={false}
           autoComplete="new-password"
+          textContentType="newPassword"
+          keyboardType="default"
+          returnKeyType="next"
           placeholder="At least 8 characters"
           error={fieldErrors.password?.[0]}
         />
@@ -86,7 +100,13 @@ export default function RegisterScreen() {
           value={confirmation}
           onChangeText={setConfirmation}
           secureTextEntry
+          autoCapitalize="none"
+          autoCorrect={false}
+          spellCheck={false}
           autoComplete="new-password"
+          textContentType="newPassword"
+          keyboardType="default"
+          returnKeyType="go"
           placeholder="Type it once more"
           error={fieldErrors.password_confirmation?.[0]}
           onSubmitEditing={() => void submit()}
@@ -97,12 +117,22 @@ export default function RegisterScreen() {
           loading={submitting}
           disabled={!name.trim() || !email.trim() || !password || !confirmation}
         />
+        <AppButton
+          label="Continue offline"
+          variant="secondary"
+          onPress={() => void continueOffline()}
+        />
       </View>
       <View style={styles.footer}>
         <AppText variant="caption" colour={colours.textMuted}>
           Already have an account?
         </AppText>
-        <AppButton label="Sign in" variant="ghost" compact onPress={() => router.back()} />
+        <AppButton
+          label="Log in"
+          variant="ghost"
+          compact
+          onPress={() => router.replace('/login')}
+        />
       </View>
     </AuthScaffold>
   );

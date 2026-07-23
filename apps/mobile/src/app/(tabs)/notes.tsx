@@ -1,13 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import {
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  TextInput,
-  View,
-} from 'react-native';
-import Animated, { FadeIn } from 'react-native-reanimated';
+import { KeyboardAvoidingView, Platform, StyleSheet, TextInput, View } from 'react-native';
 
 import { AppIcon } from '@/components/ui/AppIcon';
 import { AppText } from '@/components/ui/AppText';
@@ -20,7 +12,7 @@ const maxCharacters = 10_000;
 export default function NotesScreen() {
   const { user, updateUser } = useAuth();
   const [notes, setNotes] = useState(user?.notes ?? '');
-  const [state, setState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const [saveError, setSaveError] = useState(false);
   const lastSaved = useRef(user?.notes ?? '');
   const notesRef = useRef(notes);
 
@@ -31,14 +23,12 @@ export default function NotesScreen() {
   const save = useCallback(async () => {
     const value = notesRef.current;
     if (value === lastSaved.current) return;
-    setState('saving');
     try {
       await updateUser({ notes: value || null });
       lastSaved.current = value;
-      setState('saved');
-      setTimeout(() => setState('idle'), 1400);
+      setSaveError(false);
     } catch {
-      setState('error');
+      setSaveError(true);
     }
   }, [updateUser]);
 
@@ -53,13 +43,9 @@ export default function NotesScreen() {
     <Screen>
       <KeyboardAvoidingView
         style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-        <ScrollView
-          contentInsetAdjustmentBehavior="automatic"
-          keyboardShouldPersistTaps="handled"
-          contentContainerStyle={styles.content}
-        >
+        <View style={styles.content}>
           <View style={styles.header}>
             <View style={styles.headingIcon}>
               <AppIcon name="notebook-outline" size={25} colour={colours.blue} />
@@ -71,7 +57,7 @@ export default function NotesScreen() {
               </AppText>
             </View>
           </View>
-          <Animated.View entering={FadeIn.duration(300)} style={styles.paper}>
+          <View style={styles.paper}>
             <TextInput
               value={notes}
               onChangeText={(value) => setNotes(value.slice(0, maxCharacters))}
@@ -81,44 +67,26 @@ export default function NotesScreen() {
               placeholder="Jot down anything…"
               placeholderTextColor={colours.textFaint}
               selectionColor={colours.blueBright}
+              scrollEnabled
               style={styles.input}
             />
             <View style={styles.meta}>
               <View style={styles.saveState}>
-                {state === 'saving' ? (
-                  <AppIcon name="cloud-upload-outline" size={16} colour={colours.textFaint} />
-                ) : null}
-                {state === 'saved' ? (
-                  <AppIcon name="check-circle" size={16} colour={colours.success} />
-                ) : null}
-                {state === 'error' ? (
+                {saveError ? (
                   <AppIcon name="alert-circle" size={16} colour={colours.danger} />
                 ) : null}
-                <AppText
-                  variant="caption"
-                  colour={
-                    state === 'error'
-                      ? colours.danger
-                      : state === 'saved'
-                        ? colours.success
-                        : colours.textFaint
-                  }
-                >
-                  {state === 'saving'
-                    ? 'Saving…'
-                    : state === 'saved'
-                      ? 'Saved'
-                      : state === 'error'
-                        ? 'Could not save'
-                        : 'Autosaves as you write'}
+                <AppText variant="caption" colour={saveError ? colours.danger : colours.textFaint}>
+                  {saveError
+                    ? 'Could not save on this device'
+                    : 'Saved automatically on this device'}
                 </AppText>
               </View>
               <AppText variant="caption" colour={colours.textFaint}>
                 {notes.length.toLocaleString('en-AU')} / {maxCharacters.toLocaleString('en-AU')}
               </AppText>
             </View>
-          </Animated.View>
-        </ScrollView>
+          </View>
+        </View>
       </KeyboardAvoidingView>
     </Screen>
   );
@@ -126,7 +94,7 @@ export default function NotesScreen() {
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  content: { padding: spacing.md, paddingBottom: 140, gap: spacing.lg },
+  content: { flex: 1, padding: spacing.md, paddingBottom: spacing.md, gap: spacing.md },
   header: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingTop: spacing.xs },
   headingIcon: {
     width: 50,
@@ -138,7 +106,8 @@ const styles = StyleSheet.create({
   },
   headingCopy: { flex: 1, gap: 2 },
   paper: {
-    minHeight: 520,
+    flex: 1,
+    minHeight: 0,
     borderRadius: radii.lg,
     backgroundColor: colours.surface,
     borderWidth: 1,
@@ -147,7 +116,8 @@ const styles = StyleSheet.create({
     ...shadows.card,
   },
   input: {
-    minHeight: 470,
+    flex: 1,
+    minHeight: 0,
     padding: spacing.lg,
     color: colours.text,
     fontFamily: typography.reading,

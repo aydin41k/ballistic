@@ -11,12 +11,13 @@ import { NotificationSync } from '@/components/NotificationSync';
 import { colours } from '@/constants/theme';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { JournalPreferencesProvider } from '@/contexts/JournalPreferencesContext';
+import { SyncProvider } from '@/contexts/SyncContext';
 import { queryClient } from '@/lib/query-client';
 
 void SplashScreen.preventAutoHideAsync();
 
 function Navigation() {
-  const { isReady, isAuthenticated } = useAuth();
+  const { isReady } = useAuth();
 
   useEffect(() => {
     if (isReady) void SplashScreen.hideAsync();
@@ -31,40 +32,36 @@ function Navigation() {
         screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colours.page } }}
       >
         <Stack.Screen name="index" />
-        <Stack.Protected guard={!isAuthenticated}>
-          <Stack.Screen name="(auth)" />
-        </Stack.Protected>
-        <Stack.Protected guard={isAuthenticated}>
-          <Stack.Screen name="(tabs)" />
-          <Stack.Screen
-            name="task"
-            options={{
-              presentation: 'formSheet',
-              sheetAllowedDetents: [0.62, 0.95],
-              sheetInitialDetentIndex: 1,
-              sheetGrabberVisible: true,
-            }}
-          />
-          <Stack.Screen
-            name="filters"
-            options={{
-              presentation: 'formSheet',
-              sheetAllowedDetents: [0.48, 0.82],
-              sheetInitialDetentIndex: 0,
-              sheetGrabberVisible: true,
-            }}
-          />
-          <Stack.Screen
-            name="notifications"
-            options={{
-              presentation: 'formSheet',
-              sheetAllowedDetents: [0.86, 1],
-              sheetInitialDetentIndex: 0,
-              sheetGrabberVisible: true,
-            }}
-          />
-          <Stack.Screen name="settings" options={{ presentation: 'modal' }} />
-        </Stack.Protected>
+        <Stack.Screen name="(auth)" />
+        <Stack.Screen name="(tabs)" />
+        <Stack.Screen
+          name="task"
+          options={{
+            presentation: 'formSheet',
+            sheetAllowedDetents: [0.62, 0.95],
+            sheetInitialDetentIndex: 1,
+            sheetGrabberVisible: true,
+          }}
+        />
+        <Stack.Screen
+          name="filters"
+          options={{
+            presentation: 'formSheet',
+            sheetAllowedDetents: [0.48, 0.82],
+            sheetInitialDetentIndex: 0,
+            sheetGrabberVisible: true,
+          }}
+        />
+        <Stack.Screen
+          name="notifications"
+          options={{
+            presentation: 'formSheet',
+            sheetAllowedDetents: [0.86, 1],
+            sheetInitialDetentIndex: 0,
+            sheetGrabberVisible: true,
+          }}
+        />
+        <Stack.Screen name="settings" options={{ presentation: 'modal' }} />
       </Stack>
     </View>
   );
@@ -76,9 +73,11 @@ export default function RootLayout() {
       <SafeAreaProvider>
         <QueryClientProvider client={queryClient}>
           <AuthProvider>
-            <JournalPreferencesProvider>
-              <Navigation />
-            </JournalPreferencesProvider>
+            <SyncProvider>
+              <JournalPreferencesProvider>
+                <Navigation />
+              </JournalPreferencesProvider>
+            </SyncProvider>
           </AuthProvider>
         </QueryClientProvider>
       </SafeAreaProvider>

@@ -144,8 +144,8 @@ export function ProjectPicker({
                   ))}
                 </View>
                 <AppButton
-                  label={creating ? 'Creating…' : 'Create project'}
-                  loading={creating}
+                  label="Create project"
+                  disabled={creating}
                   onPress={() => void create()}
                 />
               </View>

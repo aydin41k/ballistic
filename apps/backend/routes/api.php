@@ -36,6 +36,7 @@ Route::middleware(['auth:sanctum', 'token.api', 'throttle:api'])->group(function
     Route::get('/user', [UserController::class, 'show']);
     Route::patch('/user', [UserController::class, 'update']);
     Route::put('/user/profile', [UserController::class, 'updateProfile']);
+    Route::post('/user/avatar', [UserController::class, 'uploadAvatar']);
 
     // MCP tokens for AI assistant clients (requires ai_assistant feature flag)
     Route::middleware('feature.ai')->group(function () {

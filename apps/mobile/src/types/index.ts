@@ -32,6 +32,18 @@ export interface User {
   favourites?: UserLookup[];
 }
 
+export type UserUpdatePayload = Partial<
+  Pick<User, 'name' | 'email' | 'phone' | 'notes' | 'bio' | 'avatar_url'> & {
+    feature_flags: Partial<User['feature_flags']> | null;
+  }
+>;
+
+export interface AvatarUploadPayload {
+  fileUri: string;
+  fileName: string;
+  mimeType: string;
+}
+
 export interface Project {
   id: string;
   user_id: string;
@@ -79,6 +91,21 @@ export interface Item {
   tags?: Tag[];
   assignee?: UserLookup | null;
   owner?: UserLookup | null;
+}
+
+export interface ItemInput {
+  id?: string;
+  title: string;
+  description?: string | null;
+  status?: Status;
+  project_id?: string | null;
+  position?: number;
+  scheduled_date?: string | null;
+  due_date?: string | null;
+  recurrence_rule?: string | null;
+  recurrence_strategy?: Item['recurrence_strategy'];
+  assignee_id?: string | null;
+  assignee_notes?: string | null;
 }
 
 export interface ActivityLogItem {

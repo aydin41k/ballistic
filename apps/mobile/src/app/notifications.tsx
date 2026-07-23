@@ -1,4 +1,5 @@
 import { useRouter } from 'expo-router';
+import { useState } from 'react';
 import { FlatList, RefreshControl, StyleSheet, View } from 'react-native';
 import ReanimatedSwipeable, {
   type SwipeableMethods,
@@ -14,13 +15,18 @@ import { MotionPressable } from '@/components/ui/MotionPressable';
 import { Screen } from '@/components/ui/Screen';
 import { SheetHeader } from '@/components/ui/SheetHeader';
 import { colours, radii, spacing } from '@/constants/theme';
+import { useSync } from '@/contexts/SyncContext';
 import { useNotifications } from '@/hooks/useNotifications';
+import { useHardwareBackDismiss } from '@/hooks/useHardwareBackDismiss';
 import { formatTimeAgo } from '@/lib/date';
 import type { Notification } from '@/types';
 
 export default function NotificationsScreen() {
   const router = useRouter();
+  useHardwareBackDismiss(() => router.back());
+  const sync = useSync();
   const notifications = useNotifications(true);
+  const [pullRefreshing, setPullRefreshing] = useState(false);
   const unread = notifications.data?.unread_count ?? 0;
 
   return (
@@ -46,9 +52,15 @@ export default function NotificationsScreen() {
         contentContainerStyle={styles.content}
         refreshControl={
           <RefreshControl
-            refreshing={notifications.isRefetching}
+            refreshing={pullRefreshing}
             tintColor={colours.blue}
-            onRefresh={() => void notifications.refetch()}
+            onRefresh={() => {
+              setPullRefreshing(true);
+              void sync
+                .syncNow()
+                .then(() => notifications.refetch())
+                .finally(() => setPullRefreshing(false));
+            }}
           />
         }
         ListHeaderComponent={
@@ -112,7 +124,11 @@ function NotificationCard({
   );
 
   return (
-    <Animated.View entering={FadeInDown.delay(Math.min(index, 8) * 30)}>
+    <Animated.View
+      entering={FadeInDown.delay(Math.min(index, 8) * 18)
+        .duration(180)
+        .withInitialValues({ opacity: 0, transform: [{ translateY: 8 }] })}
+    >
       <ReanimatedSwipeable
         renderRightActions={rightAction}
         overshootFriction={8}

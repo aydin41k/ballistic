@@ -6,12 +6,15 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\UpdateProfileRequest;
+use App\Http\Requests\UploadAvatarRequest;
 use App\Http\Resources\UserResource;
 use App\Models\AppSetting;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
 use Illuminate\Validation\ValidationException;
@@ -121,5 +124,46 @@ final class UserController extends Controller
         });
 
         return new UserResource($user);
+    }
+
+    /**
+     * Store a profile photo selected or captured on the authenticated device.
+     */
+    public function uploadAvatar(UploadAvatarRequest $request): UserResource
+    {
+        /** @var User $user */
+        $user = $request->user();
+        $avatar = $request->file('avatar');
+        $extension = strtolower($avatar->extension() ?: 'jpg');
+        $path = $avatar->storePubliclyAs(
+            "avatars/{$user->id}",
+            Str::uuid()->toString().'.'.$extension,
+            'public'
+        );
+
+        abort_if($path === false, 500, 'The profile photo could not be stored.');
+
+        $previousAvatarUrl = $user->avatar_url;
+        $user->forceFill([
+            'avatar_url' => Storage::disk('public')->url($path),
+        ])->save();
+
+        $this->deleteManagedAvatar($previousAvatarUrl, (string) $user->id);
+
+        return new UserResource($user->fresh());
+    }
+
+    private function deleteManagedAvatar(?string $avatarUrl, string $userId): void
+    {
+        if ($avatarUrl === null) {
+            return;
+        }
+
+        $path = parse_url($avatarUrl, PHP_URL_PATH);
+        if (! is_string($path) || ! str_starts_with($path, "/storage/avatars/{$userId}/")) {
+            return;
+        }
+
+        Storage::disk('public')->delete(Str::after($path, '/storage/'));
     }
 }

@@ -2,7 +2,7 @@
   "expo": {
     "name": "Ballistic",
     "slug": "ballistic-mobile",
-    "version": "0.1.6",
+    "version": "0.2.7",
     "orientation": "portrait",
     "icon": "./assets/images/ballistic-icon.png",
     "scheme": "ballistic",
@@ -20,6 +20,7 @@
       "icon": "./assets/images/ballistic-icon.png",
       "package": "com.psycode.ballistic",
       "edgeToEdgeEnabled": true,
+      "softwareKeyboardLayoutMode": "resize",
       "predictiveBackGestureEnabled": true,
       "permissions": ["POST_NOTIFICATIONS"]
     },
@@ -46,11 +47,27 @@
           "color": "#1E40AF",
           "defaultChannel": "ballistic"
         }
-      ]
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow Ballistic to choose a profile photo.",
+          "cameraPermission": "Allow Ballistic to take a profile photo.",
+          "microphonePermission": false
+        }
+      ],
+      "./plugins/with-image-picker-crop-theme"
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "2f0e4af2-5da0-4024-93bb-a64c6176d9d8"
+      }
+    },
+    "owner": "aydin4ik"
   }
 }

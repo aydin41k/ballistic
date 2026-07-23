@@ -7,11 +7,13 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppIcon } from '@/components/ui/AppIcon';
 import { MotionPressable } from '@/components/ui/MotionPressable';
 import { colours, radii } from '@/constants/theme';
+import { useAuth } from '@/contexts/AuthContext';
 import { useFeatureFlags } from '@/hooks/useFeatureFlags';
 import { useNotifications } from '@/hooks/useNotifications';
 
 export default function TabsLayout() {
   const insets = useSafeAreaInsets();
+  const { isAuthenticated } = useAuth();
   const { delegation } = useFeatureFlags();
   const notifications = useNotifications(delegation);
   const unread = notifications.data?.unread_count ?? 0;
@@ -78,7 +80,11 @@ export default function TabsLayout() {
         options={{
           title: 'Profile',
           tabBarIcon: ({ color, size }) => (
-            <MaterialCommunityIcons name="account-circle-outline" size={size} color={color} />
+            <MaterialCommunityIcons
+              name="account-circle-outline"
+              size={size}
+              color={isAuthenticated ? color : colours.danger}
+            />
           ),
         }}
       />

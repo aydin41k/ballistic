@@ -6,6 +6,7 @@ use App\Models\Project;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Foundation\Testing\WithFaker;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 class ProjectTest extends TestCase
@@ -29,6 +30,49 @@ class ProjectTest extends TestCase
             'user_id' => $user->id,
             'name' => 'Test Project',
             'color' => '#FF5733',
+        ]);
+    }
+
+    public function test_offline_project_create_can_be_replayed_safely(): void
+    {
+        $user = User::factory()->create();
+        $projectId = (string) Str::uuid();
+        $payload = [
+            'id' => $projectId,
+            'name' => 'Offline project',
+            'color' => '#2563EB',
+        ];
+
+        $this->actingAs($user)->postJson('/api/projects', $payload)
+            ->assertCreated()
+            ->assertJsonPath('data.id', $projectId);
+
+        $this->actingAs($user)->postJson('/api/projects', $payload)
+            ->assertOk()
+            ->assertJsonPath('data.id', $projectId);
+
+        $this->assertDatabaseCount('projects', 1);
+        $this->assertDatabaseHas('projects', [
+            'id' => $projectId,
+            'user_id' => $user->id,
+            'name' => 'Offline project',
+        ]);
+    }
+
+    public function test_user_cannot_claim_another_users_offline_project_identifier(): void
+    {
+        $owner = User::factory()->create();
+        $otherUser = User::factory()->create();
+        $project = Project::factory()->create(['user_id' => $owner->id]);
+
+        $this->actingAs($otherUser)->postJson('/api/projects', [
+            'id' => $project->id,
+            'name' => 'Identifier collision',
+        ])->assertConflict();
+
+        $this->assertDatabaseHas('projects', [
+            'id' => $project->id,
+            'user_id' => $owner->id,
         ]);
     }
 
