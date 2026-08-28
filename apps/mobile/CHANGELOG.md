@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.2.10 - 2026-08-28
+
+- Matched departing task borders to their row background and removed card shadows before starting the whole-row fade.
+
+## 0.2.9 - 2026-08-28
+
+- Kept each departing task's full list space until its whole-row fade finishes, then reflowed the remaining rows without overlap.
+
+## 0.2.8 - 2026-08-27
+
+- Faded completed and skipped task cards as a single unit while their list row disappears.
+- Scrolled the journal to the newly repositioned task after using “To top”.
+
 ## 0.2.7 - 2026-07-23
 
 - Kept completed and skipped tasks fully visible for three seconds before a slower, eased departure and gentler list reflow.

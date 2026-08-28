@@ -1,5 +1,5 @@
 import * as Haptics from 'expo-haptics';
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { StyleSheet, View } from 'react-native';
 import ReanimatedSwipeable, {
   type SwipeableMethods,
@@ -8,6 +8,7 @@ import Animated, {
   Easing,
   FadeInDown,
   LinearTransition,
+  runOnJS,
   useAnimatedStyle,
   useSharedValue,
   withTiming,
@@ -36,8 +37,14 @@ interface TaskCardProps {
   isActive?: boolean;
   isDeparting?: boolean;
   isFading?: boolean;
+  onDepartureFadeComplete?: () => void;
   isFocused?: boolean;
 }
+
+const departureFadeMs = 650;
+const overdueBackground = '#FFFAFA';
+const soonBackground = '#FFFEF8';
+const focusedBackground = '#F8FAFF';
 
 export function TaskCard({
   item,
@@ -53,6 +60,7 @@ export function TaskCard({
   isActive = false,
   isDeparting = false,
   isFading = false,
+  onDepartureFadeComplete,
   isFocused = false,
 }: TaskCardProps) {
   const completed = item.status === 'done' || item.status === 'wontdo';
@@ -65,23 +73,47 @@ export function TaskCard({
   const hasBadges = Boolean(
     projectName || item.tags?.length || showAssigneeBadge || showOwnerBadge,
   );
+  const cardBackground = isActive
+    ? colours.blueSoft
+    : isFocused
+      ? focusedBackground
+      : urgency === 'overdue'
+        ? overdueBackground
+        : urgency === 'soon'
+          ? soonBackground
+          : colours.surface;
   const longPressTriggered = useRef(false);
-  const departureProgress = useSharedValue(0);
+  const fadeCompletionRef = useRef(onDepartureFadeComplete);
+  const departureOpacity = useSharedValue(1);
 
   useEffect(() => {
-    departureProgress.value = withTiming(isFading ? 1 : 0, {
-      duration: isFading ? 650 : 160,
-      easing: Easing.inOut(Easing.cubic),
-    });
-  }, [departureProgress, isFading]);
+    fadeCompletionRef.current = onDepartureFadeComplete;
+  }, [onDepartureFadeComplete]);
 
-  const departureStyle = useAnimatedStyle(() => ({
-    opacity: 1 - departureProgress.value,
-    transform: [
-      { translateY: -2 * departureProgress.value },
-      { scale: 1 - 0.01 * departureProgress.value },
-    ],
-  }));
+  const completeDepartureFade = useCallback(() => {
+    fadeCompletionRef.current?.();
+  }, []);
+
+  useEffect(() => {
+    if (!isFading) {
+      departureOpacity.value = 1;
+      return;
+    }
+
+    const frame = requestAnimationFrame(() => {
+      departureOpacity.value = withTiming(
+        0,
+        { duration: departureFadeMs, easing: Easing.inOut(Easing.cubic) },
+        (finished) => {
+          if (finished) runOnJS(completeDepartureFade)();
+        },
+      );
+    });
+
+    return () => cancelAnimationFrame(frame);
+  }, [completeDepartureFade, departureOpacity, isFading]);
+
+  const departureStyle = useAnimatedStyle(() => ({ opacity: departureOpacity.value }));
 
   const rightActions = (_progress: unknown, _translation: unknown, methods: SwipeableMethods) => (
     <View style={styles.actionsRow}>
@@ -152,140 +184,148 @@ export function TaskCard({
               .duration(180)
               .withInitialValues({ opacity: 0, transform: [{ translateY: 6 }] })
       }
+      style={departureStyle}
       layout={LinearTransition.duration(280)}
     >
-      <Animated.View style={departureStyle}>
-        <ReanimatedSwipeable
-          enabled={!isActive && !isDeparting}
-          friction={1.8}
-          overshootFriction={9}
-          renderLeftActions={leftActions}
-          renderRightActions={rightActions}
-          containerStyle={styles.swipeContainer}
+      <ReanimatedSwipeable
+        enabled={!isActive && !isDeparting}
+        friction={1.8}
+        overshootFriction={9}
+        renderLeftActions={leftActions}
+        renderRightActions={rightActions}
+        containerStyle={styles.swipeContainer}
+      >
+        <MotionPressable
+          onPressIn={() => {
+            longPressTriggered.current = false;
+          }}
+          onPress={() => {
+            if (longPressTriggered.current) return;
+            onEdit();
+          }}
+          onLongPress={
+            drag
+              ? () => {
+                  longPressTriggered.current = true;
+                  void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                  drag();
+                }
+              : undefined
+          }
+          delayLongPress={260}
+          accessibilityRole="button"
+          accessibilityLabel={`${item.title}, ${item.status}`}
+          accessibilityHint={
+            isDeparting
+              ? 'Status updated. This task will leave the journal shortly.'
+              : drag
+                ? 'Tap to edit. Touch and hold to reorder.'
+                : 'Tap to edit.'
+          }
+          style={[
+            styles.card,
+            urgency === 'overdue' && styles.overdue,
+            urgency === 'soon' && styles.soon,
+            isFocused && styles.focused,
+            isActive && styles.active,
+            isFading && {
+              backgroundColor: cardBackground,
+              borderColor: cardBackground,
+              borderLeftColor: cardBackground,
+              shadowColor: cardBackground,
+              shadowOpacity: 0,
+              shadowRadius: 0,
+              elevation: 0,
+            },
+          ]}
         >
-          <MotionPressable
-            onPressIn={() => {
-              longPressTriggered.current = false;
-            }}
-            onPress={() => {
-              if (longPressTriggered.current) return;
-              onEdit();
-            }}
-            onLongPress={
-              drag
-                ? () => {
-                    longPressTriggered.current = true;
-                    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                    drag();
-                  }
-                : undefined
-            }
-            delayLongPress={260}
-            accessibilityRole="button"
-            accessibilityLabel={`${item.title}, ${item.status}`}
-            accessibilityHint={
-              isDeparting
-                ? 'Status updated. This task will leave the journal shortly.'
-                : drag
-                  ? 'Tap to edit. Touch and hold to reorder.'
-                  : 'Tap to edit.'
-            }
-            style={[
-              styles.card,
-              urgency === 'overdue' && styles.overdue,
-              urgency === 'soon' && styles.soon,
-              isFocused && styles.focused,
-              isActive && styles.active,
-            ]}
-          >
-            <StatusOrb status={item.status} onChange={onStatus} />
-            <View style={styles.content}>
-              <View style={styles.titleRow}>
-                <AppText
-                  variant="bodyStrong"
-                  colour={completed ? colours.textFaint : colours.navy}
-                  style={[styles.title, completed && styles.completed]}
-                >
-                  {item.title}
-                </AppText>
-                {dates && (item.is_recurring_template || item.is_recurring_instance) ? (
-                  <AppIcon name="repeat" size={15} colour={colours.textFaint} />
-                ) : null}
-              </View>
-              {hasBadges ? (
-                <View style={styles.badges}>
-                  {projectName ? (
-                    <Badge
-                      label={projectName}
-                      background={colours.blueSoft}
-                      foreground={colours.blue}
-                      dot={item.project?.color}
-                    />
-                  ) : null}
-                  {item.tags?.map((tag) => (
-                    <Badge
-                      key={tag.id}
-                      label={tag.name}
-                      background={colours.violetSoft}
-                      foreground={tag.color || colours.violet}
-                    />
-                  ))}
-                  {showAssigneeBadge && item.assignee ? (
-                    <Badge
-                      label={`→ ${item.assignee.name}`}
-                      background={colours.warningSoft}
-                      foreground={colours.warning}
-                    />
-                  ) : null}
-                  {showOwnerBadge && item.owner ? (
-                    <Badge
-                      label={`← ${item.owner.name}`}
-                      background={colours.successSoft}
-                      foreground={colours.success}
-                    />
-                  ) : null}
-                </View>
-              ) : null}
-              {item.description ? (
-                <AppText
-                  variant="caption"
-                  colour={completed ? colours.textFaint : colours.textMuted}
-                  numberOfLines={2}
-                >
-                  {item.description}
-                </AppText>
-              ) : null}
-              {delegation && item.assignee_notes ? (
-                <AppText variant="caption" colour={colours.textFaint} numberOfLines={2}>
-                  Note: {item.assignee_notes}
-                </AppText>
-              ) : null}
-              {dates && item.due_date && (!completed || isDeparting) ? (
-                <View style={styles.dateRow}>
-                  {urgency === 'overdue' ? <View style={styles.pulseDot} /> : null}
-                  <AppText
-                    variant="caption"
-                    colour={
-                      urgency === 'overdue'
-                        ? colours.danger
-                        : urgency === 'soon'
-                          ? colours.warning
-                          : colours.textFaint
-                    }
-                  >
-                    {urgency === 'overdue' ? 'Overdue' : 'Due'} {formatDateKey(item.due_date)}
-                  </AppText>
-                </View>
-              ) : null}
-              {dates && item.scheduled_date && (!completed || isDeparting) ? (
-                <AppText variant="caption" colour={colours.textFaint}>
-                  Scheduled {formatDateKey(item.scheduled_date)}
-                </AppText>
+          <StatusOrb status={item.status} onChange={onStatus} />
+          <View style={styles.content}>
+            <View style={styles.titleRow}>
+              <AppText
+                variant="bodyStrong"
+                colour={completed ? colours.textFaint : colours.navy}
+                style={[styles.title, completed && styles.completed]}
+              >
+                {item.title}
+              </AppText>
+              {dates && (item.is_recurring_template || item.is_recurring_instance) ? (
+                <AppIcon name="repeat" size={15} colour={colours.textFaint} />
               ) : null}
             </View>
-          </MotionPressable>
-        </ReanimatedSwipeable>
-      </Animated.View>
+            {hasBadges ? (
+              <View style={styles.badges}>
+                {projectName ? (
+                  <Badge
+                    label={projectName}
+                    background={colours.blueSoft}
+                    foreground={colours.blue}
+                    dot={item.project?.color}
+                  />
+                ) : null}
+                {item.tags?.map((tag) => (
+                  <Badge
+                    key={tag.id}
+                    label={tag.name}
+                    background={colours.violetSoft}
+                    foreground={tag.color || colours.violet}
+                  />
+                ))}
+                {showAssigneeBadge && item.assignee ? (
+                  <Badge
+                    label={`→ ${item.assignee.name}`}
+                    background={colours.warningSoft}
+                    foreground={colours.warning}
+                  />
+                ) : null}
+                {showOwnerBadge && item.owner ? (
+                  <Badge
+                    label={`← ${item.owner.name}`}
+                    background={colours.successSoft}
+                    foreground={colours.success}
+                  />
+                ) : null}
+              </View>
+            ) : null}
+            {item.description ? (
+              <AppText
+                variant="caption"
+                colour={completed ? colours.textFaint : colours.textMuted}
+                numberOfLines={2}
+              >
+                {item.description}
+              </AppText>
+            ) : null}
+            {delegation && item.assignee_notes ? (
+              <AppText variant="caption" colour={colours.textFaint} numberOfLines={2}>
+                Note: {item.assignee_notes}
+              </AppText>
+            ) : null}
+            {dates && item.due_date && (!completed || isDeparting) ? (
+              <View style={styles.dateRow}>
+                {urgency === 'overdue' ? <View style={styles.pulseDot} /> : null}
+                <AppText
+                  variant="caption"
+                  colour={
+                    urgency === 'overdue'
+                      ? colours.danger
+                      : urgency === 'soon'
+                        ? colours.warning
+                        : colours.textFaint
+                  }
+                >
+                  {urgency === 'overdue' ? 'Overdue' : 'Due'} {formatDateKey(item.due_date)}
+                </AppText>
+              </View>
+            ) : null}
+            {dates && item.scheduled_date && (!completed || isDeparting) ? (
+              <AppText variant="caption" colour={colours.textFaint}>
+                Scheduled {formatDateKey(item.scheduled_date)}
+              </AppText>
+            ) : null}
+          </View>
+        </MotionPressable>
+      </ReanimatedSwipeable>
     </Animated.View>
   );
 
@@ -348,9 +388,13 @@ const styles = StyleSheet.create({
     padding: spacing.sm,
     ...shadows.card,
   },
-  overdue: { borderLeftWidth: 4, borderLeftColor: colours.danger, backgroundColor: '#FFFAFA' },
-  soon: { borderLeftWidth: 4, borderLeftColor: '#FBBF24', backgroundColor: '#FFFEF8' },
-  focused: { borderColor: colours.blueBright, backgroundColor: '#F8FAFF' },
+  overdue: {
+    borderLeftWidth: 4,
+    borderLeftColor: colours.danger,
+    backgroundColor: overdueBackground,
+  },
+  soon: { borderLeftWidth: 4, borderLeftColor: '#FBBF24', backgroundColor: soonBackground },
+  focused: { borderColor: colours.blueBright, backgroundColor: focusedBackground },
   active: { borderColor: colours.blueBright, backgroundColor: colours.blueSoft },
   content: { flex: 1, alignSelf: 'center', gap: 5, minWidth: 0 },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },

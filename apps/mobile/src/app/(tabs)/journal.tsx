@@ -28,23 +28,15 @@ import { subscribeToJournalFocus } from '@/lib/journal-focus';
 import type { Item, ItemScope, Status } from '@/types';
 
 type JournalSection = 'mine' | 'assigned' | 'delegated';
-type DeparturePhase = 'holding' | 'fading';
-
 interface DepartingItem {
   item: Item;
   scope: ItemScope;
   section: JournalSection;
   index: number;
-  phase: DeparturePhase;
-}
-
-interface DepartureTimers {
-  fade: ReturnType<typeof setTimeout>;
-  remove: ReturnType<typeof setTimeout>;
+  isFading: boolean;
 }
 
 const departureHoldMs = 3000;
-const departureFadeMs = 650;
 
 function getDepartureKey(scope: ItemScope, section: JournalSection, itemId: string): string {
   return `${scope}:${section}:${itemId}`;
@@ -70,7 +62,7 @@ export default function JournalScreen() {
   const actions = useJournalActions(user);
   const notifications = useNotifications(delegation);
   const [departures, setDepartures] = useState<Record<string, DepartingItem>>({});
-  const departureTimers = useRef(new Map<string, DepartureTimers>());
+  const departureTimers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
   const listRef = useRef<FlatList<Item>>(null);
   const [focusedItemId, setFocusedItemId] = useState<string | null>(null);
   const [pullRefreshing, setPullRefreshing] = useState(false);
@@ -88,10 +80,9 @@ export default function JournalScreen() {
   );
 
   const clearDepartureTimers = useCallback((key: string) => {
-    const timers = departureTimers.current.get(key);
-    if (!timers) return;
-    clearTimeout(timers.fade);
-    clearTimeout(timers.remove);
+    const timer = departureTimers.current.get(key);
+    if (timer === undefined) return;
+    clearTimeout(timer);
     departureTimers.current.delete(key);
   }, []);
 
@@ -121,42 +112,27 @@ export default function JournalScreen() {
           scope,
           section,
           index,
-          phase: 'holding',
+          isFading: false,
         },
       }));
 
-      const fade = setTimeout(() => {
+      const timer = setTimeout(() => {
         setDepartures((current) => {
           const departure = current[key];
           if (!departure) return current;
-          return { ...current, [key]: { ...departure, phase: 'fading' } };
+          return { ...current, [key]: { ...departure, isFading: true } };
         });
+        departureTimers.current.delete(key);
       }, departureHoldMs);
 
-      const remove = setTimeout(
-        () => {
-          setDepartures((current) => {
-            if (!current[key]) return current;
-            const next = { ...current };
-            delete next[key];
-            return next;
-          });
-          departureTimers.current.delete(key);
-        },
-        departureHoldMs + departureFadeMs + 60,
-      );
-
-      departureTimers.current.set(key, { fade, remove });
+      departureTimers.current.set(key, timer);
     },
     [clearDepartureTimers, scope],
   );
 
   useEffect(
     () => () => {
-      departureTimers.current.forEach(({ fade, remove }) => {
-        clearTimeout(fade);
-        clearTimeout(remove);
-      });
+      departureTimers.current.forEach(clearTimeout);
       departureTimers.current.clear();
     },
     [],
@@ -271,7 +247,13 @@ export default function JournalScreen() {
   function moveToTop(item: Item) {
     const full = journal.data?.mine ?? [];
     const next = [item, ...full.filter((candidate) => candidate.id !== item.id)];
-    actions.reorderTasks.mutate(next);
+    actions.reorderTasks.mutate(next, {
+      onSuccess: () => {
+        requestAnimationFrame(() => {
+          listRef.current?.scrollToOffset({ offset: 0, animated: true });
+        });
+      },
+    });
   }
 
   function handleDragEnd({ data }: DragEndParams<Item>) {
@@ -284,7 +266,8 @@ export default function JournalScreen() {
   }
 
   const staticCard = (item: Item, index: number, section: 'assigned' | 'delegated') => {
-    const departure = departures[getDepartureKey(scope, section, item.id)];
+    const departureKey = getDepartureKey(scope, section, item.id);
+    const departure = departures[departureKey];
     return (
       <TaskCard
         key={item.id}
@@ -297,7 +280,8 @@ export default function JournalScreen() {
         onDecline={section === 'assigned' ? () => confirmDecline(item) : undefined}
         onDelete={item.user_id === user?.id ? () => confirmDelete(item) : undefined}
         isDeparting={Boolean(departure)}
-        isFading={departure?.phase === 'fading'}
+        isFading={departure?.isFading}
+        onDepartureFadeComplete={() => removeDeparture(departureKey)}
         isFocused={item.id === focusedItemId}
       />
     );
@@ -405,7 +389,8 @@ export default function JournalScreen() {
         }
         renderItem={({ item, drag, isActive, getIndex }) => {
           const index = getIndex() ?? 0;
-          const departure = departures[getDepartureKey(scope, 'mine', item.id)];
+          const departureKey = getDepartureKey(scope, 'mine', item.id);
+          const departure = departures[departureKey];
           return (
             <TaskCard
               item={item}
@@ -419,7 +404,8 @@ export default function JournalScreen() {
               drag={departure ? undefined : drag}
               isActive={isActive}
               isDeparting={Boolean(departure)}
-              isFading={departure?.phase === 'fading'}
+              isFading={departure?.isFading}
+              onDepartureFadeComplete={() => removeDeparture(departureKey)}
               isFocused={item.id === focusedItemId}
             />
           );
