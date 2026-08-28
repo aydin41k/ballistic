@@ -13,16 +13,16 @@ info:
     Web routes use session-based authentication with CSRF protection.
     
     ### Token Authentication
-    API endpoints can use Bearer token authentication. To obtain a token:
-    1. Register a new account via `POST /api/register` or
-    2. Login with existing credentials via `POST /api/login`
+    API endpoints can use Bearer token authentication. Register a pending account via
+    `POST /api/register`, complete the confirmation link and human check, then obtain
+    a token by logging in via `POST /api/login`.
     
     Include the token in subsequent requests using the `Authorization` header:
     ```
     Authorization: Bearer {your-token}
     ```
     
-  version: 0.8.0
+  version: 0.8.1
   contact:
     name: Ballistic Backend
   license:
@@ -59,7 +59,7 @@ paths:
       tags:
         - API Authentication
       summary: Register a new user (API)
-      description: Create a new user account and receive an API token
+      description: Create a pending user account and send a confirmation link by email or SMS. The link opens a human check before the account can sign in.
       operationId: apiRegister
       requestBody:
         required: true
@@ -72,6 +72,7 @@ paths:
                 - email
                 - password
                 - password_confirmation
+                - verification_channel
               properties:
                 name:
                   type: string
@@ -80,6 +81,16 @@ paths:
                   type: string
                   format: email
                   example: john@example.com
+                phone:
+                  type: string
+                  pattern: '^\+[1-9]\d{7,14}$'
+                  nullable: true
+                  description: Required when verification_channel is sms
+                  example: "+61412345678"
+                verification_channel:
+                  type: string
+                  enum: [email, sms]
+                  default: email
                 password:
                   type: string
                   format: password
@@ -91,8 +102,8 @@ paths:
                   minLength: 8
                   example: SecurePassword123
       responses:
-        '201':
-          description: User registered successfully
+        '202':
+          description: Account created and confirmation sent
           content:
             application/json:
               schema:
@@ -100,12 +111,14 @@ paths:
                 properties:
                   message:
                     type: string
-                    example: User registered successfully
-                  user:
-                    $ref: '#/components/schemas/User'
-                  token:
+                    example: Account created. Follow the confirmation link to verify your account.
+                  verification_channel:
                     type: string
-                    example: 1|abcdef1234567890abcdef1234567890
+                    enum: [email, sms]
+                  destination:
+                    type: string
+                    description: Masked confirmation destination
+                    example: j•••@example.com
         '422':
           description: Validation error
           content:
@@ -162,6 +175,35 @@ paths:
                 $ref: '#/components/schemas/ValidationError'
         '429':
           $ref: '#/components/responses/TooManyRequests'
+
+  /api/account-verification/resend:
+    post:
+      tags:
+        - API Authentication
+      summary: Resend a pending account confirmation
+      description: Sends a fresh email confirmation when the address belongs to a pending account. The response does not reveal whether the account exists.
+      operationId: resendAccountVerification
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+              properties:
+                email:
+                  type: string
+                  format: email
+      responses:
+        '202':
+          description: Request accepted
+        '422':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
 
   /api/logout:
     post:
@@ -1553,6 +1595,16 @@ components:
           format: date-time
           nullable: true
           example: 2025-10-08T12:00:00.000000Z
+        phone_verified_at:
+          type: string
+          format: date-time
+          nullable: true
+          example: 2025-10-08T12:00:00.000000Z
+        account_verified_at:
+          type: string
+          format: date-time
+          nullable: true
+          example: 2025-10-08T12:00:00.000000Z
         created_at:
           type: string
           format: date-time
@@ -1812,4 +1864,3 @@ components:
             $ref: '#/components/schemas/Error'
           example:
             message: Too many requests. Please try again later.
-

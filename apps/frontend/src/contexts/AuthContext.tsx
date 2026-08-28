@@ -8,7 +8,7 @@ import {
   useCallback,
   type ReactNode,
 } from "react";
-import type { User } from "@/types";
+import type { RegistrationResponse, User, VerificationChannel } from "@/types";
 import {
   getToken,
   setStoredUser,
@@ -33,7 +33,9 @@ interface AuthContextType {
     email: string,
     password: string,
     passwordConfirmation: string,
-  ) => Promise<void>;
+    verificationChannel: VerificationChannel,
+    phone?: string,
+  ) => Promise<RegistrationResponse>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
   updateUser: (data: UserUpdatePayload) => Promise<void>;
@@ -77,15 +79,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       email: string,
       password: string,
       passwordConfirmation: string,
+      verificationChannel: VerificationChannel,
+      phone?: string,
     ) => {
-      const response = await authRegister(
+      return authRegister(
         name,
         email,
         password,
         passwordConfirmation,
+        verificationChannel,
+        phone,
       );
-      setUser(response.user);
-      setStoredUser(response.user);
     },
     [],
   );

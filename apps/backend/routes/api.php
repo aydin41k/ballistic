@@ -24,6 +24,7 @@ use Illuminate\Support\Facades\Route;
 // Rate limited to prevent brute force and mass account creation
 Route::middleware(['throttle:auth'])->group(function () {
     Route::post('/register', [AuthController::class, 'register']);
+    Route::post('/account-verification/resend', [AuthController::class, 'resendVerification']);
     Route::post('/login', [AuthController::class, 'login']);
 });
 

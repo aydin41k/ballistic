@@ -1,3 +1,10 @@
+## 0.19.1 - 2026-08-28
+
+### Changed
+
+- **Verified sign-up**: added email/SMS confirmation choice, optional international mobile entry, a clear confirmation-sent state, and verified-account feedback on sign-in
+- **Pending accounts**: registration no longer stores a session before the confirmation link and human check are completed
+
 ## 0.19.0 - 2026-07-19
 
 ### Added

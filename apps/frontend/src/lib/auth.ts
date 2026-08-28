@@ -1,4 +1,10 @@
-import type { AuthResponse, User, ValidationError } from "@/types";
+import type {
+  AuthResponse,
+  RegistrationResponse,
+  User,
+  ValidationError,
+  VerificationChannel,
+} from "@/types";
 
 const TOKEN_KEY = "ballistic_auth_token";
 const USER_KEY = "ballistic_user";
@@ -140,7 +146,9 @@ export async function register(
   email: string,
   password: string,
   password_confirmation: string,
-): Promise<AuthResponse> {
+  verification_channel: VerificationChannel,
+  phone?: string,
+): Promise<RegistrationResponse> {
   const deviceName = getDeviceName();
   const response = await fetch(`${API_BASE}/api/register`, {
     method: "POST",
@@ -153,6 +161,8 @@ export async function register(
       email,
       password,
       password_confirmation,
+      verification_channel,
+      phone: verification_channel === "sms" ? phone : undefined,
       device_name: deviceName,
     }),
   });
@@ -162,10 +172,23 @@ export async function register(
     throw new AuthError(error.message, error.errors);
   }
 
-  const data = (await response.json()) as AuthResponse;
-  setToken(data.token);
-  setStoredUser(data.user);
-  return data;
+  return response.json() as Promise<RegistrationResponse>;
+}
+
+export async function resendAccountVerification(email: string): Promise<void> {
+  const response = await fetch(`${API_BASE}/api/account-verification/resend`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    body: JSON.stringify({ email }),
+  });
+
+  if (!response.ok) {
+    const error = (await response.json()) as ValidationError;
+    throw new AuthError(error.message, error.errors);
+  }
 }
 
 /**

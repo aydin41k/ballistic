@@ -1,4 +1,4 @@
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
@@ -13,6 +13,7 @@ import { ApiError } from '@/lib/api';
 
 export default function LoginScreen() {
   const router = useRouter();
+  const { verified } = useLocalSearchParams<{ verified?: string }>();
   const { login, startOffline, user } = useAuth();
   const [email, setEmail] = useState(user?.email ?? '');
   const [password, setPassword] = useState('');
@@ -47,6 +48,9 @@ export default function LoginScreen() {
   return (
     <AuthScaffold title="Welcome back" subtitle="Pick up exactly where you left off.">
       <View style={styles.form}>
+        {verified === '1' ? (
+          <AppText colour={colours.success}>Your account is verified. You can log in now.</AppText>
+        ) : null}
         {error ? <ErrorNotice message={error} /> : null}
         <AppTextField
           label="Email"

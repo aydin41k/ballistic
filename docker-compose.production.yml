@@ -113,7 +113,7 @@ services:
         restart: unless-stopped
         depends_on:
             backend:
-                condition: service_healthy
+                condition: service_started
 
     tunnel:
         image: cloudflare/cloudflared:latest
@@ -127,9 +127,9 @@ services:
         restart: unless-stopped
         depends_on:
             backend:
-                condition: service_healthy
+                condition: service_started
             frontend:
-                condition: service_healthy
+                condition: service_started
         profiles: ['tunnel']
 
 networks:

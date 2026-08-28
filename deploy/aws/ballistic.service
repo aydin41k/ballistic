@@ -1,0 +1,18 @@
+[Unit]
+Description=Ballistic production containers
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=/opt/ballistic
+Environment=BALLISTIC_ENV_FILE=/etc/ballistic/production.env
+Environment=BALLISTIC_TUNNEL_TOKEN_FILE=/etc/ballistic/cloudflare-tunnel-token
+ExecStart=/usr/bin/docker compose --env-file /etc/ballistic/production.env --file /opt/ballistic/docker-compose.production.yml --file /opt/ballistic/docker-compose.aws.yml --profile tunnel up --detach --remove-orphans
+ExecStop=/usr/bin/docker compose --env-file /etc/ballistic/production.env --file /opt/ballistic/docker-compose.production.yml --file /opt/ballistic/docker-compose.aws.yml --profile tunnel stop
+TimeoutStartSec=0
+
+[Install]
+WantedBy=multi-user.target

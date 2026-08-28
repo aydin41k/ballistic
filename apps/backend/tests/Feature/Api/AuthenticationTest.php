@@ -7,6 +7,7 @@ namespace Tests\Feature\Api;
 use App\Auth\TokenAbility;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Notification;
 use Laravel\Sanctum\PersonalAccessToken;
 use Tests\TestCase;
 
@@ -16,6 +17,8 @@ class AuthenticationTest extends TestCase
 
     public function test_users_can_register_via_api(): void
     {
+        Notification::fake();
+
         $response = $this->postJson('/api/register', [
             'name' => 'Test User',
             'email' => 'test@example.com',
@@ -23,33 +26,23 @@ class AuthenticationTest extends TestCase
             'password_confirmation' => 'password123',
         ]);
 
-        $response->assertStatus(201)
+        $response->assertAccepted()
             ->assertJsonStructure([
                 'message',
-                'user' => [
-                    'id',
-                    'name',
-                    'email',
-                    'created_at',
-                    'updated_at',
-                ],
-                'token',
+                'verification_channel',
+                'destination',
             ])
             ->assertJson([
-                'message' => 'User registered successfully',
-                'user' => [
-                    'name' => 'Test User',
-                    'email' => 'test@example.com',
-                ],
+                'message' => 'Account created. Follow the confirmation link to verify your account.',
+                'verification_channel' => 'email',
             ]);
 
         $this->assertDatabaseHas('users', [
             'email' => 'test@example.com',
         ]);
 
-        $token = PersonalAccessToken::findToken($response->json('token'));
-        $this->assertNotNull($token);
-        $this->assertTrue($token->can(TokenAbility::Api->value));
+        $this->assertNull(User::where('email', 'test@example.com')->value('account_verified_at'));
+        $this->assertDatabaseCount('personal_access_tokens', 0);
     }
 
     public function test_registration_requires_name(): void
@@ -313,8 +306,10 @@ class AuthenticationTest extends TestCase
             ->assertStatus(200);
     }
 
-    public function test_registration_returns_valid_token(): void
+    public function test_registration_does_not_return_a_token_before_verification(): void
     {
+        Notification::fake();
+
         $response = $this->postJson('/api/register', [
             'name' => 'Test User',
             'email' => 'test@example.com',
@@ -322,13 +317,8 @@ class AuthenticationTest extends TestCase
             'password_confirmation' => 'password123',
         ]);
 
-        $token = $response->json('token');
-
-        // Use the token to access a protected endpoint
-        $itemsResponse = $this->withHeader('Authorization', 'Bearer '.$token)
-            ->getJson('/api/items');
-
-        $itemsResponse->assertStatus(200);
+        $response->assertAccepted()->assertJsonMissingPath('token');
+        $this->assertDatabaseCount('personal_access_tokens', 0);
     }
 
     public function test_login_returns_valid_token(): void

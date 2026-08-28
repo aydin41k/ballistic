@@ -16,11 +16,13 @@ import type {
   MobilePushSubscription,
   NotificationsResponse,
   Project,
+  RegistrationResponse,
   Status,
   User,
   UserUpdatePayload,
   UserLookup,
   ValidationError,
+  VerificationChannel,
 } from '@/types';
 
 type QueryValue = string | number | boolean | null | undefined;
@@ -126,14 +128,28 @@ export async function login(email: string, password: string): Promise<AuthRespon
 export async function register(payload: {
   name: string;
   email: string;
+  phone?: string;
   password: string;
   password_confirmation: string;
-}): Promise<AuthResponse> {
-  return request<AuthResponse>(
+  verification_channel: VerificationChannel;
+}): Promise<RegistrationResponse> {
+  return request<RegistrationResponse>(
     '/api/register',
     {
       method: 'POST',
       body: JSON.stringify({ ...payload, device_name: deviceName() }),
+    },
+    undefined,
+    false,
+  );
+}
+
+export async function resendAccountVerification(email: string): Promise<void> {
+  await request<{ message: string }>(
+    '/api/account-verification/resend',
+    {
+      method: 'POST',
+      body: JSON.stringify({ email }),
     },
     undefined,
     false,

@@ -5,23 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.17.06] - 2026-08-28
 
 ### Changed
 
+- **Verified sign-up flow** — API registration now creates a pending account, sends a signed confirmation link by email or SMS, and withholds API access until the linked human check succeeds
+- **Account confirmation delivery** — added Laravel mail, Twilio SMS, Cloudflare Turnstile, masked destination responses, one-hour signed links, and web/mobile-aware completion redirects
 - **Backend dependency baseline** — upgraded the backend onto the latest compatible Composer set, including Laravel 13, Inertia Laravel 3, Laravel MCP 0.6, Boost 2, Tinker 3, and PHPUnit 12
 - **MCP package integration** — migrated Ballistic MCP tools and resources onto the current Laravel MCP request/response API, updated the MCP route registration to the explicit `/mcp` endpoint, and aligned the server metadata with the new package contract
 - **Offline mobile replay** — item and project creation endpoints now accept client-generated UUIDs and return the existing owner record when the same create is safely replayed after a dropped connection
 - **Mobile profile photos** — added an authenticated image upload endpoint that validates and stores phone gallery or camera photos on the public application disk
+- **AWS production hosting** — added a low-cost Lightsail bootstrap, Linux Compose override, systemd startup service, and daily PostgreSQL backup timer for the production stack
 
 ### Fixed
 
 - **MCP compatibility regressions** — restored MCP feature and unit coverage after the package upgrade, including single-resource payload compatibility for project item counts and updated error-handling expectations for unknown tools
 - **Laravel 13 test bootstrap** — disabled the renamed `PreventRequestForgery` middleware and Vite asset resolution during backend feature tests so admin, auth, and settings flows exercise application behaviour instead of test-environment friction
 - **Frontend route helper typing** — corrected dashboard and appearance breadcrumbs to use the existing string-based route helpers, clearing the backend frontend type-check after Wayfinder generation
+- **Production startup sequencing** — the public frontend and Cloudflare tunnel now start once their containers are running instead of waiting on backend health, restoring online availability while Laravel completes warm-up work
 
 ### Tests
 
+- Added feature and service coverage for email/SMS registration, pending-account login rejection, signed-link integrity, Turnstile success/failure, and Twilio delivery
 - Added item and project coverage for idempotent offline create replay and cross-account UUID collision protection
 - Added profile photo upload coverage for storage, same-account replacement cleanup, cross-account file isolation, validation, and authentication
 - Regenerated Wayfinder route/action helpers

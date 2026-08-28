@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AccountVerificationController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\ConfirmablePasswordController;
 use App\Http\Controllers\Auth\EmailVerificationNotificationController;
@@ -8,6 +9,14 @@ use App\Http\Controllers\Auth\NewPasswordController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Http\Controllers\Auth\VerifyEmailController;
 use Illuminate\Support\Facades\Route;
+
+Route::get('account-verification/{user}/{channel}/{hash}', [AccountVerificationController::class, 'show'])
+    ->middleware(['signed', 'throttle:6,1'])
+    ->name('account-verification.show');
+
+Route::post('account-verification/{user}/{channel}/{hash}', [AccountVerificationController::class, 'verify'])
+    ->middleware(['signed', 'throttle:6,1'])
+    ->name('account-verification.verify');
 
 // Web registration is disabled - user registration only available via API
 // Web login is for admin users only (pre-registered)

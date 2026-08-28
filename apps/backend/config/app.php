@@ -56,6 +56,8 @@ return [
 
     'frontend_url' => env('FRONTEND_URL', 'http://localhost:3000'),
 
+    'mobile_url' => env('MOBILE_URL', 'ballistic://login'),
+
     /*
     |--------------------------------------------------------------------------
     | Application Timezone

@@ -12,7 +12,13 @@ import {
 import { createOfflineId, offlineStore } from '@/lib/offline-store';
 import { clearLocalNotifications, unregisterCurrentDevicePush } from '@/lib/push';
 import { waitForSyncToSettle } from '@/lib/sync-engine';
-import type { AvatarUploadPayload, User, UserUpdatePayload } from '@/types';
+import type {
+  AvatarUploadPayload,
+  RegistrationResponse,
+  User,
+  UserUpdatePayload,
+  VerificationChannel,
+} from '@/types';
 import {
   createContext,
   type PropsWithChildren,
@@ -32,9 +38,11 @@ interface AuthContextValue {
   register: (payload: {
     name: string;
     email: string;
+    phone?: string;
     password: string;
     password_confirmation: string;
-  }) => Promise<void>;
+    verification_channel: VerificationChannel;
+  }) => Promise<RegistrationResponse>;
   startOffline: () => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<User>;
@@ -187,17 +195,19 @@ export function AuthProvider({ children }: PropsWithChildren) {
     async (payload: {
       name: string;
       email: string;
+      phone?: string;
       password: string;
       password_confirmation: string;
+      verification_channel: VerificationChannel;
     }) => {
-      const response = await registerRequest({
+      return registerRequest({
         ...payload,
         name: payload.name.trim(),
         email: payload.email.trim(),
+        phone: payload.phone?.trim() || undefined,
       });
-      await persistAuth(response.token, response.user);
     },
-    [persistAuth],
+    [],
   );
 
   const startOffline = useCallback(async () => {

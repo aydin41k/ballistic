@@ -4,17 +4,28 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth, AuthError } from "@/contexts/AuthContext";
+import { resendAccountVerification } from "@/lib/auth";
+import type { RegistrationResponse, VerificationChannel } from "@/types";
 
 export default function RegisterPage() {
   const router = useRouter();
   const { register, isAuthenticated } = useAuth();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [verificationChannel, setVerificationChannel] =
+    useState<VerificationChannel>("email");
   const [password, setPassword] = useState("");
   const [passwordConfirmation, setPasswordConfirmation] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [confirmation, setConfirmation] = useState<RegistrationResponse | null>(
+    null,
+  );
+  const [isResending, setIsResending] = useState(false);
+  const [hasResent, setHasResent] = useState(false);
+  const [resendError, setResendError] = useState<string | null>(null);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -43,8 +54,15 @@ export default function RegisterPage() {
     setIsSubmitting(true);
 
     try {
-      await register(name, email, password, passwordConfirmation);
-      router.push("/app");
+      const response = await register(
+        name,
+        email,
+        password,
+        passwordConfirmation,
+        verificationChannel,
+        phone,
+      );
+      setConfirmation(response);
     } catch (err) {
       if (err instanceof AuthError) {
         setError(err.message);
@@ -55,6 +73,69 @@ export default function RegisterPage() {
     } finally {
       setIsSubmitting(false);
     }
+  }
+
+  if (confirmation) {
+    async function resend() {
+      setIsResending(true);
+      setResendError(null);
+      try {
+        await resendAccountVerification(email);
+        setHasResent(true);
+      } catch {
+        setResendError("We could not resend the email. Please try again.");
+      } finally {
+        setIsResending(false);
+      }
+    }
+
+    return (
+      <div className="flex min-h-[80vh] flex-col items-center justify-center">
+        <div className="w-full max-w-sm animate-fade-in text-center">
+          <Link href="/" className="inline-block text-[var(--navy)]">
+            <h1 className="text-3xl font-bold">Ballistic</h1>
+          </Link>
+          <div className="mt-8 rounded-xl border border-blue-100 bg-blue-50 p-6">
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-blue-600 text-2xl text-white">
+              ✓
+            </div>
+            <h2 className="mt-4 text-xl font-semibold text-[var(--navy)]">
+              Check your{" "}
+              {confirmation.verification_channel === "sms"
+                ? "messages"
+                : "email"}
+            </h2>
+            <p className="mt-2 text-sm text-slate-600">
+              We sent a confirmation link to {confirmation.destination}. Open it
+              and complete the human check to activate your account.
+            </p>
+            {resendError && (
+              <p className="mt-4 text-sm text-red-600">{resendError}</p>
+            )}
+            {hasResent ? (
+              <p className="mt-4 text-sm font-medium text-emerald-700">
+                A fresh link has been sent by email.
+              </p>
+            ) : (
+              <button
+                type="button"
+                disabled={isResending}
+                onClick={() => void resend()}
+                className="mt-4 text-sm font-medium text-[var(--blue-600)] hover:text-[var(--blue)] disabled:opacity-50"
+              >
+                {isResending ? "Sending…" : "Resend by email"}
+              </button>
+            )}
+            <Link
+              href="/login"
+              className="mt-6 inline-block font-medium text-[var(--blue-600)] hover:text-[var(--blue)]"
+            >
+              Go to sign in
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -99,6 +180,62 @@ export default function RegisterPage() {
               <p className="mt-1 text-sm text-red-600">{fieldErrors.name[0]}</p>
             )}
           </div>
+
+          <fieldset>
+            <legend className="mb-2 block text-sm font-medium text-slate-700">
+              Send confirmation by
+            </legend>
+            <div className="grid grid-cols-2 gap-2">
+              {(["email", "sms"] as const).map((channel) => (
+                <button
+                  key={channel}
+                  type="button"
+                  aria-pressed={verificationChannel === channel}
+                  onClick={() => setVerificationChannel(channel)}
+                  className={`rounded-md border px-3 py-2 text-sm font-medium capitalize transition-colors ${
+                    verificationChannel === channel
+                      ? "border-[var(--blue-600)] bg-blue-50 text-[var(--blue-600)]"
+                      : "border-slate-300 bg-white text-slate-600 hover:bg-slate-50"
+                  }`}
+                >
+                  {channel === "sms" ? "SMS" : "Email"}
+                </button>
+              ))}
+            </div>
+            {fieldErrors.verification_channel && (
+              <p className="mt-1 text-sm text-red-600">
+                {fieldErrors.verification_channel[0]}
+              </p>
+            )}
+          </fieldset>
+
+          {verificationChannel === "sms" && (
+            <div>
+              <label
+                htmlFor="phone"
+                className="mb-1 block text-sm font-medium text-slate-700"
+              >
+                Mobile number
+              </label>
+              <input
+                id="phone"
+                type="tel"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                required
+                autoComplete="tel"
+                className={`w-full rounded-md border bg-white px-3 py-2 text-[var(--navy)] shadow-sm focus:border-[var(--blue-600)] focus:outline-none focus:ring-1 focus:ring-[var(--blue-600)] ${
+                  fieldErrors.phone ? "border-red-500" : "border-slate-300"
+                }`}
+                placeholder="+61412345678"
+              />
+              {fieldErrors.phone && (
+                <p className="mt-1 text-sm text-red-600">
+                  {fieldErrors.phone[0]}
+                </p>
+              )}
+            </div>
+          )}
 
           <div>
             <label

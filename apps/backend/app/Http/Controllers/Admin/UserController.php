@@ -84,6 +84,8 @@ final class UserController extends Controller
             'email' => $validated['email'],
             'password' => Hash::make($validated['password']),
             'is_admin' => $validated['is_admin'] ?? false,
+            'email_verified_at' => now(),
+            'account_verified_at' => now(),
         ]);
 
         return (new UserResource($user))

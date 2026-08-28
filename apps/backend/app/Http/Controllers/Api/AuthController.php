@@ -6,49 +6,85 @@ namespace App\Http\Controllers\Api;
 
 use App\Auth\TokenAbility;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\RegisterAccountRequest;
 use App\Models\User;
+use App\Services\AccountVerificationService;
 use Illuminate\Auth\Events\Lockout;
 use Illuminate\Auth\Events\Logout;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
-use Illuminate\Validation\Rules;
 use Illuminate\Validation\ValidationException;
 use Laravel\Sanctum\PersonalAccessToken;
+use Throwable;
 
 final class AuthController extends Controller
 {
     /**
-     * Register a new user and return an API token.
+     * Register a new user and send an account confirmation link.
      */
-    public function register(Request $request): JsonResponse
-    {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|string|lowercase|email|max:255|unique:'.User::class,
-            'password' => ['required', 'confirmed', Rules\Password::defaults()],
-            'device_name' => 'nullable|string|max:255',
-        ]);
+    public function register(
+        RegisterAccountRequest $request,
+        AccountVerificationService $accountVerificationService,
+    ): JsonResponse {
+        $validated = $request->validated();
 
         $user = User::create([
             'name' => $validated['name'],
             'email' => $validated['email'],
+            'phone' => $validated['phone'] ?? null,
             'password' => Hash::make($validated['password']),
         ]);
 
+        try {
+            $accountVerificationService->send(
+                $user,
+                $validated['verification_channel'],
+                $this->clientName($request),
+            );
+        } catch (Throwable $exception) {
+            $user->delete();
+            report($exception);
+
+            throw ValidationException::withMessages([
+                'verification_channel' => ['We could not send the confirmation. Please try another method.'],
+            ]);
+        }
+
         event(new Registered($user));
 
-        $deviceName = $validated['device_name'] ?? 'api-token';
-        $token = $user->createToken($deviceName, [TokenAbility::Api->value])->plainTextToken;
+        return response()->json([
+            'message' => 'Account created. Follow the confirmation link to verify your account.',
+            'verification_channel' => $validated['verification_channel'],
+            'destination' => $accountVerificationService->destination($user, $validated['verification_channel']),
+        ], Response::HTTP_ACCEPTED);
+    }
+
+    /**
+     * Send a fresh email confirmation without revealing account existence.
+     */
+    public function resendVerification(Request $request, AccountVerificationService $accountVerificationService): JsonResponse
+    {
+        $validated = $request->validate([
+            'email' => ['required', 'string', 'email'],
+        ]);
+        $user = User::query()->where('email', $validated['email'])->first();
+
+        if ($user !== null && $user->account_verified_at === null) {
+            try {
+                $accountVerificationService->send($user, 'email', $this->clientName($request));
+            } catch (Throwable $exception) {
+                report($exception);
+            }
+        }
 
         return response()->json([
-            'message' => 'User registered successfully',
-            'user' => $user,
-            'token' => $token,
-        ], 201);
+            'message' => 'If that account is awaiting verification, a new email has been sent.',
+        ], Response::HTTP_ACCEPTED);
     }
 
     /**
@@ -77,6 +113,14 @@ final class AuthController extends Controller
 
         /** @var User $user */
         $user = Auth::user();
+
+        if ($user->account_verified_at === null) {
+            Auth::guard('web')->logout();
+
+            throw ValidationException::withMessages([
+                'email' => ['Confirm your account before signing in.'],
+            ]);
+        }
 
         // Create a new token for this device without revoking existing tokens
         // This enables multi-device login support
@@ -158,5 +202,12 @@ final class AuthController extends Controller
             ->append('|'.$request->ip())
             ->transliterate()
             ->value();
+    }
+
+    private function clientName(Request $request): string
+    {
+        return str_starts_with((string) $request->header('X-Ballistic-Client'), 'mobile/')
+            ? 'mobile'
+            : 'web';
     }
 }

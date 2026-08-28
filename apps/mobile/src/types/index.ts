@@ -27,6 +27,8 @@ export interface User {
     ai_assistant: boolean;
   } | null;
   email_verified_at: string | null;
+  phone_verified_at?: string | null;
+  account_verified_at?: string | null;
   created_at: string;
   updated_at: string;
   favourites?: UserLookup[];
@@ -155,6 +157,14 @@ export interface AuthResponse {
   message: string;
   user: User;
   token: string;
+}
+
+export type VerificationChannel = 'email' | 'sms';
+
+export interface RegistrationResponse {
+  message: string;
+  verification_channel: VerificationChannel;
+  destination: string;
 }
 
 export interface ValidationError {

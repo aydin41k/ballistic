@@ -34,7 +34,7 @@ final class RateLimitingTest extends TestCase
                 'password_confirmation' => 'password123',
             ]);
 
-            $response->assertStatus(201);
+            $response->assertAccepted();
         }
 
         // 6th request should be rate limited

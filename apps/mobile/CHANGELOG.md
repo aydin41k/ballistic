@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.11 - 2026-08-28
+
+- Added email or SMS confirmation during account creation, followed by a human check before the account can sign in.
+- Kept on-device work local while an account is awaiting confirmation and returned successful mobile confirmations to the login screen.
+
 ## 0.2.10 - 2026-08-28
 
 - Matched departing task borders to their row background and removed card shadows before starting the whole-row fade.

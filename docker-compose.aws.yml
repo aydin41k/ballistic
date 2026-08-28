@@ -1,0 +1,6 @@
+services:
+    tunnel:
+        network_mode: host
+        networks: !reset []
+        extra_hosts:
+            - 'host.docker.internal=127.0.0.1'

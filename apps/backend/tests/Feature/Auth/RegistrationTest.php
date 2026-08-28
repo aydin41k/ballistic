@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Auth;
 
+use App\Models\User;
+use App\Notifications\AccountVerificationNotification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Notification;
 use Tests\TestCase;
 
 class RegistrationTest extends TestCase
@@ -34,18 +37,24 @@ class RegistrationTest extends TestCase
 
     public function test_api_registration_is_available(): void
     {
-        // API registration should still work
+        Notification::fake();
+
         $response = $this->postJson('/api/register', [
             'name' => 'Test User',
             'email' => 'test@example.com',
             'password' => 'password',
             'password_confirmation' => 'password',
+            'verification_channel' => 'email',
         ]);
 
-        $response->assertStatus(201);
-        $response->assertJsonStructure([
-            'user' => ['id', 'name', 'email'],
-            'token',
+        $response->assertAccepted()->assertJson([
+            'verification_channel' => 'email',
+            'destination' => 't•••@example.com',
         ]);
+
+        $user = User::where('email', 'test@example.com')->firstOrFail();
+        $this->assertNull($user->account_verified_at);
+        $response->assertJsonMissing(['token']);
+        Notification::assertSentTo($user, AccountVerificationNotification::class);
     }
 }

@@ -13,6 +13,13 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isVerified, setIsVerified] = useState(false);
+
+  useEffect(() => {
+    setIsVerified(
+      new URLSearchParams(window.location.search).get("verified") === "1",
+    );
+  }, []);
 
   // Redirect if already authenticated (after mount)
   useEffect(() => {
@@ -59,6 +66,11 @@ export default function LoginPage() {
 
         {/* Login Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
+          {isVerified && (
+            <div className="rounded-md bg-emerald-50 p-3 text-sm text-emerald-700 animate-scale-in">
+              Your account is verified. You can sign in now.
+            </div>
+          )}
           {error && (
             <div className="rounded-md bg-red-50 p-3 text-sm text-red-600 animate-scale-in">
               {error}

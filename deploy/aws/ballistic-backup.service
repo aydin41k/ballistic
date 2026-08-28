@@ -1,0 +1,8 @@
+[Unit]
+Description=Back up the Ballistic PostgreSQL database
+Requires=docker.service
+After=docker.service ballistic.service
+
+[Service]
+Type=oneshot
+ExecStart=/opt/ballistic/deploy/aws/backup.sh
