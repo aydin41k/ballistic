@@ -58,6 +58,8 @@ return [
 
     'mobile_url' => env('MOBILE_URL', 'ballistic://login'),
 
+    'google_auth_callback_url' => env('GOOGLE_AUTH_CALLBACK_URL', env('FRONTEND_URL', 'http://localhost:3000').'/auth/google/callback'),
+
     /*
     |--------------------------------------------------------------------------
     | Application Timezone

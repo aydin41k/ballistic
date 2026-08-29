@@ -10,15 +10,13 @@ import { ErrorNotice } from '@/components/ui/ErrorNotice';
 import { colours, spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
 import { ApiError, resendAccountVerification } from '@/lib/api';
-import type { RegistrationResponse, VerificationChannel } from '@/types';
+import type { RegistrationResponse } from '@/types';
 
 export default function RegisterScreen() {
   const router = useRouter();
-  const { register, startOffline, user } = useAuth();
+  const { loginWithGoogle, register, startOffline, user } = useAuth();
   const [name, setName] = useState(user?.name === 'You' ? '' : (user?.name ?? ''));
   const [email, setEmail] = useState(user?.email ?? '');
-  const [phone, setPhone] = useState(user?.phone ?? '');
-  const [verificationChannel, setVerificationChannel] = useState<VerificationChannel>('email');
   const [password, setPassword] = useState('');
   const [passwordConfirmation, setPasswordConfirmation] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -27,6 +25,7 @@ export default function RegisterScreen() {
   const [registrationResult, setRegistrationResult] = useState<RegistrationResponse | null>(null);
   const [resending, setResending] = useState(false);
   const [hasResent, setHasResent] = useState(false);
+  const [googleSubmitting, setGoogleSubmitting] = useState(false);
 
   async function submit() {
     setError(null);
@@ -45,10 +44,8 @@ export default function RegisterScreen() {
       const response = await register({
         name,
         email,
-        phone,
         password,
         password_confirmation: passwordConfirmation,
-        verification_channel: verificationChannel,
       });
       setRegistrationResult(response);
     } catch (caught) {
@@ -66,7 +63,7 @@ export default function RegisterScreen() {
   if (registrationResult) {
     return (
       <AuthScaffold
-        title={`Check your ${registrationResult.verification_channel === 'sms' ? 'messages' : 'email'}`}
+        title="Check your email"
         subtitle={`We sent a confirmation link to ${registrationResult.destination}. Open it and complete the human check to activate your account.`}
       >
         <View style={styles.form}>
@@ -110,6 +107,18 @@ export default function RegisterScreen() {
     }
   }
 
+  async function signInWithGoogle() {
+    setError(null);
+    setGoogleSubmitting(true);
+    try {
+      if (await loginWithGoogle()) router.replace('/journal');
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Google sign-in could not be completed.');
+    } finally {
+      setGoogleSubmitting(false);
+    }
+  }
+
   return (
     <AuthScaffold
       title="Sync your journal"
@@ -117,6 +126,20 @@ export default function RegisterScreen() {
     >
       <View style={styles.form}>
         {error ? <ErrorNotice message={error} /> : null}
+        <AppButton
+          label={googleSubmitting ? 'Opening Google…' : 'Continue with Google'}
+          icon="google"
+          variant="secondary"
+          onPress={() => void signInWithGoogle()}
+          loading={googleSubmitting}
+        />
+        <View style={styles.divider}>
+          <View style={styles.dividerLine} />
+          <AppText variant="caption" colour={colours.textMuted}>
+            or create a password
+          </AppText>
+          <View style={styles.dividerLine} />
+        </View>
         <AppTextField
           label="Name"
           value={name}
@@ -135,45 +158,6 @@ export default function RegisterScreen() {
           placeholder="you@example.com"
           error={fieldErrors.email?.[0]}
         />
-        <View style={styles.channelSection}>
-          <AppText variant="bodyStrong">Send confirmation by</AppText>
-          <View style={styles.channelButtons}>
-            <View style={styles.channelButton}>
-              <AppButton
-                label="Email"
-                compact
-                variant={verificationChannel === 'email' ? 'primary' : 'secondary'}
-                onPress={() => setVerificationChannel('email')}
-              />
-            </View>
-            <View style={styles.channelButton}>
-              <AppButton
-                label="SMS"
-                compact
-                variant={verificationChannel === 'sms' ? 'primary' : 'secondary'}
-                onPress={() => setVerificationChannel('sms')}
-              />
-            </View>
-          </View>
-          {fieldErrors.verification_channel?.[0] ? (
-            <AppText variant="caption" colour={colours.danger}>
-              {fieldErrors.verification_channel[0]}
-            </AppText>
-          ) : null}
-        </View>
-        {verificationChannel === 'sms' ? (
-          <AppTextField
-            label="Mobile number"
-            value={phone}
-            onChangeText={setPhone}
-            autoCapitalize="none"
-            autoComplete="tel"
-            keyboardType="phone-pad"
-            placeholder="+61412345678"
-            helper="Use international format, including + and country code."
-            error={fieldErrors.phone?.[0]}
-          />
-        ) : null}
         <AppTextField
           label="Password"
           value={password}
@@ -209,13 +193,7 @@ export default function RegisterScreen() {
           label={submitting ? 'Creating account…' : 'Create account'}
           onPress={() => void submit()}
           loading={submitting}
-          disabled={
-            !name.trim() ||
-            !email.trim() ||
-            !password ||
-            !passwordConfirmation ||
-            (verificationChannel === 'sms' && !phone.trim())
-          }
+          disabled={!name.trim() || !email.trim() || !password || !passwordConfirmation}
         />
         <AppButton
           label="Continue offline"
@@ -240,8 +218,7 @@ export default function RegisterScreen() {
 
 const styles = StyleSheet.create({
   form: { gap: spacing.md },
-  channelSection: { gap: spacing.sm },
-  channelButtons: { flexDirection: 'row', gap: spacing.sm },
-  channelButton: { flex: 1 },
+  divider: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  dividerLine: { flex: 1, height: 1, backgroundColor: colours.border },
   footer: { alignItems: 'center', gap: 2 },
 });

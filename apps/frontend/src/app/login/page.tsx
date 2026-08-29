@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth, AuthError } from "@/contexts/AuthContext";
+import { GoogleSignInButton } from "@/components/GoogleSignInButton";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -62,6 +63,13 @@ export default function LoginPage() {
             <h1 className="text-3xl font-bold">Ballistic</h1>
           </Link>
           <p className="mt-2 text-slate-500">The Simplest Bullet List</p>
+        </div>
+
+        <GoogleSignInButton onError={setError} />
+        <div className="my-5 flex items-center gap-3 text-xs uppercase tracking-wide text-slate-400">
+          <span className="h-px flex-1 bg-slate-200" />
+          or use your password
+          <span className="h-px flex-1 bg-slate-200" />
         </div>
 
         {/* Login Form */}

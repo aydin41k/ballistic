@@ -14,12 +14,13 @@ import { ApiError } from '@/lib/api';
 export default function LoginScreen() {
   const router = useRouter();
   const { verified } = useLocalSearchParams<{ verified?: string }>();
-  const { login, startOffline, user } = useAuth();
+  const { login, loginWithGoogle, startOffline, user } = useAuth();
   const [email, setEmail] = useState(user?.email ?? '');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({});
   const [submitting, setSubmitting] = useState(false);
+  const [googleSubmitting, setGoogleSubmitting] = useState(false);
 
   async function submit() {
     setError(null);
@@ -45,6 +46,18 @@ export default function LoginScreen() {
     router.replace('/journal');
   }
 
+  async function signInWithGoogle() {
+    setError(null);
+    setGoogleSubmitting(true);
+    try {
+      if (await loginWithGoogle()) router.replace('/journal');
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Google sign-in could not be completed.');
+    } finally {
+      setGoogleSubmitting(false);
+    }
+  }
+
   return (
     <AuthScaffold title="Welcome back" subtitle="Pick up exactly where you left off.">
       <View style={styles.form}>
@@ -52,6 +65,20 @@ export default function LoginScreen() {
           <AppText colour={colours.success}>Your account is verified. You can log in now.</AppText>
         ) : null}
         {error ? <ErrorNotice message={error} /> : null}
+        <AppButton
+          label={googleSubmitting ? 'Opening Google…' : 'Continue with Google'}
+          icon="google"
+          variant="secondary"
+          onPress={() => void signInWithGoogle()}
+          loading={googleSubmitting}
+        />
+        <View style={styles.divider}>
+          <View style={styles.dividerLine} />
+          <AppText variant="caption" colour={colours.textMuted}>
+            or use your password
+          </AppText>
+          <View style={styles.dividerLine} />
+        </View>
         <AppTextField
           label="Email"
           value={email}
@@ -107,5 +134,7 @@ export default function LoginScreen() {
 
 const styles = StyleSheet.create({
   form: { gap: spacing.md },
+  divider: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  dividerLine: { flex: 1, height: 1, backgroundColor: colours.border },
   footer: { alignItems: 'center', gap: 2 },
 });

@@ -8,11 +8,12 @@ import {
   useCallback,
   type ReactNode,
 } from "react";
-import type { RegistrationResponse, User, VerificationChannel } from "@/types";
+import type { RegistrationResponse, User } from "@/types";
 import {
   getToken,
   setStoredUser,
   login as authLogin,
+  exchangeGoogleCode,
   register as authRegister,
   logout as authLogout,
   AuthError,
@@ -28,13 +29,12 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
+  completeGoogleLogin: (code: string) => Promise<void>;
   register: (
     name: string,
     email: string,
     password: string,
     passwordConfirmation: string,
-    verificationChannel: VerificationChannel,
-    phone?: string,
   ) => Promise<RegistrationResponse>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
@@ -73,23 +73,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setStoredUser(response.user);
   }, []);
 
+  const completeGoogleLogin = useCallback(async (code: string) => {
+    const response = await exchangeGoogleCode(code);
+    setUser(response.user);
+    setStoredUser(response.user);
+  }, []);
+
   const register = useCallback(
     async (
       name: string,
       email: string,
       password: string,
       passwordConfirmation: string,
-      verificationChannel: VerificationChannel,
-      phone?: string,
     ) => {
-      return authRegister(
-        name,
-        email,
-        password,
-        passwordConfirmation,
-        verificationChannel,
-        phone,
-      );
+      return authRegister(name, email, password, passwordConfirmation);
     },
     [],
   );
@@ -116,6 +113,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isAuthenticated: user !== null,
     isLoading,
     login,
+    completeGoogleLogin,
     register,
     logout,
     refreshUser,

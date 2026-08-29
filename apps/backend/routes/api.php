@@ -7,6 +7,7 @@ use App\Http\Controllers\Admin\SettingsController as AdminSettingsController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\FavouriteController;
+use App\Http\Controllers\Api\GoogleAuthController;
 use App\Http\Controllers\Api\McpTokenController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\ConnectionController;
@@ -26,6 +27,9 @@ Route::middleware(['throttle:auth'])->group(function () {
     Route::post('/register', [AuthController::class, 'register']);
     Route::post('/account-verification/resend', [AuthController::class, 'resendVerification']);
     Route::post('/login', [AuthController::class, 'login']);
+    Route::post('/auth/google/redirect', [GoogleAuthController::class, 'redirect']);
+    Route::get('/auth/google/callback', [GoogleAuthController::class, 'callback']);
+    Route::post('/auth/google/exchange', [GoogleAuthController::class, 'exchange']);
 });
 
 // Protected API routes (authentication required)

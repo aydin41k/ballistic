@@ -35,40 +35,13 @@ final class ApiRegistrationVerificationTest extends TestCase
         Notification::assertSentTo($user, AccountVerificationNotification::class);
     }
 
-    public function test_sms_registration_sends_confirmation_link(): void
-    {
-        config()->set([
-            'services.twilio.account_sid' => 'AC123',
-            'services.twilio.auth_token' => 'secret',
-            'services.twilio.from' => '+61400000000',
-        ]);
-        Http::fake([
-            'api.twilio.com/*' => Http::response(['sid' => 'SM123'], 201),
-        ]);
-
-        $response = $this->postJson('/api/register', [
-            ...$this->registrationPayload(),
-            'phone' => '+61412345678',
-            'verification_channel' => 'sms',
-        ]);
-
-        $response
-            ->assertAccepted()
-            ->assertJsonPath('verification_channel', 'sms')
-            ->assertJsonPath('destination', '••••••••5678');
-
-        Http::assertSent(fn ($request): bool => $request->url() === 'https://api.twilio.com/2010-04-01/Accounts/AC123/Messages.json'
-            && $request['To'] === '+61412345678'
-            && str_contains($request['Body'], '/account-verification/'));
-    }
-
-    public function test_sms_registration_requires_an_international_mobile_number(): void
+    public function test_sms_registration_is_not_available(): void
     {
         $this->postJson('/api/register', [
             ...$this->registrationPayload(),
-            'phone' => '0412 345 678',
+            'phone' => '+61412345678',
             'verification_channel' => 'sms',
-        ])->assertUnprocessable()->assertJsonValidationErrors('phone');
+        ])->assertUnprocessable()->assertJsonValidationErrors('verification_channel');
     }
 
     public function test_unverified_account_cannot_log_in(): void

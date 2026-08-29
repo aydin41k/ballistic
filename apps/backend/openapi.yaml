@@ -14,15 +14,16 @@ info:
     
     ### Token Authentication
     API endpoints can use Bearer token authentication. Register a pending account via
-    `POST /api/register`, complete the confirmation link and human check, then obtain
-    a token by logging in via `POST /api/login`.
+    `POST /api/register`, complete the email confirmation link and human check, then
+    obtain a token via `POST /api/login`. Google authentication uses a short-lived
+    authorisation state and a separate, single-use token exchange code.
     
     Include the token in subsequent requests using the `Authorization` header:
     ```
     Authorization: Bearer {your-token}
     ```
     
-  version: 0.8.1
+  version: 0.8.2
   contact:
     name: Ballistic Backend
   license:
@@ -59,7 +60,7 @@ paths:
       tags:
         - API Authentication
       summary: Register a new user (API)
-      description: Create a pending user account and send a confirmation link by email or SMS. The link opens a human check before the account can sign in.
+      description: Create a pending user account and send a confirmation link by email. The link opens a human check before the account can sign in.
       operationId: apiRegister
       requestBody:
         required: true
@@ -81,15 +82,9 @@ paths:
                   type: string
                   format: email
                   example: john@example.com
-                phone:
-                  type: string
-                  pattern: '^\+[1-9]\d{7,14}$'
-                  nullable: true
-                  description: Required when verification_channel is sms
-                  example: "+61412345678"
                 verification_channel:
                   type: string
-                  enum: [email, sms]
+                  enum: [email]
                   default: email
                 password:
                   type: string
@@ -114,7 +109,7 @@ paths:
                     example: Account created. Follow the confirmation link to verify your account.
                   verification_channel:
                     type: string
-                    enum: [email, sms]
+                    enum: [email]
                   destination:
                     type: string
                     description: Masked confirmation destination
@@ -175,6 +170,100 @@ paths:
                 $ref: '#/components/schemas/ValidationError'
         '429':
           $ref: '#/components/responses/TooManyRequests'
+
+  /api/auth/google/redirect:
+    post:
+      tags:
+        - API Authentication
+      summary: Start Google authentication
+      description: Returns a Google authorisation URL containing a short-lived, single-use state value.
+      operationId: googleAuthRedirect
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [client]
+              properties:
+                client:
+                  type: string
+                  enum: [web, mobile]
+                device_name:
+                  type: string
+                  maxLength: 255
+      responses:
+        '200':
+          description: Google authorisation URL created
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [url]
+                properties:
+                  url:
+                    type: string
+                    format: uri
+        '422':
+          description: Validation or configuration error
+
+  /api/auth/google/callback:
+    get:
+      tags:
+        - API Authentication
+      summary: Complete the Google provider callback
+      description: Validates the single-use state, links or creates the account, and redirects to the requesting client with a short-lived exchange code.
+      operationId: googleAuthCallback
+      parameters:
+        - name: state
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: code
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '302':
+          description: Redirect to the web or mobile client
+
+  /api/auth/google/exchange:
+    post:
+      tags:
+        - API Authentication
+      summary: Exchange a Google sign-in code
+      description: Atomically consumes the short-lived code and returns a Sanctum API token.
+      operationId: googleAuthExchange
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code]
+              properties:
+                code:
+                  type: string
+                  minLength: 64
+                  maxLength: 64
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  user:
+                    $ref: '#/components/schemas/User'
+                  token:
+                    type: string
+        '422':
+          description: Expired, invalid, or already-used code
 
   /api/account-verification/resend:
     post:

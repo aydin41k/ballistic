@@ -22,7 +22,6 @@ import type {
   UserUpdatePayload,
   UserLookup,
   ValidationError,
-  VerificationChannel,
 } from '@/types';
 
 type QueryValue = string | number | boolean | null | undefined;
@@ -125,19 +124,47 @@ export async function login(email: string, password: string): Promise<AuthRespon
   );
 }
 
+export async function getGoogleAuthorisationUrl(): Promise<string> {
+  const response = await request<{ url: string }>(
+    '/api/auth/google/redirect',
+    {
+      method: 'POST',
+      body: JSON.stringify({ client: 'mobile', device_name: deviceName() }),
+    },
+    undefined,
+    false,
+  );
+
+  return response.url;
+}
+
+export async function exchangeGoogleCode(code: string): Promise<AuthResponse> {
+  return request<AuthResponse>(
+    '/api/auth/google/exchange',
+    {
+      method: 'POST',
+      body: JSON.stringify({ code }),
+    },
+    undefined,
+    false,
+  );
+}
+
 export async function register(payload: {
   name: string;
   email: string;
-  phone?: string;
   password: string;
   password_confirmation: string;
-  verification_channel: VerificationChannel;
 }): Promise<RegistrationResponse> {
   return request<RegistrationResponse>(
     '/api/register',
     {
       method: 'POST',
-      body: JSON.stringify({ ...payload, device_name: deviceName() }),
+      body: JSON.stringify({
+        ...payload,
+        verification_channel: 'email',
+        device_name: deviceName(),
+      }),
     },
     undefined,
     false,

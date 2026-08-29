@@ -213,6 +213,14 @@ final class User extends Authenticatable
     }
 
     /**
+     * Get the social identities linked to this user.
+     */
+    public function socialAccounts(): HasMany
+    {
+        return $this->hasMany(SocialAccount::class);
+    }
+
+    /**
      * Get this user's audit logs.
      */
     public function auditLogs(): HasMany

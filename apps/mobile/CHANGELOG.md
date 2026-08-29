@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.12 - 2026-08-29
+
+- Added Google sign-in and account creation through the system authentication browser while preserving offline workspace merging.
+- Removed SMS as a new-account confirmation option; password registration continues to use email confirmation.
+
 ## 0.2.11 - 2026-08-28
 
 - Added email or SMS confirmation during account creation, followed by a human check before the account can sign in.

@@ -38,14 +38,13 @@ final class RegisterAccountRequest extends FormRequest
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', Rule::unique(User::class)],
             'phone' => [
-                Rule::requiredIf($this->string('verification_channel')->value() === 'sms'),
                 'nullable',
                 'string',
                 'regex:/^\+[1-9]\d{7,14}$/',
                 'max:20',
                 Rule::unique(User::class),
             ],
-            'verification_channel' => ['required', Rule::in(['email', 'sms'])],
+            'verification_channel' => ['required', Rule::in(['email'])],
             'password' => ['required', 'confirmed', Password::defaults()],
             'device_name' => ['nullable', 'string', 'max:255'],
         ];

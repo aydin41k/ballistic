@@ -1,3 +1,13 @@
+## 0.19.2 - 2026-08-29
+
+### Added
+
+- **Google sign-in**: added Google entry points to sign-in and account creation, plus a secure callback exchange that stores the resulting Ballistic session
+
+### Changed
+
+- **Email-only password registration**: removed the SMS confirmation choice while retaining email confirmation and existing password sign-in
+
 ## 0.19.1 - 2026-08-28
 
 ### Changed

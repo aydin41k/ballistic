@@ -159,7 +159,7 @@ export interface AuthResponse {
   token: string;
 }
 
-export type VerificationChannel = 'email' | 'sms';
+export type VerificationChannel = 'email';
 
 export interface RegistrationResponse {
   message: string;

@@ -3,7 +3,6 @@ import type {
   RegistrationResponse,
   User,
   ValidationError,
-  VerificationChannel,
 } from "@/types";
 
 const TOKEN_KEY = "ballistic_auth_token";
@@ -103,6 +102,12 @@ export function setStoredUser(user: User): void {
   localStorage.setItem(USER_KEY, JSON.stringify(user));
 }
 
+function persistAuthentication(response: AuthResponse): AuthResponse {
+  setToken(response.token);
+  setStoredUser(response.user);
+  return response;
+}
+
 /**
  * Check if user is authenticated
  */
@@ -132,10 +137,44 @@ export async function login(
     throw new AuthError(error.message, error.errors);
   }
 
-  const data = (await response.json()) as AuthResponse;
-  setToken(data.token);
-  setStoredUser(data.user);
-  return data;
+  return persistAuthentication((await response.json()) as AuthResponse);
+}
+
+export async function getGoogleAuthorisationUrl(): Promise<string> {
+  const response = await fetch(`${API_BASE}/api/auth/google/redirect`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    body: JSON.stringify({ client: "web", device_name: getDeviceName() }),
+  });
+
+  if (!response.ok) {
+    const error = (await response.json()) as ValidationError;
+    throw new AuthError(error.message, error.errors);
+  }
+
+  const data = (await response.json()) as { url: string };
+  return data.url;
+}
+
+export async function exchangeGoogleCode(code: string): Promise<AuthResponse> {
+  const response = await fetch(`${API_BASE}/api/auth/google/exchange`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    body: JSON.stringify({ code }),
+  });
+
+  if (!response.ok) {
+    const error = (await response.json()) as ValidationError;
+    throw new AuthError(error.message, error.errors);
+  }
+
+  return persistAuthentication((await response.json()) as AuthResponse);
 }
 
 /**
@@ -146,8 +185,6 @@ export async function register(
   email: string,
   password: string,
   password_confirmation: string,
-  verification_channel: VerificationChannel,
-  phone?: string,
 ): Promise<RegistrationResponse> {
   const deviceName = getDeviceName();
   const response = await fetch(`${API_BASE}/api/register`, {
@@ -161,8 +198,7 @@ export async function register(
       email,
       password,
       password_confirmation,
-      verification_channel,
-      phone: verification_channel === "sms" ? phone : undefined,
+      verification_channel: "email",
       device_name: deviceName,
     }),
   });

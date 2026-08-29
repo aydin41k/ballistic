@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.17.07] - 2026-08-29
+
+### Added
+
+- **Google authentication** — installed Laravel Socialite and added verified-email account creation/linking with short-lived, single-use OAuth state and token exchange codes for web and mobile clients
+- **Social identities** — added provider identity storage without persisting Google access or refresh tokens
+
+### Changed
+
+- **Registration delivery** — new password accounts now use email confirmation only; SMS registration is no longer offered
+
+### Tests
+
+- Added feature coverage for OAuth state replay protection, verified and unverified Google accounts, existing-user linking, provider identity precedence, mobile redirects, and one-time Sanctum token exchange
+
 ## [0.17.06] - 2026-08-28
 
 ### Changed

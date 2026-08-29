@@ -1,9 +1,12 @@
 import { queryClient } from '@/lib/query-client';
 import { Image } from 'expo-image';
+import * as WebBrowser from 'expo-web-browser';
 import { authStorage } from '@/lib/auth-storage';
 import { clearLocalAvatars, deleteLocalAvatar } from '@/lib/avatar-files';
 import {
   fetchUser,
+  exchangeGoogleCode,
+  getGoogleAuthorisationUrl,
   login as loginRequest,
   logout as logoutRequest,
   register as registerRequest,
@@ -12,13 +15,7 @@ import {
 import { createOfflineId, offlineStore } from '@/lib/offline-store';
 import { clearLocalNotifications, unregisterCurrentDevicePush } from '@/lib/push';
 import { waitForSyncToSettle } from '@/lib/sync-engine';
-import type {
-  AvatarUploadPayload,
-  RegistrationResponse,
-  User,
-  UserUpdatePayload,
-  VerificationChannel,
-} from '@/types';
+import type { AvatarUploadPayload, RegistrationResponse, User, UserUpdatePayload } from '@/types';
 import {
   createContext,
   type PropsWithChildren,
@@ -35,13 +32,12 @@ interface AuthContextValue {
   isAuthenticated: boolean;
   isRegistered: boolean;
   login: (email: string, password: string) => Promise<void>;
+  loginWithGoogle: () => Promise<boolean>;
   register: (payload: {
     name: string;
     email: string;
-    phone?: string;
     password: string;
     password_confirmation: string;
-    verification_channel: VerificationChannel;
   }) => Promise<RegistrationResponse>;
   startOffline: () => Promise<void>;
   logout: () => Promise<void>;
@@ -191,20 +187,35 @@ export function AuthProvider({ children }: PropsWithChildren) {
     [persistAuth],
   );
 
+  const loginWithGoogle = useCallback(async () => {
+    const authorisationUrl = await getGoogleAuthorisationUrl();
+    const result = await WebBrowser.openAuthSessionAsync(authorisationUrl, 'ballistic://login');
+
+    if (result.type !== 'success') return false;
+
+    const callback = new URL(result.url);
+    const code = callback.searchParams.get('code');
+
+    if (!code) {
+      throw new Error('Google sign-in was cancelled or could not be completed.');
+    }
+
+    const response = await exchangeGoogleCode(code);
+    await persistAuth(response.token, response.user);
+    return true;
+  }, [persistAuth]);
+
   const register = useCallback(
     async (payload: {
       name: string;
       email: string;
-      phone?: string;
       password: string;
       password_confirmation: string;
-      verification_channel: VerificationChannel;
     }) => {
       return registerRequest({
         ...payload,
         name: payload.name.trim(),
         email: payload.email.trim(),
-        phone: payload.phone?.trim() || undefined,
       });
     },
     [],
@@ -294,6 +305,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
       isAuthenticated,
       isRegistered: Boolean(user && !isGuestUser(user)),
       login,
+      loginWithGoogle,
       register,
       startOffline,
       logout,
@@ -305,6 +317,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
       isAuthenticated,
       isReady,
       login,
+      loginWithGoogle,
       logout,
       refreshUser,
       register,

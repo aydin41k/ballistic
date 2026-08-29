@@ -4,17 +4,15 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth, AuthError } from "@/contexts/AuthContext";
+import { GoogleSignInButton } from "@/components/GoogleSignInButton";
 import { resendAccountVerification } from "@/lib/auth";
-import type { RegistrationResponse, VerificationChannel } from "@/types";
+import type { RegistrationResponse } from "@/types";
 
 export default function RegisterPage() {
   const router = useRouter();
   const { register, isAuthenticated } = useAuth();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
-  const [verificationChannel, setVerificationChannel] =
-    useState<VerificationChannel>("email");
   const [password, setPassword] = useState("");
   const [passwordConfirmation, setPasswordConfirmation] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -59,8 +57,6 @@ export default function RegisterPage() {
         email,
         password,
         passwordConfirmation,
-        verificationChannel,
-        phone,
       );
       setConfirmation(response);
     } catch (err) {
@@ -100,10 +96,7 @@ export default function RegisterPage() {
               ✓
             </div>
             <h2 className="mt-4 text-xl font-semibold text-[var(--navy)]">
-              Check your{" "}
-              {confirmation.verification_channel === "sms"
-                ? "messages"
-                : "email"}
+              Check your email
             </h2>
             <p className="mt-2 text-sm text-slate-600">
               We sent a confirmation link to {confirmation.destination}. Open it
@@ -149,6 +142,13 @@ export default function RegisterPage() {
           <p className="mt-2 text-slate-500">Create your account</p>
         </div>
 
+        <GoogleSignInButton onError={setError} />
+        <div className="my-5 flex items-center gap-3 text-xs uppercase tracking-wide text-slate-400">
+          <span className="h-px flex-1 bg-slate-200" />
+          or create a password
+          <span className="h-px flex-1 bg-slate-200" />
+        </div>
+
         {/* Register Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
           {error && (
@@ -180,62 +180,6 @@ export default function RegisterPage() {
               <p className="mt-1 text-sm text-red-600">{fieldErrors.name[0]}</p>
             )}
           </div>
-
-          <fieldset>
-            <legend className="mb-2 block text-sm font-medium text-slate-700">
-              Send confirmation by
-            </legend>
-            <div className="grid grid-cols-2 gap-2">
-              {(["email", "sms"] as const).map((channel) => (
-                <button
-                  key={channel}
-                  type="button"
-                  aria-pressed={verificationChannel === channel}
-                  onClick={() => setVerificationChannel(channel)}
-                  className={`rounded-md border px-3 py-2 text-sm font-medium capitalize transition-colors ${
-                    verificationChannel === channel
-                      ? "border-[var(--blue-600)] bg-blue-50 text-[var(--blue-600)]"
-                      : "border-slate-300 bg-white text-slate-600 hover:bg-slate-50"
-                  }`}
-                >
-                  {channel === "sms" ? "SMS" : "Email"}
-                </button>
-              ))}
-            </div>
-            {fieldErrors.verification_channel && (
-              <p className="mt-1 text-sm text-red-600">
-                {fieldErrors.verification_channel[0]}
-              </p>
-            )}
-          </fieldset>
-
-          {verificationChannel === "sms" && (
-            <div>
-              <label
-                htmlFor="phone"
-                className="mb-1 block text-sm font-medium text-slate-700"
-              >
-                Mobile number
-              </label>
-              <input
-                id="phone"
-                type="tel"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                required
-                autoComplete="tel"
-                className={`w-full rounded-md border bg-white px-3 py-2 text-[var(--navy)] shadow-sm focus:border-[var(--blue-600)] focus:outline-none focus:ring-1 focus:ring-[var(--blue-600)] ${
-                  fieldErrors.phone ? "border-red-500" : "border-slate-300"
-                }`}
-                placeholder="+61412345678"
-              />
-              {fieldErrors.phone && (
-                <p className="mt-1 text-sm text-red-600">
-                  {fieldErrors.phone[0]}
-                </p>
-              )}
-            </div>
-          )}
 
           <div>
             <label
