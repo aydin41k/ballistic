@@ -23,6 +23,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Regenerated Wayfinder route/action helpers
 - Re-ran the full backend Sail suite successfully
 - Re-ran frontend type-checking successfully
+
+## [0.17.05] - 2026-07-12
+
+### Added
+
+- **Native mobile push subscriptions** — added authenticated Expo Push token registration, listing, removal, per-user device storage, and automatic delivery alongside the existing browser Web Push transport
+- **Mobile push lifecycle cleanup** — expired Expo device tokens are removed automatically when Expo reports `DeviceNotRegistered`, while transient delivery failures preserve subscriptions for retry
+
+### Tests
+
+- Added feature coverage for mobile device registration, updates, isolation, removal, validation, ownership, and authentication
+- Added unit coverage for Expo payload delivery, successful-use tracking, expired-device cleanup, outage handling, and empty subscription sets
+
 ## [0.17.04] - 2026-03-21
 
 ### Added

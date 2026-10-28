@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\McpTokenController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\ConnectionController;
 use App\Http\Controllers\ItemController;
+use App\Http\Controllers\MobilePushSubscriptionController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\PushSubscriptionController;
@@ -66,6 +67,12 @@ Route::middleware(['auth:sanctum', 'token.api', 'throttle:api'])->group(function
     Route::post('/push/subscribe', [PushSubscriptionController::class, 'subscribe']);
     Route::post('/push/unsubscribe', [PushSubscriptionController::class, 'unsubscribe']);
     Route::delete('/push/subscriptions/{subscription}', [PushSubscriptionController::class, 'destroy']);
+
+    // Native mobile push subscriptions (Expo Push API)
+    Route::get('/mobile/push/subscriptions', [MobilePushSubscriptionController::class, 'index']);
+    Route::post('/mobile/push/subscribe', [MobilePushSubscriptionController::class, 'subscribe']);
+    Route::post('/mobile/push/unsubscribe', [MobilePushSubscriptionController::class, 'unsubscribe']);
+    Route::delete('/mobile/push/subscriptions/{subscription}', [MobilePushSubscriptionController::class, 'destroy']);
 
     // Connections (mutual consent for task assignment)
     // Extra rate limiting on store to prevent spam requests

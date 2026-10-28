@@ -1,6 +1,6 @@
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import "@testing-library/jest-dom";
-import Home from "../app/page";
+import Home from "../app/app/page";
 import * as api from "../lib/api";
 import { AuthProvider } from "@/contexts/AuthContext";
 

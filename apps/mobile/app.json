@@ -2,37 +2,55 @@
   "expo": {
     "name": "Ballistic",
     "slug": "ballistic-mobile",
-    "scheme": "ballistic",
-    "version": "0.2.0",
+    "version": "0.1.6",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/images/ballistic-icon.png",
+    "scheme": "ballistic",
     "userInterfaceStyle": "light",
-    "assetBundlePatterns": ["**/*"],
-    "splash": {
-      "image": "./assets/splash.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#F7F8FA"
-    },
+    "backgroundColor": "#F7F8FA",
     "ios": {
+      "icon": "./assets/images/ballistic-icon.png",
+      "bundleIdentifier": "com.psycode.ballistic",
       "supportsTablet": true,
-      "bundleIdentifier": "au.com.psycode.ballistic.mobile",
-      "buildNumber": "1",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "UIBackgroundModes": ["remote-notification"]
       }
     },
     "android": {
-      "package": "au.com.psycode.ballistic.mobile",
-      "versionCode": 1,
-      "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#F7F8FA"
-      },
-      "permissions": []
+      "icon": "./assets/images/ballistic-icon.png",
+      "package": "com.psycode.ballistic",
+      "edgeToEdgeEnabled": true,
+      "predictiveBackGestureEnabled": true,
+      "permissions": ["POST_NOTIFICATIONS"]
+    },
+    "web": {
+      "output": "static",
+      "favicon": "./assets/images/ballistic-icon.png"
     },
     "plugins": [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#0A2540",
+          "image": "./assets/images/ballistic-logo.png",
+          "imageWidth": 180,
+          "resizeMode": "contain"
+        }
+      ],
       "expo-secure-store",
-      "@react-native-community/datetimepicker"
-    ]
+      "@react-native-community/datetimepicker",
+      [
+        "expo-notifications",
+        {
+          "color": "#1E40AF",
+          "defaultChannel": "ballistic"
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    }
   }
 }

@@ -1,5 +1,5 @@
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
-import Home from "@/app/page";
+import Home from "@/app/app/page";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { reorderItems } from "@/lib/api";
 

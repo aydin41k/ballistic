@@ -1,3 +1,45 @@
+## 0.19.0 - 2026-07-19
+
+### Added
+
+- **Marketing landing page**: added a responsive, product-led home page with original copy positioning Ballistic as a simple to-do list with optional AI and advanced features
+- **Product preview**: added code-native task, feature-toggle, and AI-assistant demonstrations that show the product without requiring screenshots or external assets
+- **Feature storytelling**: added focused sections for the core three-step workflow, optional power features, MCP-compatible AI support, and account conversion
+
+### Changed
+
+- **Application route**: moved the authenticated journal from `/` to `/app`; login and registration now continue into the new app route
+- **Authentication navigation**: linked the login and registration branding back to the public landing page
+- **Product metadata**: updated page and PWA metadata to describe Ballistic as an AI-first to-do list
+- **Landing-page direction**: rebuilt the visual system around sparse editorial layouts, floating pill navigation and a generative task field, all using the app's established navy, blue, white and light-grey palette with a clearer persistent account-creation call to action
+- **Dynamic hero field**: replaced the static task bubbles with a continuously drifting, breathing particle system that responds subtly to the pointer and respects reduced-motion preferences
+- **Brand message**: made “Ballistic: The Simplest Bullet List” the dominant hero statement and rewrote the AI story in plain language around letting your AI run the list admin
+- **AI positioning accuracy**: clarified that Ballistic does not provide an AI service; users connect a compatible AI they already use, control its access, and can disconnect it at any time
+- **Japandi typography**: reduced heavy display weights and tightened the hierarchy around calmer medium and semibold type
+- **Mobile download journey**: added concise mobile CTAs and an illustrated closing card that lead to a dedicated mobile preview page, ready to redirect to the Play Store when the app is available
+- **Mobile preview page**: added a polished `/mobile` holding page that introduces the mobile experience and keeps availability messaging off the main landing page
+- **Product positioning**: made the mobile app the centre of the story and reframed desktop/web as a complementary bigger-screen experience
+- **Version label**: updated the settings footer to `v0.19.0`
+
+### Tests
+
+- Updated authenticated journal imports and login redirect expectations for the `/app` route
+
+## 0.18.0 - 2026-07-18
+
+### Changed
+
+- **Desktop workspace**: replaced the bottom navigation bar with a persistent sidebar on large screens while retaining the existing mobile header, bottom bar, and compact task layout
+- **Desktop navigation**: added labelled access to journal tools, notifications, settings, profile, project filters, scope filters, and quick task creation
+- **Task controls**: added explicit desktop buttons for editing, moving up or down, moving to the top, declining, and deleting tasks instead of relying on row gestures or implicit interactions
+- **Wide-screen layout**: expanded the journal into a centred desktop workspace with a dedicated page header, task counts, wider task details, section counts, and desktop-sized spacing
+- **Notifications**: added a sidebar presentation for the existing notification centre without changing its mobile icon presentation
+- **Version label**: updated the settings footer to `v0.18.0`
+
+### Tests
+
+- Extended `itemrow.test.tsx` to cover the explicit desktop action buttons
+
 ## 0.17.1 - 2026-03-10
 
 ### Changed

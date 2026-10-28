@@ -16,8 +16,9 @@ const sourceSans = Source_Sans_3({
 });
 
 export const metadata: Metadata = {
-  title: "Ballistic – Bullet Journal",
-  description: "Simplest bullet journal",
+  title: "Ballistic: The Simplest Bullet List",
+  description:
+    "A beautifully simple mobile bullet list that lets you securely connect a compatible AI service you already use.",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
@@ -31,7 +32,7 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
-  themeColor: "#000000",
+  themeColor: "#111b3f",
 };
 
 export default function RootLayout({
@@ -46,7 +47,9 @@ export default function RootLayout({
       >
         <ServiceWorkerRegistration />
         <AuthProvider>
-          <div className="mx-auto w-full max-w-screen-sm p-4">{children}</div>
+          <div className="mx-auto w-full max-w-screen-sm p-4 lg:max-w-none lg:p-0">
+            {children}
+          </div>
         </AuthProvider>
       </body>
     </html>

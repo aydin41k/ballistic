@@ -1,1059 +1,652 @@
-"use client";
+import Image from "next/image";
+import Link from "next/link";
+import { LandingSignalField } from "@/components/LandingSignalField";
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import { useFeatureFlags } from "@/hooks/useFeatureFlags";
-import { useRouter } from "next/navigation";
-import type { Item, ItemScope, Project } from "@/types";
-import {
-  fetchItems,
-  createItem,
-  updateItem,
-  reorderItems,
-  fetchProjects,
-  createProject,
-} from "@/lib/api";
-import { ItemRow } from "@/components/ItemRow";
-import { EmptyState } from "@/components/EmptyState";
-import { SplashScreen } from "@/components/SplashScreen";
-import { SettingsModal } from "@/components/SettingsModal";
-import { NotesModal } from "@/components/NotesModal";
-import { EditItemModal } from "@/components/EditItemModal";
-import { ProfileModal } from "@/components/ProfileModal";
-import { ActivityLogModal } from "@/components/ActivityLogModal";
-import { NotificationCentre } from "@/components/NotificationCentre";
-import { useAuth } from "@/contexts/AuthContext";
-import {
-  filterItemsByExcludedProjects,
-  NO_PROJECT_FILTER_ID,
-} from "@/lib/projectFilters";
+const steps = [
+  {
+    number: "01",
+    title: "Use it on its own",
+    description:
+      "Ballistic starts as a clean mobile bullet list. No AI connection required.",
+  },
+  {
+    number: "02",
+    title: "Connect your AI",
+    description:
+      "Choose a compatible AI service you already use and give it access when you are ready.",
+  },
+  {
+    number: "03",
+    title: "Ask it to act",
+    description:
+      "Tell it to find, add, update, complete, organise or delegate work in your list.",
+  },
+] as const;
 
-function normaliseItemResponse(payload: Item | { data?: Item }): Item {
-  if (
-    payload &&
-    typeof payload === "object" &&
-    "data" in payload &&
-    (payload as { data?: Item }).data
-  ) {
-    return (payload as { data: Item }).data;
-  }
-  return payload as Item;
-}
+const optionalTools = [
+  ["Bring your own AI", "Connect a compatible AI service you already use"],
+  ["Find + capture", "Ask what is overdue or add something before you forget"],
+  ["Update + complete", "Change dates, move work or mark it done"],
+  ["Projects + tags", "Create structure and keep related work together"],
+  ["Delegate", "Assign work to people you are connected with"],
+] as const;
 
-function getUrgencyRank(item: Item, todayStr: string, in72hMs: number): number {
-  if (!item.due_date) return 4; // No deadline = lowest priority
-
-  const dueMs = new Date(item.due_date + "T23:59:59").getTime();
-
-  if (item.due_date < todayStr) return 1; // Overdue
-  if (dueMs <= in72hMs) return 2; // Due within 72 hours
-  return 3; // Has deadline, not urgent yet
-}
-
-function sortByUrgency(items: Item[]): Item[] {
-  const now = new Date();
-  const todayStr = now.toISOString().split("T")[0]; // YYYY-MM-DD
-  const in72hMs = now.getTime() + 72 * 60 * 60 * 1000;
-
-  return [...items].sort((a, b) => {
-    const urgencyA = getUrgencyRank(a, todayStr, in72hMs);
-    const urgencyB = getUrgencyRank(b, todayStr, in72hMs);
-
-    if (urgencyA !== urgencyB) {
-      return urgencyA - urgencyB; // Lower rank = higher priority
-    }
-
-    // Within the same urgency tier, sort by due_date ascending (nearest deadline first)
-    if (a.due_date && b.due_date) {
-      return a.due_date.localeCompare(b.due_date);
-    }
-    if (a.due_date) return -1;
-    if (b.due_date) return 1;
-
-    // Finally, fall back to position
-    return a.position - b.position;
-  });
-}
-
-export default function Home() {
-  const router = useRouter();
-  const {
-    isAuthenticated,
-    isLoading: authLoading,
-    logout,
-    user,
-    refreshUser,
-  } = useAuth();
-  const [items, setItems] = useState<Item[]>([]);
-  const [assignedItems, setAssignedItems] = useState<Item[]>([]);
-  const [delegatedItems, setDelegatedItems] = useState<Item[]>([]);
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [editingItem, setEditingItem] = useState<Item | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [scrollToItemId, setScrollToItemId] = useState<string | null>(null);
-  const [draggingId, setDraggingId] = useState<string | null>(null);
-  const [dragOverId, setDragOverId] = useState<string | null>(null);
-  const dragSourceRef = useRef<string | null>(null);
-  const dragOverRef = useRef<string | null>(null);
-  const dropHandledRef = useRef(false);
-  const [viewScope, setViewScope] = useState<ItemScope>("active");
-  const [excludedProjectIds, setExcludedProjectIds] = useState<Set<string>>(
-    new Set(),
-  );
-  const [showFilter, setShowFilter] = useState(false);
-  const [toast, setToast] = useState<string | null>(null);
-  const toastTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [showSettings, setShowSettings] = useState(false);
-  const [showNotes, setShowNotes] = useState(false);
-  const [showProfile, setShowProfile] = useState(false);
-  const [showActivityLog, setShowActivityLog] = useState(false);
-  const { dates, delegation } = useFeatureFlags();
-
-  const showError = useCallback((message: string) => {
-    if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
-    setToast(message);
-    toastTimeoutRef.current = setTimeout(() => setToast(null), 4000);
-  }, []);
-
-  // Reset view scope when dates feature is turned off
-  useEffect(() => {
-    if (!dates && viewScope !== "active") {
-      setViewScope("active");
-    }
-  }, [dates, viewScope]);
-
-  // Redirect to login if not authenticated
-  useEffect(() => {
-    if (!authLoading && !isAuthenticated) {
-      router.push("/login");
-    }
-  }, [authLoading, isAuthenticated, router]);
-
-  // Fetch items and projects when authenticated
-  useEffect(() => {
-    if (isAuthenticated) {
-      setLoading(true);
-      Promise.all([
-        fetchItems({ scope: viewScope }),
-        delegation
-          ? fetchItems({ assigned_to_me: true, scope: viewScope })
-          : Promise.resolve([]),
-        delegation
-          ? fetchItems({ delegated: true, scope: viewScope })
-          : Promise.resolve([]),
-        fetchProjects(),
-      ])
-        .then(([itemsData, assignedData, delegatedData, projectsData]) => {
-          setItems(itemsData);
-          setAssignedItems(assignedData);
-          setDelegatedItems(delegatedData);
-          setProjects(projectsData);
-        })
-        .catch((error) => {
-          console.error("Failed to fetch data:", error);
-        })
-        .finally(() => setLoading(false));
-    }
-  }, [isAuthenticated, viewScope, dates, delegation]);
-
-  // Handle scrolling to newly added items
-  useEffect(() => {
-    if (scrollToItemId) {
-      const timer = setTimeout(() => {
-        const element = document.querySelector(
-          `[data-item-id="${CSS.escape(scrollToItemId)}"]`,
-        );
-        if (element) {
-          element.scrollIntoView({ behavior: "smooth", block: "center" });
-        }
-        setScrollToItemId(null);
-      }, 100);
-
-      return () => clearTimeout(timer);
-    }
-  }, [scrollToItemId]);
-
-  // Listen for service worker messages (real-time task updates from push notifications)
-  useEffect(() => {
-    if (typeof navigator === "undefined" || !navigator.serviceWorker) return;
-
-    function handleSwMessage(event: MessageEvent) {
-      if (event.data?.type !== "TASK_UPDATE") return;
-
-      const notificationType: string = event.data.notificationType ?? "";
-
-      if (
-        notificationType === "task_unassigned" ||
-        notificationType === "task_rejected"
-      ) {
-        // Refresh both assigned and delegated lists
-        Promise.all([
-          fetchItems({ assigned_to_me: true, scope: viewScope }),
-          fetchItems({ delegated: true, scope: viewScope }),
-        ])
-          .then(([assignedData, delegatedData]) => {
-            setAssignedItems(assignedData);
-            setDelegatedItems(delegatedData);
-          })
-          .catch(console.error);
-      } else {
-        // task_assigned, task_updated, task_completed, etc.
-        fetchItems({ assigned_to_me: true, scope: viewScope })
-          .then(setAssignedItems)
-          .catch(console.error);
-      }
-    }
-
-    navigator.serviceWorker.addEventListener("message", handleSwMessage);
-    return () => {
-      navigator.serviceWorker.removeEventListener("message", handleSwMessage);
-    };
-  }, [viewScope]);
-
-  // Refresh all lists when the tab becomes visible again
-  useEffect(() => {
-    if (!isAuthenticated) return;
-
-    function handleVisibilityChange() {
-      if (document.visibilityState !== "visible") return;
-
-      Promise.all([
-        fetchItems({ scope: viewScope }),
-        delegation
-          ? fetchItems({ assigned_to_me: true, scope: viewScope })
-          : Promise.resolve([]),
-        delegation
-          ? fetchItems({ delegated: true, scope: viewScope })
-          : Promise.resolve([]),
-      ])
-        .then(([itemsData, assignedData, delegatedData]) => {
-          setItems(itemsData);
-          setAssignedItems(assignedData);
-          setDelegatedItems(delegatedData);
-        })
-        .catch(console.error);
-    }
-
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-    return () => {
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-    };
-  }, [isAuthenticated, viewScope, delegation]);
-
-  // Sort my tasks by urgency (only when dates feature is enabled)
-  const sortedItems = dates ? sortByUrgency(items) : items;
-
-  // Apply project filter client-side (exclusion model)
-  const hasProjectFilter = excludedProjectIds.size > 0;
-  const filteredItems = filterItemsByExcludedProjects(
-    sortedItems,
-    excludedProjectIds,
-  );
-  const filteredAssignedItems = filterItemsByExcludedProjects(
-    assignedItems,
-    excludedProjectIds,
-  );
-  const filteredDelegatedItems = filterItemsByExcludedProjects(
-    delegatedItems,
-    excludedProjectIds,
-  );
-
-  function onRowChange(itemOrUpdater: Item | ((current: Item) => Item)) {
-    const updater = (prev: Item[]) => {
-      if (!Array.isArray(prev)) return [];
-      if (typeof itemOrUpdater === "function") {
-        return prev.map(itemOrUpdater);
-      }
-      return prev.map((i) => (i.id === itemOrUpdater.id ? itemOrUpdater : i));
-    };
-
-    // Update all three arrays — the mapper is by ID so non-matching items are unchanged
-    setItems(updater);
-    setAssignedItems(updater);
-    setDelegatedItems(updater);
-  }
-
-  // Decline (reject) an assigned task — optimistically removes from assigned list
-  async function handleDecline(item: Item) {
-    const previousAssigned = [...assignedItems];
-    setAssignedItems((prev) => prev.filter((i) => i.id !== item.id));
-
-    try {
-      await updateItem(item.id, { assignee_id: null });
-    } catch (error) {
-      console.error("Failed to decline task:", error);
-      setAssignedItems(previousAssigned);
-      showError("Failed to decline task. Please try again.");
-    }
-  }
-
-  // Optimistic reordering function that updates UI immediately and persists via bulk API
-  function onOptimisticReorder(
-    itemId: string,
-    direction: "up" | "down" | "top",
-  ) {
-    setItems((prev) => {
-      if (!Array.isArray(prev)) return [];
-
-      const currentIndex = prev.findIndex((item) => item.id === itemId);
-      if (currentIndex === -1) return prev;
-
-      const newList = [...prev];
-      if (direction === "up" && currentIndex > 0) {
-        [newList[currentIndex], newList[currentIndex - 1]] = [
-          newList[currentIndex - 1],
-          newList[currentIndex],
-        ];
-      } else if (direction === "down" && currentIndex < newList.length - 1) {
-        [newList[currentIndex], newList[currentIndex + 1]] = [
-          newList[currentIndex + 1],
-          newList[currentIndex],
-        ];
-      } else if (direction === "top" && currentIndex > 0) {
-        const [item] = newList.splice(currentIndex, 1);
-        newList.unshift(item);
-      } else {
-        return prev;
-      }
-
-      const ordered = newList.map((item, index) => ({
-        ...item,
-        position: index,
-      }));
-
-      // Persist via single bulk reorder call
-      reorderItems(
-        ordered.map((item, i) => ({ id: item.id, position: i })),
-      ).catch((error) => {
-        console.error("Failed to persist reorder:", error);
-        setItems(prev);
-        showError("Failed to reorder. Changes reverted.");
-      });
-
-      return ordered;
-    });
-  }
-
-  async function handleLogout() {
-    await logout();
-    router.push("/login");
-  }
-
-  async function handleCreateProject(name: string): Promise<Project> {
-    const newProject = await createProject({ name });
-    setProjects((prev) => [...prev, newProject]);
-    return newProject;
-  }
-
-  function reorderList(
-    list: Item[],
-    sourceId: string,
-    targetId: string,
-  ): Item[] {
-    const current = [...list];
-    const fromIndex = current.findIndex((entry) => entry.id === sourceId);
-    const toIndex = current.findIndex((entry) => entry.id === targetId);
-
-    if (fromIndex === -1 || toIndex === -1 || fromIndex === toIndex) {
-      return current;
-    }
-
-    const [moved] = current.splice(fromIndex, 1);
-    current.splice(toIndex, 0, moved);
-
-    return current.map((entry, position) => ({ ...entry, position }));
-  }
-
-  function handleDragStart(id: string) {
-    setDraggingId(id);
-    setDragOverId(id);
-    dragSourceRef.current = id;
-    dragOverRef.current = id;
-  }
-
-  function handleDragEnter(id: string) {
-    setDragOverId(id);
-    dragOverRef.current = id;
-  }
-
-  function handleDragEnd() {
-    if (dropHandledRef.current) {
-      dropHandledRef.current = false;
-      setDraggingId(null);
-      setDragOverId(null);
-      dragSourceRef.current = null;
-      dragOverRef.current = null;
-      return;
-    }
-
-    setDraggingId(null);
-    setDragOverId(null);
-    dragSourceRef.current = null;
-    dragOverRef.current = null;
-  }
-
-  function handleDrop(targetId: string) {
-    dropHandledRef.current = true;
-
-    setItems((prev) => {
-      if (!Array.isArray(prev)) return [];
-
-      const sourceId = draggingId;
-
-      const ordered =
-        sourceId && sourceId !== targetId
-          ? reorderList(prev, sourceId, targetId)
-          : prev.map((entry, position) => ({ ...entry, position }));
-
-      // Persist via single bulk reorder call
-      reorderItems(
-        ordered.map((item, i) => ({ id: item.id, position: i })),
-      ).catch((error) => {
-        console.error("Failed to persist reorder:", error);
-        setItems(prev);
-        showError("Failed to reorder. Changes reverted.");
-      });
-
-      return ordered;
-    });
-
-    setDraggingId(null);
-    setDragOverId(null);
-    dragSourceRef.current = null;
-    dragOverRef.current = null;
-  }
-
-  // Show splash screen while checking auth or loading data
-  if (authLoading || (!isAuthenticated && !authLoading) || loading) {
-    return <SplashScreen />;
-  }
-
+export default function LandingPage() {
   return (
-    <div className="flex flex-col gap-3 pb-24">
-      {/* Error toast */}
-      {toast && (
-        <div className="fixed top-4 inset-x-4 z-30 mx-auto max-w-md animate-fade-in">
-          <div className="flex items-center gap-2 rounded-md bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700 shadow-lg">
-            <span className="flex-1">{toast}</span>
-            <button
-              type="button"
-              onClick={() => setToast(null)}
-              className="shrink-0 text-red-400 hover:text-red-600 transition-colors"
-              aria-label="Dismiss"
-            >
-              <svg
-                viewBox="0 0 24 24"
-                width="16"
-                height="16"
-                fill="none"
-                stroke="currentColor"
-              >
-                <path
-                  d="M18 6 6 18M6 6l12 12"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            </button>
-          </div>
-        </div>
-      )}
+    <main className="relative left-1/2 -my-4 min-h-dvh w-screen -translate-x-1/2 overflow-hidden bg-[var(--page-bg)] text-[var(--text)] selection:bg-[var(--blue-600)] selection:text-white lg:static lg:my-0 lg:w-auto lg:translate-x-0">
+      <FloatingHeader />
 
-      {/* Header */}
-      <header className="sticky top-0 z-10 -mx-4 bg-[var(--page-bg)]/95 px-4 pb-2 pt-3 backdrop-blur">
-        <div className="flex items-center justify-between">
-          <h1 className="text-xl font-semibold text-[var(--navy)]">
-            Ballistic
-            <br />
-            <small>The Simplest Bullet Journal</small>
-          </h1>
-          <button
-            type="button"
-            aria-label="Logout"
-            onClick={() => {
-              if (confirm("Are you sure you want to logout?")) {
-                handleLogout();
-              }
-            }}
-            className="tap-target grid h-9 w-9 place-items-center rounded-md bg-white shadow-sm hover:shadow-md active:scale-95"
-            title={`Logout ${user?.name || ""}`}
-          >
-            {/* logout icon */}
-            <svg
-              viewBox="0 0 24 24"
-              width="18"
-              height="18"
-              fill="none"
-              stroke="currentColor"
-              className="text-[var(--navy)]"
-            >
-              <path
-                d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </button>
-        </div>
-      </header>
+      <section className="relative min-h-[54rem] overflow-hidden border-b border-slate-200 sm:min-h-[58rem] lg:min-h-[calc(100svh-1rem)]">
+        <LandingSignalField />
 
-      {/* Planned view banner */}
-      {dates && viewScope === "planned" && (
-        <div className="flex items-center justify-between rounded-md bg-sky-50 px-3 py-2 text-sm text-sky-700 border border-sky-200">
-          <span>Showing planned items (future scheduled dates)</span>
-          <button
-            type="button"
-            onClick={() => setViewScope("active")}
-            className="text-xs font-medium text-sky-600 hover:text-sky-800 underline"
-          >
-            Back to active
-          </button>
-        </div>
-      )}
+        <div className="relative z-10 mx-auto grid min-h-[54rem] max-w-7xl items-end gap-12 px-5 pb-16 pt-32 sm:min-h-[58rem] sm:px-8 sm:pb-20 lg:min-h-[calc(100svh-1rem)] lg:grid-cols-[0.88fr_1.12fr] lg:px-10 lg:pb-16 lg:pt-28">
+          <div className="max-w-2xl lg:pb-12">
+            <p className="text-[0.68rem] font-medium uppercase tracking-[0.2em] text-slate-500">
+              Simple on its own · Better connected
+            </p>
+            <h1 className="mt-5 text-balance text-5xl font-semibold leading-[0.97] tracking-[-0.045em] sm:text-6xl lg:text-[4.9rem]">
+              <span className="block text-[var(--blue)]">Ballistic:</span>
+              <span className="block">The Simplest</span>
+              <span className="block">Bullet List</span>
+            </h1>
 
-      {/* List */}
-      <div className="flex flex-col gap-2">
-        {/* Render a single item as a row */}
-        {(() => {
-          function renderItem(item: Item, index: number) {
-            return (
-              <ItemRow
-                key={item.id || `item-${index}`}
-                item={item}
-                onChange={onRowChange}
-                onOptimisticReorder={onOptimisticReorder}
-                index={index}
-                onEdit={() => {
-                  setEditingItem(item);
-                  setShowEditModal(true);
-                }}
-                isFirst={index === 0}
-                onDragStart={handleDragStart}
-                onDragEnter={handleDragEnter}
-                onDropItem={handleDrop}
-                onDragEnd={handleDragEnd}
-                draggingId={draggingId}
-                dragOverId={dragOverId}
-                onError={showError}
-              />
-            );
-          }
+            <p className="mt-7 max-w-xl text-balance text-2xl font-medium leading-snug tracking-[-0.02em] text-[var(--navy)] sm:text-[1.75rem]">
+              Connect the AI you already use. Let it handle the list admin.
+            </p>
 
-          return (
-            <>
-              {/* Assigned to Me section */}
-              {delegation && filteredAssignedItems.length > 0 && (
-                <>
-                  <div className="flex items-center justify-between mt-2">
-                    <h2 className="text-xs font-semibold uppercase tracking-wider text-emerald-600">
-                      Assigned to Me
-                    </h2>
-                  </div>
-                  {filteredAssignedItems.map((item, index) => (
-                    <div key={item.id || `assigned-${index}`}>
-                      {renderItem(item, index)}
-                      <button
-                        type="button"
-                        onClick={() => handleDecline(item)}
-                        className="mt-1 text-xs text-red-500 hover:text-red-700 transition-colors px-3"
-                      >
-                        Decline
-                      </button>
-                    </div>
-                  ))}
-                </>
-              )}
-
-              {/* My Tasks section */}
-              {filteredItems.length > 0 && (
-                <>
-                  {delegation && (
-                    <h2 className="text-xs font-semibold uppercase tracking-wider text-[var(--navy)] mt-2">
-                      My Tasks
-                    </h2>
-                  )}
-                  {filteredItems.map((item, index) => renderItem(item, index))}
-                </>
-              )}
-
-              {/* Delegated to Others section */}
-              {delegation && filteredDelegatedItems.length > 0 && (
-                <>
-                  <h2 className="text-xs font-semibold uppercase tracking-wider text-amber-600 mt-2">
-                    Delegated to Others
-                  </h2>
-                  {filteredDelegatedItems.map((item, index) =>
-                    renderItem(item, index),
-                  )}
-                </>
-              )}
-
-              {/* Empty state */}
-              {filteredItems.length === 0 &&
-                (!delegation ||
-                  (filteredAssignedItems.length === 0 &&
-                    filteredDelegatedItems.length === 0)) &&
-                !loading && (
-                  <EmptyState
-                    type="no-items"
-                    message={
-                      hasProjectFilter
-                        ? "No tasks match the selected projects."
-                        : "Start your bullet journal journey by adding your first task!"
-                    }
-                  />
-                )}
-            </>
-          );
-        })()}
-      </div>
-
-      {/* Footer */}
-      <footer className="text-center py-6 text-sm text-slate-500">
-        Psycode Pty. Ltd. © {new Date().getFullYear()}
-      </footer>
-
-      {/* Filter Panel */}
-      {showFilter && (
-        <>
-          <div
-            className="fixed inset-0 z-[19]"
-            onClick={() => setShowFilter(false)}
-            aria-hidden="true"
-          />
-          <div className="fixed inset-x-0 bottom-[4.5rem] z-[21]">
-            <div className="mx-auto max-w-sm px-4">
-              <div className="rounded-xl bg-white shadow-xl border border-slate-200/50 p-4 space-y-4 animate-slide-in-up">
-                {/* Project filter (multi-select, exclusion model) */}
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-                      Projects
-                    </h3>
-                    {excludedProjectIds.size > 0 && (
-                      <button
-                        type="button"
-                        onClick={() => setExcludedProjectIds(new Set())}
-                        className="text-xs text-[var(--blue)] hover:underline"
-                      >
-                        Show all
-                      </button>
-                    )}
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setExcludedProjectIds((prev) => {
-                          const next = new Set(prev);
-                          if (next.has(NO_PROJECT_FILTER_ID)) {
-                            next.delete(NO_PROJECT_FILTER_ID);
-                          } else {
-                            next.add(NO_PROJECT_FILTER_ID);
-                          }
-                          return next;
-                        })
-                      }
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
-                        excludedProjectIds.has(NO_PROJECT_FILTER_ID)
-                          ? "bg-slate-100 text-slate-400 line-through"
-                          : "bg-[var(--blue)] text-white"
-                      }`}
-                    >
-                      No project
-                    </button>
-                    {projects.map((project) => {
-                      const isExcluded = excludedProjectIds.has(project.id);
-                      return (
-                        <button
-                          key={project.id}
-                          type="button"
-                          onClick={() =>
-                            setExcludedProjectIds((prev) => {
-                              const next = new Set(prev);
-                              if (next.has(project.id)) {
-                                next.delete(project.id);
-                              } else {
-                                next.add(project.id);
-                              }
-                              return next;
-                            })
-                          }
-                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
-                            isExcluded
-                              ? "bg-slate-100 text-slate-400 line-through"
-                              : "bg-[var(--blue)] text-white"
-                          }`}
-                        >
-                          {project.color && (
-                            <span
-                              className={`inline-block h-2 w-2 rounded-full ${isExcluded ? "opacity-40" : ""}`}
-                              style={{ backgroundColor: project.color }}
-                            />
-                          )}
-                          {project.name}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Scope toggle (dates feature only) */}
-                {dates && (
-                  <div>
-                    <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">
-                      Scope
-                    </h3>
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setViewScope("active")}
-                        className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
-                          viewScope === "active"
-                            ? "bg-[var(--blue)] text-white"
-                            : "bg-slate-100 text-slate-700 hover:bg-slate-200"
-                        }`}
-                      >
-                        Active
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setViewScope("planned")}
-                        className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
-                          viewScope === "planned"
-                            ? "bg-[var(--blue)] text-white"
-                            : "bg-slate-100 text-slate-700 hover:bg-slate-200"
-                        }`}
-                      >
-                        Planned
-                      </button>
-                    </div>
-                  </div>
-                )}
+            <div className="mt-6 max-w-xl border-l border-[var(--navy)] pl-5 sm:pl-6">
+              <p className="text-lg leading-7 text-slate-600 sm:text-xl sm:leading-8">
+                Ballistic does not include an AI assistant. It gives the
+                compatible AI service you choose a secure way to work with your
+                list. You decide when to connect it—and can disconnect it at any
+                time.
+              </p>
+              <div className="mt-6 flex flex-wrap items-center gap-3">
+                <DownloadAppLink />
+                <PrimaryLink>Start on web</PrimaryLink>
               </div>
             </div>
           </div>
-        </>
-      )}
 
-      {/* Bottom Bar - Glassy style matching top bar */}
-      <div className="fixed inset-x-0 bottom-0 z-20 bg-[var(--page-bg)]/95 backdrop-blur border-t border-slate-200/50">
-        <div className="mx-auto grid max-w-sm grid-cols-[1fr_auto_1fr] items-center px-4 py-3">
-          <div className="flex items-center gap-1">
-            <button
-              type="button"
-              aria-label="Settings"
-              onClick={() => setShowSettings(true)}
-              className="tap-target grid h-10 w-10 place-items-center rounded-md hover:bg-slate-100 active:scale-95 transition-all duration-200"
-            >
-              {/* gear icon */}
-              <svg
-                viewBox="0 0 24 24"
-                width="20"
-                height="20"
-                fill="none"
-                stroke="currentColor"
-                className="text-[var(--navy)]"
-              >
-                <path
-                  d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Zm7.4-3.5a7.4 7.4 0 0 0-.1-1l2.1-1.6-2-3.4-2.5 1a7.6 7.6 0 0 0-1.7-1l-.4-2.6H9.2L8.8 6a7.6 7.6 0 0 0-1.7 1l-2.5-1-2 3.4 2.1 1.6a7.4 7.4 0 0 0 0 2L2.6 14l2 3.4 2.5-1a7.6 7.6 0 0 0 1.7 1l.4 2.6h5.6l.4-2.6a7.6 7.6 0 0 0 1.7-1l2.5 1 2-3.4-2.1-1.6c.1-.3.1-.7.1-1Z"
-                  strokeWidth="1.4"
-                />
-              </svg>
-            </button>
-            <button
-              type="button"
-              aria-label="Notes"
-              onClick={() => setShowNotes(true)}
-              className="tap-target grid h-10 w-10 place-items-center rounded-md hover:bg-slate-100 active:scale-95 transition-all duration-200"
-            >
-              {/* notepad icon */}
-              <svg
-                viewBox="0 0 24 24"
-                width="20"
-                height="20"
-                fill="none"
-                stroke="currentColor"
-                className="text-[var(--navy)]"
-              >
-                <path
-                  d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6Z"
-                  strokeWidth="1.4"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-                <path
-                  d="M14 2v6h6M16 13H8M16 17H8M10 9H8"
-                  strokeWidth="1.4"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            </button>
-            <button
-              type="button"
-              aria-label="Activity Log"
-              onClick={() => setShowActivityLog(true)}
-              className="tap-target grid h-10 w-10 place-items-center rounded-md hover:bg-slate-100 active:scale-95 transition-all duration-200"
-            >
-              {/* clock/history icon */}
-              <svg
-                viewBox="0 0 24 24"
-                width="20"
-                height="20"
-                fill="none"
-                stroke="currentColor"
-                className="text-[var(--navy)]"
-              >
-                <path
-                  d="M12 8v4l3 3M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"
-                  strokeWidth="1.4"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-                <path
-                  d="M3 3v5h5"
-                  strokeWidth="1.4"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            </button>
+          <div className="relative flex justify-center lg:justify-end lg:pb-3 lg:pr-12">
+            <PhonePreview />
           </div>
-          <button
-            type="button"
-            aria-label="Add a new task"
-            onClick={() => {
-              setEditingItem(null);
-              setShowEditModal(true);
-            }}
-            className="tap-target grid h-12 w-12 place-items-center rounded-full bg-[var(--blue)] text-white shadow-md hover:shadow-lg hover:bg-[var(--blue-600)] active:scale-95 transition-all duration-200"
+        </div>
+
+        <div className="absolute bottom-5 right-5 z-20 hidden items-center gap-3 rounded-full bg-white/90 px-4 py-2 text-xs font-medium text-slate-500 ring-1 ring-slate-200 backdrop-blur sm:flex lg:right-8">
+          <span className="h-2 w-2 rounded-full bg-[var(--blue-600)]" />
+          Your list stays in Ballistic. Your AI connects when you choose.
+        </div>
+      </section>
+
+      <section id="simple" className="bg-white">
+        <div className="mx-auto max-w-7xl px-5 py-24 sm:px-8 lg:px-10 lg:py-36">
+          <div className="grid gap-16 lg:grid-cols-[0.78fr_1.22fr] lg:gap-24">
+            <div className="max-w-xl">
+              <SectionLabel>A complete app by itself</SectionLabel>
+              <h2 className="mt-6 text-balance text-4xl font-semibold leading-[1.03] tracking-[-0.04em] sm:text-5xl">
+                Simple before you connect anything.
+                <span className="text-slate-300">
+                  {" "}
+                  More capable when you do.
+                </span>
+              </h2>
+            </div>
+
+            <div className="self-end border-t border-[var(--navy)]">
+              {steps.map((step) => (
+                <article
+                  key={step.number}
+                  className="grid gap-3 border-b border-slate-200 py-7 sm:grid-cols-[3rem_9rem_1fr] sm:items-baseline sm:gap-5"
+                >
+                  <span className="text-[0.68rem] font-medium tracking-[0.16em] text-slate-400">
+                    {step.number}
+                  </span>
+                  <h3 className="text-lg font-semibold tracking-[-0.015em]">
+                    {step.title}
+                  </h3>
+                  <p className="leading-7 text-slate-500">{step.description}</p>
+                </article>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section
+        id="optional"
+        className="relative overflow-hidden border-y border-blue-100 bg-blue-50"
+      >
+        <div
+          className="pointer-events-none absolute -right-40 -top-48 h-[34rem] w-[34rem] rounded-full border border-blue-200"
+          aria-hidden="true"
+        />
+        <div className="relative mx-auto grid max-w-7xl gap-16 px-5 py-24 sm:px-8 lg:grid-cols-[0.85fr_1.15fr] lg:gap-28 lg:px-10 lg:py-36">
+          <div>
+            <SectionLabel>Bring your own AI</SectionLabel>
+            <h2 className="mt-6 max-w-xl text-balance text-4xl font-semibold leading-[1.03] tracking-[-0.04em] sm:text-5xl">
+              Your AI service.
+              <span className="block text-slate-300">Your Ballistic list.</span>
+            </h2>
+            <p className="mt-7 max-w-lg text-lg leading-8 text-slate-600">
+              There is no new assistant to learn. Connect a compatible service
+              you already trust, then let it work with the same list you use on
+              your phone.
+            </p>
+            <div className="mt-9">
+              <PrimaryLink>Make my list now</PrimaryLink>
+            </div>
+          </div>
+
+          <div className="border-t border-[var(--navy)]">
+            {optionalTools.map(([title, description], index) => (
+              <article
+                key={title}
+                className="group grid gap-3 border-b border-blue-200 py-6 sm:grid-cols-[2.4rem_10rem_1fr_auto] sm:items-center sm:gap-5"
+              >
+                <span className="text-[0.65rem] font-medium tracking-[0.14em] text-slate-400">
+                  {String(index + 1).padStart(2, "0")}
+                </span>
+                <h3 className="font-semibold tracking-[-0.01em]">{title}</h3>
+                <p className="text-sm leading-6 text-slate-500">
+                  {description}
+                </p>
+                <span className="flex h-7 w-12 items-center rounded-full border border-blue-200 bg-white/80 p-1">
+                  <span className="h-5 w-5 rounded-full bg-slate-300 transition-transform group-hover:translate-x-5 group-hover:bg-[var(--blue-600)]" />
+                </span>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section id="companion" className="bg-[var(--navy)] text-white">
+        <div className="mx-auto max-w-7xl px-5 py-24 sm:px-8 lg:px-10 lg:py-36">
+          <div className="grid gap-16 lg:grid-cols-[0.82fr_1.18fr] lg:items-center lg:gap-24">
+            <div>
+              <SectionLabel light>A connection you control</SectionLabel>
+              <h2 className="mt-6 max-w-xl text-balance text-4xl font-semibold leading-[1.03] tracking-[-0.04em] sm:text-5xl">
+                Let your AI work with the list.
+                <span className="block text-white/35">
+                  Ballistic remains the source of truth.
+                </span>
+              </h2>
+              <p className="mt-7 max-w-lg text-lg leading-8 text-white/60">
+                In the AI service you connected, ask it to capture an idea, find
+                overdue work, change a date, organise a project, delegate a
+                follow-up or mark something done. Access is limited to your
+                account, and you can disconnect it whenever you want.
+              </p>
+            </div>
+
+            <CompanionMap />
+          </div>
+        </div>
+      </section>
+
+      <section className="relative overflow-hidden bg-white">
+        <div
+          className="pointer-events-none absolute inset-0"
+          aria-hidden="true"
+        >
+          <div className="absolute -bottom-40 right-[8%] h-80 w-80 rounded-full bg-blue-200 blur-[90px]" />
+        </div>
+        <div className="relative mx-auto max-w-7xl px-5 py-24 sm:px-8 lg:px-10 lg:py-36">
+          <p className="text-[0.68rem] font-medium uppercase tracking-[0.2em] text-slate-500">
+            Start simple · Connect when ready
+          </p>
+          <div className="mt-6 flex flex-col items-start justify-between gap-10 lg:flex-row lg:items-end">
+            <h2 className="max-w-4xl text-balance text-5xl font-semibold leading-[0.98] tracking-[-0.045em] sm:text-6xl lg:text-[5.7rem]">
+              Make the list yours.
+              <span className="block">Connect your AI when you are ready.</span>
+            </h2>
+            <div className="w-full shrink-0 lg:w-auto">
+              <MobileDownloadCard />
+              <Link
+                href="/register"
+                className="mt-3 flex justify-center px-2 text-sm font-medium text-slate-500 hover:text-[var(--navy)]"
+              >
+                Or start with the web companion →
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <footer className="border-t border-slate-200 bg-white">
+        <div className="mx-auto flex max-w-7xl flex-col gap-6 px-5 py-8 text-xs text-slate-500 sm:px-8 md:flex-row md:items-center md:justify-between lg:px-10">
+          <div className="flex items-center gap-3">
+            <Image
+              src="/logo.png"
+              alt=""
+              width={26}
+              height={26}
+              className="h-6 w-6 rounded-lg"
+            />
+            <span className="font-semibold text-[var(--navy)]">Ballistic</span>
+            <span>© {new Date().getFullYear()} Psycode Pty. Ltd.</span>
+          </div>
+          <div className="flex items-center gap-5 font-medium">
+            <span>
+              Simple alone · More capable when connected · Mobile first
+            </span>
+            <Link
+              href="/login"
+              className="text-slate-500 hover:text-[var(--navy)]"
+            >
+              Sign in
+            </Link>
+          </div>
+        </div>
+      </footer>
+    </main>
+  );
+}
+
+function FloatingHeader() {
+  return (
+    <header className="fixed inset-x-0 top-0 z-50 px-3 pt-3 sm:px-4 sm:pt-4">
+      <div className="mx-auto flex max-w-[88rem] items-center justify-between gap-3">
+        <Link
+          href="/"
+          className="flex min-h-11 items-center gap-2.5 rounded-full bg-white/95 px-3.5 text-[var(--navy)] shadow-sm ring-1 ring-slate-200 backdrop-blur-xl"
+          aria-label="Ballistic home"
+        >
+          <Image
+            src="/logo.png"
+            alt=""
+            width={28}
+            height={28}
+            className="h-7 w-7 rounded-lg"
+            priority
+          />
+          <span className="text-sm font-semibold tracking-[-0.015em]">
+            Ballistic
+          </span>
+        </Link>
+
+        <nav
+          className="hidden items-center gap-1 rounded-full bg-white/95 p-1 shadow-sm ring-1 ring-slate-200 backdrop-blur-xl md:flex"
+          aria-label="Main navigation"
+        >
+          <a
+            href="#simple"
+            className="rounded-full px-4 py-2 text-xs font-medium text-slate-500 hover:bg-blue-50 hover:text-[var(--navy)]"
           >
-            <span className="sr-only">Add new task...</span>
-            <span className="text-2xl leading-none font-light">+</span>
-          </button>
-          <div className="flex items-center justify-end gap-1">
-            <button
-              type="button"
-              aria-label="Filter"
-              onClick={() => setShowFilter((prev) => !prev)}
-              className={`tap-target grid h-10 w-10 place-items-center rounded-md hover:bg-slate-100 active:scale-95 transition-all duration-200 ${showFilter || excludedProjectIds.size > 0 || (dates && viewScope === "planned") ? "bg-[var(--blue)] rounded-full shadow-sm" : ""}`}
-            >
-              {/* funnel icon */}
-              <svg
-                viewBox="0 0 24 24"
-                width="20"
-                height="20"
-                fill="none"
-                stroke="currentColor"
-                className={
-                  showFilter ||
-                  excludedProjectIds.size > 0 ||
-                  (dates && viewScope === "planned")
-                    ? "text-white"
-                    : "text-[var(--navy)]"
-                }
-              >
-                <path d="M3 5h18l-7 8v5l-4 2v-7L3 5z" strokeWidth="1.5" />
-              </svg>
-            </button>
-            <NotificationCentre delegation={delegation} />
-            <button
-              type="button"
-              aria-label="Profile"
-              onClick={() => setShowProfile(true)}
-              className="tap-target grid h-10 w-10 place-items-center rounded-md hover:bg-slate-100 active:scale-95 transition-all duration-200"
-            >
-              {/* person icon */}
-              <svg
-                viewBox="0 0 24 24"
-                width="20"
-                height="20"
-                fill="none"
-                stroke="currentColor"
-                className="text-[var(--navy)]"
-              >
-                <path
-                  d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z"
-                  strokeWidth="1.4"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            </button>
+            Simple
+          </a>
+          <a
+            href="#optional"
+            className="rounded-full px-4 py-2 text-xs font-medium text-slate-500 hover:bg-blue-50 hover:text-[var(--navy)]"
+          >
+            Optional power
+          </a>
+          <a
+            href="#companion"
+            className="rounded-full px-4 py-2 text-xs font-medium text-slate-500 hover:bg-blue-50 hover:text-[var(--navy)]"
+          >
+            Your AI
+          </a>
+        </nav>
+
+        <div className="flex items-center gap-2 rounded-full bg-white/95 p-1 shadow-sm ring-1 ring-slate-200 backdrop-blur-xl">
+          <Link
+            href="/login"
+            className="hidden rounded-full px-3 py-2 text-xs font-medium text-slate-500 hover:text-[var(--navy)] min-[390px]:inline-flex"
+          >
+            Sign in
+          </Link>
+          <Link
+            href="/mobile"
+            aria-label="Explore the Ballistic mobile app"
+            className="inline-flex min-h-9 items-center gap-2 rounded-full bg-[var(--blue)] px-4 text-xs font-semibold text-white ring-1 ring-blue-900/10 hover:bg-[var(--blue-600)]"
+          >
+            Get the app
+            <PhoneIcon />
+          </Link>
+        </div>
+      </div>
+    </header>
+  );
+}
+
+function PhonePreview() {
+  const tasks = [
+    ["Send revised proposal", "doing"],
+    ["Book dentist", "todo"],
+    ["Call Mum", "todo"],
+  ] as const;
+
+  return (
+    <div className="relative w-[18.5rem] sm:w-[20.5rem]">
+      <div className="absolute -inset-8 rounded-full bg-blue-200/60 blur-3xl" />
+      <div className="relative rounded-[3rem] border-[0.45rem] border-[var(--navy)] bg-[var(--navy)] p-1 shadow-[0_35px_90px_rgba(10,37,64,0.24)]">
+        <div className="overflow-hidden rounded-[2.35rem] bg-white">
+          <div className="mx-auto mt-2 h-5 w-24 rounded-full bg-[var(--navy)]" />
+          <div className="px-5 pb-5 pt-7">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-[0.65rem] font-medium text-slate-400">
+                  Good morning
+                </p>
+                <p className="mt-0.5 text-2xl font-semibold tracking-[-0.025em]">
+                  Today
+                </p>
+              </div>
+              <span className="grid h-9 w-9 place-items-center rounded-full bg-[var(--navy)] text-xs font-semibold text-white">
+                B
+              </span>
+            </div>
+
+            <div className="mt-7 border-t border-[var(--navy)]">
+              {tasks.map(([title, status]) => (
+                <div
+                  key={title}
+                  className="flex items-center gap-3 border-b border-slate-200 py-3.5"
+                >
+                  <span
+                    className={`grid h-7 w-7 shrink-0 place-items-center rounded-full border ${
+                      status === "doing"
+                        ? "border-[var(--blue)] bg-blue-100"
+                        : "border-slate-300"
+                    }`}
+                  >
+                    {status === "doing" && (
+                      <span className="h-2 w-2 rounded-full bg-[var(--blue)]" />
+                    )}
+                  </span>
+                  <span className="min-w-0 flex-1 truncate text-sm font-semibold">
+                    {title}
+                  </span>
+                  <span className="text-xs text-slate-300">••</span>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-5 rounded-2xl bg-slate-100 p-4">
+              <div className="flex items-center gap-2 text-[0.62rem] font-medium uppercase tracking-[0.14em] text-slate-500">
+                <SparkIcon /> Connect your own AI
+              </div>
+              <p className="mt-2 text-sm leading-5 text-slate-600">
+                Optional. Controlled by you. Disconnect any time.
+              </p>
+            </div>
+
+            <div className="mt-5 flex min-h-12 items-center justify-center gap-2 rounded-full bg-[var(--blue)] text-sm font-semibold text-white">
+              <PlusIcon /> Add a task
+            </div>
+          </div>
+
+          <div className="flex items-center justify-around border-t border-slate-200 px-5 py-4 text-[0.58rem] font-semibold text-slate-400">
+            <span className="text-[var(--blue)]">Today</span>
+            <span>Projects</span>
+            <span>More</span>
           </div>
         </div>
       </div>
 
-      {/* Settings Modal */}
-      <SettingsModal
-        isOpen={showSettings}
-        onClose={() => setShowSettings(false)}
-      />
-
-      {/* Notes Modal */}
-      <NotesModal isOpen={showNotes} onClose={() => setShowNotes(false)} />
-
-      {/* Profile Modal */}
-      <ProfileModal
-        isOpen={showProfile}
-        onClose={() => setShowProfile(false)}
-      />
-
-      {/* Activity Log Modal */}
-      <ActivityLogModal
-        isOpen={showActivityLog}
-        onClose={() => setShowActivityLog(false)}
-      />
-
-      {/* Edit/Create Item Modal */}
-      <EditItemModal
-        isOpen={showEditModal}
-        onClose={() => {
-          setShowEditModal(false);
-          setEditingItem(null);
-        }}
-        item={editingItem}
-        projects={projects}
-        onCreateProject={handleCreateProject}
-        showAssignment={delegation}
-        favourites={user?.favourites}
-        onFavouriteToggled={refreshUser}
-        onSubmit={async (v) => {
-          if (editingItem) {
-            // Update existing item
-            const selectedProject = v.project_id
-              ? projects.find((p) => p.id === v.project_id)
-              : null;
-            const optimisticUpdate: Item = {
-              ...editingItem,
-              title: v.title,
-              description: v.description || null,
-              assignee_notes:
-                v.assignee_notes !== undefined
-                  ? v.assignee_notes
-                  : editingItem.assignee_notes,
-              project_id: v.project_id ?? null,
-              project: selectedProject ?? null,
-              scheduled_date: v.scheduled_date ?? null,
-              due_date: v.due_date ?? null,
-              recurrence_rule: v.recurrence_rule ?? null,
-              recurrence_strategy:
-                (v.recurrence_strategy as Item["recurrence_strategy"]) ?? null,
-              is_recurring_template: !!v.recurrence_rule,
-              assignee_id: v.assignee_id ?? null,
-            };
-
-            // Update all arrays optimistically
-            const updater = (prev: Item[]) =>
-              prev.map((i) => (i.id === editingItem.id ? optimisticUpdate : i));
-            setItems(updater);
-            setAssignedItems(updater);
-            setDelegatedItems(updater);
-
-            updateItem(editingItem.id, {
-              title: v.title,
-              description: v.description || null,
-              assignee_notes: v.assignee_notes,
-              project_id: v.project_id,
-              scheduled_date: v.scheduled_date,
-              due_date: v.due_date,
-              recurrence_rule: v.recurrence_rule,
-              recurrence_strategy:
-                (v.recurrence_strategy as Item["recurrence_strategy"]) ?? null,
-              assignee_id: v.assignee_id,
-            }).catch((error) => {
-              console.error("Failed to update item:", error);
-              const revert = (prev: Item[]) =>
-                prev.map((i) => (i.id === editingItem.id ? editingItem : i));
-              setItems(revert);
-              setAssignedItems(revert);
-              setDelegatedItems(revert);
-              showError("Failed to update task. Changes reverted.");
-            });
-          } else {
-            // Create new item
-            const tempId = `temp-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
-            const selectedProject = v.project_id
-              ? projects.find((p) => p.id === v.project_id)
-              : null;
-            const optimisticItem: Item = {
-              id: tempId,
-              user_id: user?.id || "",
-              assignee_id: v.assignee_id ?? null,
-              project_id: v.project_id ?? null,
-              title: v.title,
-              description: v.description || null,
-              status: "todo",
-              position: items.length,
-              scheduled_date: v.scheduled_date ?? null,
-              due_date: v.due_date ?? null,
-              completed_at: null,
-              recurrence_rule: v.recurrence_rule ?? null,
-              recurrence_parent_id: null,
-              recurrence_strategy:
-                (v.recurrence_strategy as Item["recurrence_strategy"]) ?? null,
-              is_recurring_template: !!v.recurrence_rule,
-              is_recurring_instance: false,
-              assignee_notes: null,
-              is_assigned: !!v.assignee_id,
-              is_delegated: !!v.assignee_id,
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
-              deleted_at: null,
-              project: selectedProject ?? null,
-            };
-
-            // Update UI immediately
-            setItems((prev) => {
-              if (!Array.isArray(prev)) {
-                return [optimisticItem];
-              }
-              const hasDuplicate = prev.some((item) => item.id === tempId);
-              if (hasDuplicate) {
-                console.warn("Duplicate ID detected, skipping optimistic item");
-                return prev;
-              }
-              return [...prev, optimisticItem];
-            });
-
-            // Set the item to scroll to
-            setScrollToItemId(tempId);
-
-            // Send API request in background
-            createItem({
-              title: v.title,
-              description: v.description,
-              status: "todo",
-              project_id: v.project_id,
-              position: items.length,
-              scheduled_date: v.scheduled_date,
-              due_date: v.due_date,
-              recurrence_rule: v.recurrence_rule,
-              recurrence_strategy: v.recurrence_strategy,
-              assignee_id: v.assignee_id,
-            })
-              .then((created) => {
-                const resolvedItem = normaliseItemResponse(created);
-                setItems((prev) => {
-                  if (!Array.isArray(prev)) {
-                    return [resolvedItem];
-                  }
-                  return prev.map((item) =>
-                    item.id === tempId ? resolvedItem : item,
-                  );
-                });
-              })
-              .catch((error) => {
-                console.error("Failed to create item:", error);
-                setItems((prev) => prev.filter((item) => item.id !== tempId));
-                showError("Failed to create task. Please try again.");
-              });
-          }
-        }}
-      />
+      <div className="absolute -right-7 top-32 hidden rounded-full bg-white px-3 py-2 text-[0.62rem] font-medium uppercase tracking-[0.14em] text-[var(--navy)] shadow-lg ring-1 ring-slate-200 sm:block">
+        Mobile first
+      </div>
     </div>
+  );
+}
+
+function CompanionMap() {
+  return (
+    <div className="relative min-h-[29rem] overflow-hidden rounded-[2rem] border border-white/15 bg-white/[0.035] p-5 sm:min-h-[31rem] sm:p-8">
+      <svg
+        viewBox="0 0 100 100"
+        preserveAspectRatio="none"
+        className="pointer-events-none absolute inset-0 h-full w-full"
+        aria-hidden="true"
+      >
+        <path
+          d="M 28 65 C 39 58, 41 28, 59 30 S 72 55, 84 52"
+          fill="none"
+          stroke="white"
+          strokeOpacity="0.2"
+          strokeWidth="0.25"
+        />
+        <path
+          d="M 28 65 C 45 67, 56 79, 75 79"
+          fill="none"
+          stroke="white"
+          strokeOpacity="0.2"
+          strokeWidth="0.25"
+        />
+      </svg>
+
+      <div className="absolute left-[8%] top-[44%] w-24 rounded-[1.35rem] border-4 border-white bg-white p-2 text-[var(--navy)] shadow-2xl sm:w-28">
+        <div className="mx-auto h-1.5 w-8 rounded-full bg-[var(--navy)]" />
+        <p className="mt-4 text-[0.5rem] font-medium uppercase tracking-[0.14em] text-slate-400">
+          Today
+        </p>
+        {["Proposal", "Dentist", "Mum"].map((task, index) => (
+          <div
+            key={task}
+            className="mt-2 flex items-center gap-1.5 border-b border-slate-200 pb-1.5 text-[0.48rem] font-semibold"
+          >
+            <span
+              className={`h-2.5 w-2.5 rounded-full border border-slate-300 ${index === 0 ? "border-[var(--blue)] bg-blue-100" : ""}`}
+            />
+            {task}
+          </div>
+        ))}
+        <p className="mt-2 text-center text-[0.42rem] font-medium text-slate-400">
+          MOBILE
+        </p>
+      </div>
+
+      <div className="absolute right-[7%] top-[17%] w-[54%] rounded-xl border border-white/20 bg-[#102f4d] p-2 shadow-2xl sm:p-3">
+        <div className="flex items-center gap-1.5 border-b border-white/10 pb-2">
+          <span className="h-1.5 w-1.5 rounded-full bg-white/25" />
+          <span className="h-1.5 w-1.5 rounded-full bg-white/25" />
+          <span className="h-1.5 w-1.5 rounded-full bg-blue-400" />
+          <span className="ml-auto text-[0.42rem] font-medium tracking-[0.14em] text-white/35">
+            WEB COMPANION
+          </span>
+        </div>
+        <div className="grid grid-cols-[0.34fr_0.66fr] gap-2 pt-2">
+          <div className="space-y-1.5 rounded-md bg-white/[0.04] p-2">
+            <div className="h-1 w-8 rounded-full bg-white/35" />
+            <div className="h-1 w-10 rounded-full bg-white/15" />
+            <div className="h-1 w-7 rounded-full bg-white/15" />
+          </div>
+          <div className="space-y-1.5">
+            {[0, 1, 2].map((item) => (
+              <div
+                key={item}
+                className="flex items-center gap-2 rounded-md border border-white/10 p-2"
+              >
+                <span
+                  className={`h-2.5 w-2.5 rounded-full border border-white/30 ${item === 0 ? "bg-blue-400" : ""}`}
+                />
+                <span className="h-1 flex-1 rounded-full bg-white/20" />
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="absolute bottom-[13%] right-[11%] w-[54%] rounded-2xl bg-[var(--blue-600)] p-4 text-white shadow-2xl sm:p-5">
+        <div className="flex items-center gap-2 text-[0.58rem] font-medium uppercase tracking-[0.14em] text-white/65">
+          <SparkIcon /> Your connected AI service
+        </div>
+        <p className="mt-2 text-xs font-medium leading-5 sm:text-sm">
+          “Add the follow-up and put it after the proposal.”
+        </p>
+      </div>
+
+      <span className="absolute left-[26%] top-[62%] h-3 w-3 rounded-full bg-blue-400 ring-4 ring-blue-400/20" />
+      <span className="absolute right-[39%] top-[29%] h-2 w-2 rounded-full bg-blue-400" />
+      <span className="absolute bottom-[20%] right-[24%] h-2 w-2 rounded-full bg-[var(--navy)] ring-2 ring-blue-400" />
+    </div>
+  );
+}
+
+function SectionLabel({
+  children,
+  light = false,
+}: {
+  children: React.ReactNode;
+  light?: boolean;
+}) {
+  return (
+    <p
+      className={`flex items-center gap-3 text-[0.68rem] font-medium uppercase tracking-[0.2em] ${light ? "text-white/45" : "text-slate-500"}`}
+    >
+      <span className={`h-px w-8 ${light ? "bg-white/40" : "bg-slate-400"}`} />
+      {children}
+    </p>
+  );
+}
+
+function PrimaryLink({ children }: { children: React.ReactNode }) {
+  return (
+    <Link
+      href="/register"
+      className="inline-flex min-h-11 items-center gap-3 rounded-full bg-[var(--blue)] px-5 text-sm font-semibold text-white ring-1 ring-blue-900/10 shadow-[0_12px_30px_rgba(30,64,175,0.2)] hover:-translate-y-0.5 hover:bg-[var(--blue-600)]"
+    >
+      {children}
+      <span className="grid h-7 w-7 place-items-center rounded-full bg-white/15 text-white">
+        <ArrowIcon />
+      </span>
+    </Link>
+  );
+}
+
+function DownloadAppLink() {
+  return (
+    <Link
+      href="/mobile"
+      aria-label="Explore the Ballistic mobile app"
+      className="group inline-flex min-h-11 items-center gap-3 rounded-full bg-[var(--navy)] px-5 text-white ring-1 ring-blue-950/10 shadow-[0_12px_30px_rgba(10,37,64,0.18)] hover:-translate-y-0.5 hover:bg-[#123654]"
+    >
+      <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-white/10">
+        <PhoneIcon />
+      </span>
+      <span className="text-sm font-semibold">Download mobile app</span>
+    </Link>
+  );
+}
+
+function MobileDownloadCard() {
+  return (
+    <Link
+      href="/mobile"
+      aria-label="Explore the Ballistic mobile app"
+      className="group relative flex min-h-[13rem] w-full overflow-hidden rounded-[2rem] bg-[var(--navy)] p-6 text-white ring-1 ring-blue-950/10 shadow-[0_22px_60px_rgba(10,37,64,0.22)] hover:-translate-y-1 hover:shadow-[0_28px_70px_rgba(10,37,64,0.28)] sm:w-[23rem]"
+    >
+      <span
+        className="pointer-events-none absolute -right-16 -top-20 h-56 w-56 rounded-full bg-[var(--blue-600)]/35 blur-2xl transition-transform duration-500 group-hover:scale-110"
+        aria-hidden="true"
+      />
+
+      <span className="relative z-10 flex max-w-[12.5rem] flex-1 flex-col items-start">
+        <span className="text-[0.65rem] font-medium uppercase tracking-[0.2em] text-white/50">
+          Ballistic mobile
+        </span>
+        <span className="mt-4 text-balance text-2xl font-medium leading-tight tracking-[-0.025em]">
+          Your list, always within reach.
+        </span>
+        <span className="mt-auto inline-flex items-center gap-3 text-sm font-semibold">
+          Download the app
+          <span className="grid h-8 w-8 place-items-center rounded-full bg-white text-[var(--navy)] transition-transform group-hover:translate-x-1">
+            <ArrowIcon />
+          </span>
+        </span>
+      </span>
+
+      <span
+        className="pointer-events-none absolute -bottom-10 right-5 h-[12rem] w-[6.4rem] rotate-[7deg] rounded-[1.5rem] border border-white/25 bg-white/10 p-2.5 shadow-2xl backdrop-blur-sm transition-transform duration-500 group-hover:-translate-y-2 group-hover:rotate-[4deg]"
+        aria-hidden="true"
+      >
+        <span className="mx-auto block h-1 w-5 rounded-full bg-white/35" />
+        <span className="mt-6 block space-y-2.5">
+          {["w-12", "w-16", "w-10"].map((width) => (
+            <span
+              key={width}
+              className="flex items-center gap-2 rounded-lg bg-white/10 px-2 py-2"
+            >
+              <span className="h-2 w-2 shrink-0 rounded-full border border-white/60" />
+              <span className={`h-1 rounded-full bg-white/55 ${width}`} />
+            </span>
+          ))}
+        </span>
+      </span>
+    </Link>
+  );
+}
+
+function ArrowIcon() {
+  return (
+    <svg
+      viewBox="0 0 20 20"
+      width="14"
+      height="14"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M4 10h12M11 5l5 5-5 5" />
+    </svg>
+  );
+}
+
+function SparkIcon() {
+  return (
+    <svg
+      viewBox="0 0 20 20"
+      width="14"
+      height="14"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="m10 2 1.3 4.2L15.5 7.5l-4.2 1.3L10 13l-1.3-4.2-4.2-1.3 4.2-1.3L10 2ZM16 12l.7 2.3L19 15l-2.3.7L16 18l-.7-2.3L13 15l2.3-.7L16 12Z" />
+    </svg>
+  );
+}
+
+function PlusIcon() {
+  return (
+    <svg
+      viewBox="0 0 18 18"
+      width="15"
+      height="15"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      aria-hidden="true"
+    >
+      <path d="M9 3v12M3 9h12" />
+    </svg>
+  );
+}
+
+function PhoneIcon() {
+  return (
+    <svg
+      viewBox="0 0 18 18"
+      width="15"
+      height="15"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <rect x="4.5" y="1.5" width="9" height="15" rx="2" />
+      <path d="M7.5 4h3M8.3 13.8h1.4" />
+    </svg>
   );
 }

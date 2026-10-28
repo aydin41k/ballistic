@@ -1,210 +1,166 @@
+import { queryClient } from '@/lib/query-client';
+import { authStorage } from '@/lib/auth-storage';
+import {
+  fetchUser,
+  login as loginRequest,
+  logout as logoutRequest,
+  register as registerRequest,
+  setUnauthorisedHandler,
+  updateUser as updateUserRequest,
+  type UserUpdatePayload,
+} from '@/lib/api';
+import { unregisterCurrentDevicePush } from '@/lib/push';
+import type { User } from '@/types';
 import {
   createContext,
+  type PropsWithChildren,
   useCallback,
   useContext,
   useEffect,
   useMemo,
   useState,
-  type PropsWithChildren,
-} from "react";
+} from 'react';
 
-import {
-  fetchUser,
-  setUnauthorisedHandler,
-  updateUser as apiUpdateUser,
-  type UserUpdatePayload,
-} from "@/lib/api";
-import { UnauthorisedError, toDisplayMessage } from "@/lib/http";
-import {
-  AuthError,
-  login as authLogin,
-  logout as authLogout,
-  register as authRegister,
-} from "@/lib/auth";
-import {
-  clearStoredAuth,
-  getStoredToken,
-  getStoredUser,
-  setStoredUser,
-} from "@/lib/storage";
-import type { User } from "@/types";
-
-type AuthContextValue = {
+interface AuthContextValue {
   user: User | null;
   isReady: boolean;
-  bootstrapError: string | null;
-  clearBootstrapError: () => void;
+  isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (
-    name: string,
-    email: string,
-    password: string,
-    passwordConfirmation: string,
-  ) => Promise<void>;
+  register: (payload: {
+    name: string;
+    email: string;
+    password: string;
+    password_confirmation: string;
+  }) => Promise<void>;
   logout: () => Promise<void>;
-  refreshUser: () => Promise<void>;
-  updateUser: (payload: UserUpdatePayload) => Promise<void>;
-};
+  refreshUser: () => Promise<User>;
+  updateUser: (payload: UserUpdatePayload) => Promise<User>;
+}
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: PropsWithChildren) {
   const [user, setUser] = useState<User | null>(null);
   const [isReady, setIsReady] = useState(false);
-  const [bootstrapError, setBootstrapError] = useState<string | null>(null);
 
-  const handleSignedOut = useCallback(async (message?: string) => {
-    await clearStoredAuth();
+  const clearLocalSession = useCallback(async () => {
+    await authStorage.clearSession();
     setUser(null);
-    setBootstrapError(
-      message ?? "Your session has expired. Please sign in again.",
-    );
+    queryClient.clear();
   }, []);
 
   useEffect(() => {
-    setUnauthorisedHandler(handleSignedOut);
+    setUnauthorisedHandler(clearLocalSession);
     return () => setUnauthorisedHandler(null);
-  }, [handleSignedOut]);
+  }, [clearLocalSession]);
 
   useEffect(() => {
-    let cancelled = false;
+    let mounted = true;
 
-    async function hydrate() {
-      const [token, storedUser] = await Promise.all([
-        getStoredToken(),
-        getStoredUser(),
+    async function restoreSession() {
+      const [token, cachedUser] = await Promise.all([
+        authStorage.getToken(),
+        authStorage.getUser(),
       ]);
-
-      if (cancelled) {
-        return;
-      }
-
-      if (storedUser) {
-        setUser(storedUser);
-      }
+      if (!mounted) return;
 
       if (!token) {
-        setBootstrapError(null);
+        setUser(null);
         setIsReady(true);
         return;
       }
 
+      if (cachedUser) setUser(cachedUser);
+
       try {
         const freshUser = await fetchUser();
-        if (!cancelled) {
-          setUser(freshUser);
-          setBootstrapError(null);
-          await setStoredUser(freshUser);
-        }
-      } catch (candidate) {
-        if (!cancelled) {
-          if (candidate instanceof UnauthorisedError) {
-            // The unauthorised handler (handleSignedOut) already ran via
-            // setUnauthorisedHandler with a friendly session-expired
-            // message - nothing further to do here.
-          } else if (!storedUser) {
-            setBootstrapError(
-              toDisplayMessage(
-                candidate,
-                "Unable to restore your session right now.",
-              ),
-            );
-          }
-        }
+        if (!mounted) return;
+        setUser(freshUser);
+        await authStorage.setUser(freshUser);
+      } catch (error) {
+        if (!cachedUser && mounted) setUser(null);
+        console.warn('Could not refresh the saved Ballistic session.', error);
       } finally {
-        if (!cancelled) {
-          setIsReady(true);
-        }
+        if (mounted) setIsReady(true);
       }
     }
 
-    void hydrate();
-
+    void restoreSession();
     return () => {
-      cancelled = true;
+      mounted = false;
     };
-  }, [handleSignedOut]);
-
-  const login = useCallback(async (email: string, password: string) => {
-    setBootstrapError(null);
-    const response = await authLogin(email, password);
-    setUser(response.user);
   }, []);
 
-  const register = useCallback(
-    async (
-      name: string,
-      email: string,
-      password: string,
-      passwordConfirmation: string,
-    ) => {
-      setBootstrapError(null);
-      const response = await authRegister(
-        name,
-        email,
-        password,
-        passwordConfirmation,
-      );
-      setUser(response.user);
+  const persistAuth = useCallback(async (token: string, nextUser: User) => {
+    await Promise.all([authStorage.setToken(token), authStorage.setUser(nextUser)]);
+    queryClient.clear();
+    setUser(nextUser);
+  }, []);
+
+  const login = useCallback(
+    async (email: string, password: string) => {
+      const response = await loginRequest(email.trim(), password);
+      await persistAuth(response.token, response.user);
     },
-    [],
+    [persistAuth],
+  );
+
+  const register = useCallback(
+    async (payload: {
+      name: string;
+      email: string;
+      password: string;
+      password_confirmation: string;
+    }) => {
+      const response = await registerRequest({
+        ...payload,
+        name: payload.name.trim(),
+        email: payload.email.trim(),
+      });
+      await persistAuth(response.token, response.user);
+    },
+    [persistAuth],
   );
 
   const logout = useCallback(async () => {
-    try {
-      await authLogout();
-    } finally {
-      setUser(null);
-    }
-  }, []);
+    await unregisterCurrentDevicePush().catch(() => authStorage.clearPushToken());
+    await logoutRequest();
+    await clearLocalSession();
+  }, [clearLocalSession]);
 
   const refreshUser = useCallback(async () => {
-    const freshUser = await fetchUser();
-    setUser(freshUser);
-    await setStoredUser(freshUser);
+    const nextUser = await fetchUser();
+    setUser(nextUser);
+    await authStorage.setUser(nextUser);
+    return nextUser;
   }, []);
 
   const updateUser = useCallback(async (payload: UserUpdatePayload) => {
-    const updated = await apiUpdateUser(payload);
-    setUser(updated);
-    await setStoredUser(updated);
+    const nextUser = await updateUserRequest(payload);
+    setUser(nextUser);
+    await authStorage.setUser(nextUser);
+    return nextUser;
   }, []);
 
   const value = useMemo<AuthContextValue>(
     () => ({
       user,
       isReady,
-      bootstrapError,
-      clearBootstrapError: () => setBootstrapError(null),
+      isAuthenticated: user !== null,
       login,
       register,
       logout,
       refreshUser,
       updateUser,
     }),
-    [
-      bootstrapError,
-      isReady,
-      login,
-      logout,
-      refreshUser,
-      register,
-      updateUser,
-      user,
-    ],
+    [isReady, login, logout, refreshUser, register, updateUser, user],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth(): AuthContextValue {
-  const value = useContext(AuthContext);
-
-  if (!value) {
-    throw new Error("useAuth must be used within an AuthProvider");
-  }
-
-  return value;
+  const context = useContext(AuthContext);
+  if (!context) throw new Error('useAuth must be used inside AuthProvider.');
+  return context;
 }
-
-export { AuthError };

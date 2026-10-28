@@ -41,4 +41,8 @@ return [
         'subject' => env('VAPID_SUBJECT', env('APP_URL', 'https://ballistic.app')),
     ],
 
+    'expo_push' => [
+        'endpoint' => env('EXPO_PUSH_ENDPOINT', 'https://exp.host/--/api/v2/push/send'),
+    ],
+
 ];

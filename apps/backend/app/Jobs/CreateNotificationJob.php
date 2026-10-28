@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Jobs;
 
+use App\Contracts\Services\MobilePushServiceInterface;
 use App\Models\Notification;
 use App\Models\User;
 use App\Services\WebPushServiceInterface;
@@ -40,8 +41,10 @@ final class CreateNotificationJob implements ShouldQueue
     /**
      * Execute the job.
      */
-    public function handle(WebPushServiceInterface $webPushService): void
-    {
+    public function handle(
+        WebPushServiceInterface $webPushService,
+        MobilePushServiceInterface $mobilePushService
+    ): void {
         // Create database notification
         $notification = Notification::create([
             'user_id' => $this->userId,
@@ -55,7 +58,7 @@ final class CreateNotificationJob implements ShouldQueue
         $user = User::find($this->userId);
 
         if ($user) {
-            $webPushService->sendToUser($user, [
+            $payload = [
                 'title' => $this->title,
                 'body' => $this->message,
                 'icon' => '/icons/icon-192x192.png',
@@ -66,7 +69,10 @@ final class CreateNotificationJob implements ShouldQueue
                     'url' => $this->getNotificationUrl(),
                     ...(array) $this->data,
                 ],
-            ]);
+            ];
+
+            $webPushService->sendToUser($user, $payload);
+            $mobilePushService->sendToUser($user, $payload);
         }
     }
 

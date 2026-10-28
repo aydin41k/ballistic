@@ -201,6 +201,14 @@ final class User extends Authenticatable
     }
 
     /**
+     * Get this user's native mobile push subscriptions.
+     */
+    public function mobilePushSubscriptions(): HasMany
+    {
+        return $this->hasMany(MobilePushSubscription::class);
+    }
+
+    /**
      * Get this user's audit logs.
      */
     public function auditLogs(): HasMany

@@ -1,6 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
+import { createPortal } from "react-dom";
 import type { Notification, NotificationsResponse } from "@/types";
 import {
   fetchNotifications,
@@ -11,9 +18,14 @@ import {
 
 interface NotificationCentreProps {
   delegation: boolean;
+  variant?: "icon" | "sidebar";
 }
 
-export function NotificationCentre({ delegation }: NotificationCentreProps) {
+export function NotificationCentre({
+  delegation,
+  variant = "icon",
+}: NotificationCentreProps) {
+  const isSidebar = variant === "sidebar";
   const [isOpen, setIsOpen] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -58,11 +70,11 @@ export function NotificationCentre({ delegation }: NotificationCentreProps) {
       }
     }
 
-    if (isOpen) {
+    if (isOpen && !isSidebar) {
       document.addEventListener("mousedown", handleClick);
       return () => document.removeEventListener("mousedown", handleClick);
     }
-  }, [isOpen]);
+  }, [isOpen, isSidebar]);
 
   // Close on Escape
   useEffect(() => {
@@ -75,6 +87,17 @@ export function NotificationCentre({ delegation }: NotificationCentreProps) {
       return () => document.removeEventListener("keydown", handleKeyDown);
     }
   }, [isOpen]);
+
+  useEffect(() => {
+    if (!isSidebar || !isOpen) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [isOpen, isSidebar]);
 
   async function handleMarkAsRead(id: string) {
     try {
@@ -116,6 +139,20 @@ export function NotificationCentre({ delegation }: NotificationCentreProps) {
   }
 
   async function handleToggle() {
+    if (isSidebar) {
+      if (isOpen) {
+        setIsOpen(false);
+        return;
+      }
+
+      setIsOpen(true);
+      if (!loading) {
+        setLoading(true);
+        void load().finally(() => setLoading(false));
+      }
+      return;
+    }
+
     if (!isOpen && !loading) {
       setLoading(true);
       await load();
@@ -127,13 +164,20 @@ export function NotificationCentre({ delegation }: NotificationCentreProps) {
   if (!delegation) return null;
 
   return (
-    <div ref={dropdownRef} className="relative">
+    <div
+      ref={dropdownRef}
+      className={isSidebar ? "relative w-full" : "relative"}
+    >
       {/* Bell button */}
       <button
         type="button"
         aria-label="Notifications"
         onClick={() => void handleToggle()}
-        className="tap-target grid h-10 w-10 place-items-center rounded-md hover:bg-slate-100 active:scale-95 transition-all duration-200 relative"
+        className={
+          isSidebar
+            ? `tap-target relative flex h-11 w-full items-center gap-3 rounded-xl px-3 text-sm font-semibold transition-colors ${isOpen ? "bg-blue-50 text-[var(--navy)]" : "text-slate-600 hover:bg-slate-50 hover:text-[var(--navy)]"}`
+            : "tap-target relative grid h-10 w-10 place-items-center rounded-md transition-all duration-200 hover:bg-slate-100 active:scale-95"
+        }
       >
         <svg
           viewBox="0 0 24 24"
@@ -141,7 +185,7 @@ export function NotificationCentre({ delegation }: NotificationCentreProps) {
           height="20"
           fill="none"
           stroke="currentColor"
-          className="text-[var(--navy)]"
+          className={isSidebar ? "text-slate-500" : "text-[var(--navy)]"}
         >
           <path
             d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0"
@@ -150,121 +194,223 @@ export function NotificationCentre({ delegation }: NotificationCentreProps) {
             strokeLinejoin="round"
           />
         </svg>
+        {isSidebar && <span className="flex-1 text-left">Notifications</span>}
         {unreadCount > 0 && (
-          <span className="absolute top-1 right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
+          <span
+            className={
+              isSidebar
+                ? "flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 text-[10px] font-bold text-white"
+                : "absolute right-1 top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white"
+            }
+          >
             {unreadCount > 99 ? "99+" : unreadCount}
           </span>
         )}
       </button>
 
+      {isOpen && isSidebar && (
+        <NotificationPortal enabled>
+          <button
+            type="button"
+            aria-label="Close notifications"
+            onClick={() => setIsOpen(false)}
+            className="fixed inset-0 z-40 cursor-default bg-slate-950/20 backdrop-blur-[1px]"
+          />
+        </NotificationPortal>
+      )}
+
       {/* Dropdown */}
       {isOpen && (
-        <div className="absolute bottom-full right-0 mb-2 w-80 max-h-96 overflow-y-auto rounded-xl bg-white shadow-xl border border-slate-200/50 animate-slide-in-up z-50">
-          {/* Header */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
-            <h3 className="text-sm font-semibold text-gray-900">
-              Notifications
-            </h3>
-            {unreadCount > 0 && (
-              <button
-                type="button"
-                onClick={() => void handleMarkAllAsRead()}
-                className="text-xs text-blue-600 hover:text-blue-800 font-medium"
-              >
-                Mark all as read
-              </button>
-            )}
-          </div>
-
-          {/* Loading */}
-          {loading && notifications.length === 0 && (
-            <p className="text-sm text-gray-500 text-center py-6">Loading...</p>
-          )}
-
-          {/* Empty */}
-          {!loading && notifications.length === 0 && (
-            <p className="text-sm text-gray-500 text-center py-6">
-              No notifications yet.
-            </p>
-          )}
-
-          {/* List */}
-          {notifications.length > 0 && (
-            <div className="divide-y divide-gray-50">
-              {notifications.map((notification) => (
-                <div
-                  key={notification.id}
-                  className={`flex items-start gap-3 px-4 py-3 transition-colors ${
-                    !notification.read_at ? "bg-blue-50/50" : "hover:bg-gray-50"
-                  }`}
+        <NotificationPortal enabled={isSidebar}>
+          <div
+            role={isSidebar ? "dialog" : undefined}
+            aria-modal={isSidebar ? "true" : undefined}
+            aria-label={isSidebar ? "Notifications" : undefined}
+            className={
+              isSidebar
+                ? "animate-slide-in-right fixed inset-y-0 right-0 z-50 flex w-full max-w-[26rem] flex-col border-l border-slate-200 bg-white shadow-2xl"
+                : "absolute bottom-full right-0 z-50 mb-2 max-h-96 w-80 overflow-y-auto rounded-xl border border-slate-200/70 bg-white shadow-xl animate-slide-in-up"
+            }
+          >
+            {/* Header */}
+            <div
+              className={`flex shrink-0 items-center justify-between border-b border-gray-100 ${isSidebar ? "px-6 py-5" : "px-4 py-3"}`}
+            >
+              <div>
+                <h3
+                  className={`${isSidebar ? "text-lg" : "text-sm"} font-semibold text-gray-900`}
                 >
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-gray-900">
-                      {notification.title}
-                    </p>
-                    <p className="text-xs text-gray-600 mt-0.5">
-                      {notification.message}
-                    </p>
-                    <p className="text-xs text-gray-400 mt-1">
-                      {formatTimeAgo(notification.created_at)}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-1 shrink-0">
-                    {!notification.read_at && (
-                      <button
-                        type="button"
-                        onClick={() => void handleMarkAsRead(notification.id)}
-                        className="p-1 rounded hover:bg-blue-100 transition-colors"
-                        title="Mark as read"
-                      >
-                        <svg
-                          viewBox="0 0 24 24"
-                          width="14"
-                          height="14"
-                          fill="none"
-                          stroke="currentColor"
-                          className="text-blue-600"
-                        >
-                          <path
-                            d="M20 6 9 17l-5-5"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          />
-                        </svg>
-                      </button>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => void handleDismiss(notification.id)}
-                      className="p-1 rounded hover:bg-red-100 transition-colors"
-                      title="Dismiss"
+                  Notifications
+                </h3>
+                {isSidebar && (
+                  <p className="mt-1 text-xs text-slate-500">
+                    Updates about assigned and delegated tasks.
+                  </p>
+                )}
+              </div>
+              <div className="flex items-center gap-3">
+                {unreadCount > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => void handleMarkAllAsRead()}
+                    className="text-xs font-medium text-blue-600 hover:text-blue-800"
+                  >
+                    Mark all as read
+                  </button>
+                )}
+                {isSidebar && (
+                  <button
+                    type="button"
+                    onClick={() => setIsOpen(false)}
+                    aria-label="Close notifications"
+                    className="grid h-9 w-9 place-items-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+                  >
+                    <svg
+                      viewBox="0 0 24 24"
+                      width="18"
+                      height="18"
+                      fill="none"
+                      stroke="currentColor"
+                      aria-hidden="true"
                     >
+                      <path
+                        d="M18 6 6 18M6 6l12 12"
+                        strokeWidth="1.8"
+                        strokeLinecap="round"
+                      />
+                    </svg>
+                  </button>
+                )}
+              </div>
+            </div>
+
+            <div className={isSidebar ? "min-h-0 flex-1 overflow-y-auto" : ""}>
+              {/* Loading */}
+              {loading && notifications.length === 0 && (
+                <p className="py-10 text-center text-sm text-gray-500">
+                  Loading...
+                </p>
+              )}
+
+              {/* Empty */}
+              {!loading && notifications.length === 0 && (
+                <div className="px-6 py-12 text-center">
+                  {isSidebar && (
+                    <span className="mx-auto mb-3 grid h-11 w-11 place-items-center rounded-full bg-slate-100 text-slate-400">
                       <svg
                         viewBox="0 0 24 24"
-                        width="14"
-                        height="14"
+                        width="20"
+                        height="20"
                         fill="none"
                         stroke="currentColor"
-                        className="text-gray-400"
+                        aria-hidden="true"
                       >
                         <path
-                          d="M18 6 6 18M6 6l12 12"
-                          strokeWidth="2"
+                          d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0"
+                          strokeWidth="1.5"
                           strokeLinecap="round"
                           strokeLinejoin="round"
                         />
                       </svg>
-                    </button>
-                  </div>
+                    </span>
+                  )}
+                  <p className="text-sm text-gray-500">No notifications yet.</p>
                 </div>
-              ))}
+              )}
+
+              {/* List */}
+              {notifications.length > 0 && (
+                <div className="divide-y divide-gray-50">
+                  {notifications.map((notification) => (
+                    <div
+                      key={notification.id}
+                      className={`flex items-start gap-3 px-4 py-3 transition-colors ${
+                        !notification.read_at
+                          ? "bg-blue-50/50"
+                          : "hover:bg-gray-50"
+                      }`}
+                    >
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium text-gray-900">
+                          {notification.title}
+                        </p>
+                        <p className="mt-0.5 text-xs text-gray-600">
+                          {notification.message}
+                        </p>
+                        <p className="mt-1 text-xs text-gray-400">
+                          {formatTimeAgo(notification.created_at)}
+                        </p>
+                      </div>
+                      <div className="flex shrink-0 items-center gap-1">
+                        {!notification.read_at && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              void handleMarkAsRead(notification.id)
+                            }
+                            className="rounded p-1 transition-colors hover:bg-blue-100"
+                            title="Mark as read"
+                          >
+                            <svg
+                              viewBox="0 0 24 24"
+                              width="14"
+                              height="14"
+                              fill="none"
+                              stroke="currentColor"
+                              className="text-blue-600"
+                            >
+                              <path
+                                d="M20 6 9 17l-5-5"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              />
+                            </svg>
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => void handleDismiss(notification.id)}
+                          className="rounded p-1 transition-colors hover:bg-red-100"
+                          title="Dismiss"
+                        >
+                          <svg
+                            viewBox="0 0 24 24"
+                            width="14"
+                            height="14"
+                            fill="none"
+                            stroke="currentColor"
+                            className="text-gray-400"
+                          >
+                            <path
+                              d="M18 6 6 18M6 6l12 12"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
-          )}
-        </div>
+          </div>
+        </NotificationPortal>
       )}
     </div>
   );
+}
+
+function NotificationPortal({
+  enabled,
+  children,
+}: {
+  enabled: boolean;
+  children: ReactNode;
+}) {
+  return enabled ? createPortal(children, document.body) : children;
 }
 
 function formatTimeAgo(iso: string): string {

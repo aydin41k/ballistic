@@ -5,11 +5,13 @@ declare(strict_types=1);
 namespace App\Providers;
 
 use App\Contracts\NotificationServiceInterface;
+use App\Contracts\Services\MobilePushServiceInterface;
 use App\Events\ModelChanged;
 use App\Listeners\AuditAuthEvents;
 use App\Listeners\AuditModelChanges;
 use App\Mcp\Services\McpAuthContext;
 use App\Mcp\Services\SchemaReflector;
+use App\Services\MobilePushService;
 use App\Services\NotificationService;
 use App\Services\WebPushService;
 use App\Services\WebPushServiceInterface;
@@ -28,6 +30,7 @@ final class AppServiceProvider extends ServiceProvider
     {
         $this->app->bind(NotificationServiceInterface::class, NotificationService::class);
         $this->app->bind(WebPushServiceInterface::class, WebPushService::class);
+        $this->app->bind(MobilePushServiceInterface::class, MobilePushService::class);
 
         // MCP Services - scoped to request lifecycle
         $this->app->scoped(McpAuthContext::class);
