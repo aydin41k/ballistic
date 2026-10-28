@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.7 - 2026-10-28
+
+- Fixed the TypeScript error in `MotionPressable` that broke `npm run typecheck`.
+- Added a 15 second request timeout and clearer messages for timeouts and server (5xx) errors.
+- Release builds now fail with a clear message when `EXPO_PUBLIC_API_BASE_URL` is unset instead of calling a loopback address.
+- Showed "Your session has expired" on the sign-in screen after an unauthorised response.
+- Stopped retrying client (4xx) errors in react-query.
+- Applied non-breaking `npm audit fix` updates, clearing the critical production advisory (`shell-quote`).
+
 ## 0.1.6 - 2026-07-12
 
 - Made plain one-line task rows compact instead of enforcing the obsolete tall control layout.

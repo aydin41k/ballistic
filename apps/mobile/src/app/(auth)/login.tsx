@@ -13,7 +13,7 @@ import { ApiError } from '@/lib/api';
 
 export default function LoginScreen() {
   const router = useRouter();
-  const { login } = useAuth();
+  const { login, sessionNotice } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -42,7 +42,7 @@ export default function LoginScreen() {
   return (
     <AuthScaffold title="Welcome back" subtitle="Pick up exactly where you left off.">
       <View style={styles.form}>
-        {error ? <ErrorNotice message={error} /> : null}
+        {error || sessionNotice ? <ErrorNotice message={error ?? sessionNotice ?? ''} /> : null}
         <AppTextField
           label="Email"
           value={email}

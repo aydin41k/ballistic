@@ -10,6 +10,7 @@ The native iOS and Android client for Ballistic. It targets Expo SDK 54 for comp
    - iOS simulator default: `http://localhost`
    - Android emulator default: `http://10.0.2.2`
    - Physical devices need a reachable LAN or HTTPS address.
+   - The loopback defaults apply to development only; release and EAS builds require `EXPO_PUBLIC_API_BASE_URL` to be set.
 4. Set `EXPO_PUBLIC_EAS_PROJECT_ID` after running `eas init` if native push is required.
 5. Run `npm run ios` or `npm run android` for Expo Go-compatible development.
 6. For native push testing, initialise EAS with `npx eas init`, build the `development` profile, then run `npm run start:dev-client`.

@@ -20,6 +20,8 @@ import type {
 
 type QueryValue = string | number | boolean | null | undefined;
 
+const REQUEST_TIMEOUT_MS = 15_000;
+
 let onUnauthorised: (() => void | Promise<void>) | null = null;
 
 export class ApiError extends Error {
@@ -40,6 +42,13 @@ export function setUnauthorisedHandler(handler: (() => void | Promise<void>) | n
 export function getApiBaseUrl(): string {
   const configured = process.env.EXPO_PUBLIC_API_BASE_URL?.trim().replace(/\/$/, '');
   if (configured) return configured;
+  // Release builds must never silently talk to a developer loopback address.
+  if (!__DEV__) {
+    throw new ApiError(
+      'Ballistic is not configured with a server address. Set EXPO_PUBLIC_API_BASE_URL and rebuild.',
+      0,
+    );
+  }
   return Platform.OS === 'android' ? 'http://10.0.2.2' : 'http://localhost';
 }
 
@@ -62,10 +71,12 @@ function unwrap<T>(payload: T | { data?: T }): T {
 }
 
 async function parseError(response: Response): Promise<ApiError> {
-  const payload = (await response
-    .json()
-    .catch(() => ({ message: 'Request failed' }))) as Partial<ValidationError>;
-  return new ApiError(payload.message || 'Request failed', response.status, payload.errors ?? {});
+  const payload = (await response.json().catch(() => ({}))) as Partial<ValidationError>;
+  const fallback =
+    response.status >= 500
+      ? 'Ballistic is having trouble right now. Please try again shortly.'
+      : 'Request failed';
+  return new ApiError(payload.message || fallback, response.status, payload.errors ?? {});
 }
 
 async function request<T>(
@@ -81,11 +92,25 @@ async function request<T>(
   headers.set('X-Ballistic-Client', `mobile/${Platform.OS}`);
   if (token) headers.set('Authorization', `Bearer ${token}`);
 
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
   let response: Response;
   try {
-    response = await fetch(buildUrl(path, query), { ...options, headers });
-  } catch {
-    throw new ApiError('Could not reach Ballistic. Check your connection and try again.', 0);
+    response = await fetch(buildUrl(path, query), {
+      ...options,
+      headers,
+      signal: controller.signal,
+    });
+  } catch (caught) {
+    if (caught instanceof ApiError) throw caught;
+    throw new ApiError(
+      controller.signal.aborted
+        ? 'Ballistic took too long to respond. Please try again.'
+        : 'Could not reach Ballistic. Check your connection and try again.',
+      0,
+    );
+  } finally {
+    clearTimeout(timeout);
   }
 
   if (response.status === 401 && authenticated) {

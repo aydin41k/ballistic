@@ -22,10 +22,7 @@ export const MotionPressable = forwardRef<React.ElementRef<typeof Pressable>, Pr
           scale.value = withSpring(1, { damping: 18, stiffness: 280 });
           onPressOut?.(event);
         }}
-        style={[
-          typeof style === 'function' ? style({ pressed: false, hovered: false }) : style,
-          animatedStyle,
-        ]}
+        style={[typeof style === 'function' ? style({ pressed: false }) : style, animatedStyle]}
       />
     );
   },

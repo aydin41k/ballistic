@@ -24,6 +24,7 @@ import {
 interface AuthContextValue {
   user: User | null;
   isReady: boolean;
+  sessionNotice: string | null;
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (payload: {
@@ -42,6 +43,7 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 export function AuthProvider({ children }: PropsWithChildren) {
   const [user, setUser] = useState<User | null>(null);
   const [isReady, setIsReady] = useState(false);
+  const [sessionNotice, setSessionNotice] = useState<string | null>(null);
 
   const clearLocalSession = useCallback(async () => {
     await authStorage.clearSession();
@@ -50,7 +52,10 @@ export function AuthProvider({ children }: PropsWithChildren) {
   }, []);
 
   useEffect(() => {
-    setUnauthorisedHandler(clearLocalSession);
+    setUnauthorisedHandler(async () => {
+      await clearLocalSession();
+      setSessionNotice('Your session has expired. Please sign in again.');
+    });
     return () => setUnauthorisedHandler(null);
   }, [clearLocalSession]);
 
@@ -94,6 +99,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const persistAuth = useCallback(async (token: string, nextUser: User) => {
     await Promise.all([authStorage.setToken(token), authStorage.setUser(nextUser)]);
     queryClient.clear();
+    setSessionNotice(null);
     setUser(nextUser);
   }, []);
 
@@ -126,6 +132,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
     await unregisterCurrentDevicePush().catch(() => authStorage.clearPushToken());
     await logoutRequest();
     await clearLocalSession();
+    setSessionNotice(null);
   }, [clearLocalSession]);
 
   const refreshUser = useCallback(async () => {
@@ -146,6 +153,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
     () => ({
       user,
       isReady,
+      sessionNotice,
       isAuthenticated: user !== null,
       login,
       register,
@@ -153,7 +161,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
       refreshUser,
       updateUser,
     }),
-    [isReady, login, logout, refreshUser, register, updateUser, user],
+    [isReady, login, logout, refreshUser, register, sessionNotice, updateUser, user],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
