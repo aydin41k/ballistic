@@ -1,5 +1,5 @@
 import { forwardRef } from 'react';
-import { Pressable, type PressableProps } from 'react-native';
+import { Pressable, type PressableProps, type PressableStateCallbackType } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
@@ -22,7 +22,12 @@ export const MotionPressable = forwardRef<React.ElementRef<typeof Pressable>, Pr
           scale.value = withSpring(1, { damping: 18, stiffness: 280 });
           onPressOut?.(event);
         }}
-        style={[typeof style === 'function' ? style({ pressed: false }) : style, animatedStyle]}
+        style={[
+          typeof style === 'function'
+            ? style({ pressed: false } as PressableStateCallbackType)
+            : style,
+          animatedStyle,
+        ]}
       />
     );
   },

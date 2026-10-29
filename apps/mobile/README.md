@@ -29,3 +29,8 @@ Run `npm run check` to perform formatting, lint, TypeScript, and production bund
 - Pull down to refresh tasks and notifications.
 - Use the centre action in the bottom navigation bar for quick capture.
 - Manage dates, recurrence, projects, delegation, notes, activity, profile, feature flags, MCP tokens, and notifications from native screens.
+
+## Before store submission
+
+- Replace `assets/images/ballistic-icon.png` (currently 512×512) with a 1024×1024 master; the App Store requires 1024×1024.
+- Run `npx eas init` to set the EAS project ID and fill `submit.production` in `eas.json` with store credentials.

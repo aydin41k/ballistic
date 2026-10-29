@@ -2,13 +2,14 @@
 
 ## 0.1.7 - 2026-10-28
 
-- Fixed the TypeScript error in `MotionPressable` that broke `npm run typecheck`.
+- Fixed the TypeScript error in `MotionPressable` that broke `npm run typecheck`, so it passes both with and without the web types `expo start` generates.
 - Added a 15 second request timeout and clearer messages for timeouts and server (5xx) errors.
 - Release builds now fail with a clear message when `EXPO_PUBLIC_API_BASE_URL` is unset instead of calling a loopback address.
 - Showed "Your session has expired" on the sign-in screen after an unauthorised response.
 - Stopped retrying client (4xx) errors in react-query.
 - Showed an alert when deleting, declining, reordering or changing the status of a task fails, instead of silently rolling the change back.
 - Enlarged the status orb and chip touch targets to the 44pt guideline with `hitSlop`.
+- Removed unused Expo template assets and the template `reset-project` script.
 - Applied non-breaking `npm audit fix` updates, clearing the critical production advisory (`shell-quote`).
 
 ## 0.1.6 - 2026-07-12
