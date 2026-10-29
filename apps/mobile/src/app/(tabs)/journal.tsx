@@ -43,6 +43,11 @@ interface DepartureTimers {
 const departureHoldMs = 4000;
 const departureFadeMs = 1200;
 
+function reportFailure(title: string) {
+  return (error: unknown) =>
+    Alert.alert(title, error instanceof Error ? error.message : 'Please try again.');
+}
+
 function getDepartureKey(scope: ItemScope, section: JournalSection, itemId: string): string {
   return `${scope}:${section}:${itemId}`;
 }
@@ -206,27 +211,42 @@ export default function JournalScreen() {
       removeDeparture(key);
     }
 
-    actions.queueStatusUpdate(item.id, status, { onError: () => removeDeparture(key) });
+    actions.queueStatusUpdate(item.id, status, {
+      onError: () => {
+        removeDeparture(key);
+        Alert.alert('Could not update task', 'The change was undone. Please try again.');
+      },
+    });
   }
 
   function confirmDelete(item: Item) {
     Alert.alert('Delete task?', `“${item.title}” will be removed.`, [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: () => actions.removeTask.mutate(item.id) },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: () =>
+          actions.removeTask.mutate(item.id, { onError: reportFailure('Could not delete task') }),
+      },
     ]);
   }
 
   function confirmDecline(item: Item) {
     Alert.alert('Decline task?', `This will return “${item.title}” to its owner.`, [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Decline', style: 'destructive', onPress: () => actions.declineTask.mutate(item.id) },
+      {
+        text: 'Decline',
+        style: 'destructive',
+        onPress: () =>
+          actions.declineTask.mutate(item.id, { onError: reportFailure('Could not decline task') }),
+      },
     ]);
   }
 
   function moveToTop(item: Item) {
     const full = journal.data?.mine ?? [];
     const next = [item, ...full.filter((candidate) => candidate.id !== item.id)];
-    actions.reorderTasks.mutate(next);
+    actions.reorderTasks.mutate(next, { onError: reportFailure('Could not reorder tasks') });
   }
 
   function handleDragEnd({ data }: DragEndParams<Item>) {
@@ -235,7 +255,10 @@ export default function JournalScreen() {
     const orderedVisible = data.filter((item) => !departingIds.has(item.id));
     const visibleIds = new Set(orderedVisible.map((item) => item.id));
     const merged = full.map((item) => (visibleIds.has(item.id) ? orderedVisible.shift()! : item));
-    actions.reorderTasks.mutate(merged.map((item, position) => ({ ...item, position })));
+    actions.reorderTasks.mutate(
+      merged.map((item, position) => ({ ...item, position })),
+      { onError: reportFailure('Could not reorder tasks') },
+    );
   }
 
   const staticCard = (item: Item, index: number, section: 'assigned' | 'delegated') => {
