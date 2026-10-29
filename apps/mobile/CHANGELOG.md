@@ -8,6 +8,7 @@
 - Showed "Your session has expired" on the sign-in screen after an unauthorised response.
 - Stopped retrying client (4xx) errors in react-query.
 - Showed an alert when deleting, declining, reordering or changing the status of a task fails, instead of silently rolling the change back.
+- Enlarged the status orb and chip touch targets to the 44pt guideline with `hitSlop`.
 - Applied non-breaking `npm audit fix` updates, clearing the critical production advisory (`shell-quote`).
 
 ## 0.1.6 - 2026-07-12

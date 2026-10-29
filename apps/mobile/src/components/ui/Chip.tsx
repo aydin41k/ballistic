@@ -27,6 +27,7 @@ export function Chip({
     <MotionPressable
       accessibilityRole="button"
       accessibilityState={{ selected }}
+      hitSlop={3}
       onPress={() => {
         void Haptics.selectionAsync();
         onPress();

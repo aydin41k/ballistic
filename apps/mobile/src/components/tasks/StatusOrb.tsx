@@ -36,6 +36,7 @@ export function StatusOrb({
     <Animated.View style={[styles.container, animatedStyle]}>
       <MotionPressable
         accessibilityRole="button"
+        hitSlop={4}
         accessibilityLabel={`Status: ${meta.label}. Tap for next status.`}
         onPress={(event) => {
           event.stopPropagation();
